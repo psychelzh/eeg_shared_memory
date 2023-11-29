@@ -1,0 +1,38 @@
+---
+title: Representation Analysis
+---
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+```
+
+```{r}
+#| label: load-data
+
+rsa_inter <- arrow::read_parquet("data/task-rs_acq-inter_type-triu.parquet")
+events_encoding <- read_csv(
+  "data/group_task-wordencoding_events.csv",
+  show_col_types = FALSE
+)
+subjs_id <- unique(events_encoding$subj_id)
+words_type <- events_encoding |>
+  distinct(trial_id, word_id, word_category)
+```
+
+```{r}
+rsa_inter |>
+  left_join(words_type, by = "trial_id") |>
+  summarise(
+    mean_se(r),
+    .by = c(region_id, word_category)
+  ) |>
+  ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
+  geom_col(aes(fill = word_category), position = position_dodge(width = 0.4), width = 0.4) +
+  geom_errorbar(aes(group = word_category), position = position_dodge(width = 0.4), width = 0) +
+  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
+  scale_y_continuous(name = "Intersubject Correlation") +
+  ggthemes::scale_fill_few(name = "Word Type") +
+  ggpubr::theme_pubclean()
+```
