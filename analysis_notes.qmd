@@ -72,12 +72,13 @@ dat_inter |>
     .by = c(region_id, response_type)
   ) |>
   mutate(
-    response_type = recode_factor(
+    response_type = case_match(
       response_type,
-      "remember" = "Rem",
-      "know" = "Know",
-      "unsure" = "Unsure",
-      "new" = "New"
+      "remember" ~ "Rem",
+      "know" ~ "Know",
+      "unsure" ~ "Unsure",
+      "new" ~ "New",
+      .ptype = factor(levels = c("Rem", "Know", "Unsure", "New"))
     )
   ) |> 
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
