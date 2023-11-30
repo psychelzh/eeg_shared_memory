@@ -19,11 +19,36 @@ events_encoding <- read_csv(
 subjs_id <- unique(events_encoding$subj_id)
 words_type <- events_encoding |>
   distinct(trial_id, word_id, word_category)
+events_retrieval <- read_csv(
+  "data/group_task-wordretrieval_events.csv",
+  show_col_types = FALSE
+) |> 
+  filter(memory_type > 0)
+dat_inter <- rsa_inter |>
+  left_join(words_type, by = "trial_id") |>
+  left_join(
+    select(events_retrieval, subj_id, word_id, response_type),
+    by = join_by(subj_id_row == subj_id, word_id)
+  ) |> 
+  left_join(
+    select(events_retrieval, subj_id, word_id, response_type),
+    by = join_by(subj_id_col == subj_id, word_id),
+    suffix = c("_row", "_col")
+  ) |> 
+  filter(response_type_row == response_type_col) |> 
+  filter(
+    sum(!is.na(r)) >= 5, 
+    .by = c(region_id, word_category, contains("subj_id"))
+  ) |> 
+  rename(response_type = response_type_row) |> 
+  select(-response_type_col)
 ```
 
 ```{r}
-rsa_inter |>
-  left_join(words_type, by = "trial_id") |>
+#| label: fig-inter-abs-con
+#| fig-cap: Verify if intersubject similarity of concrete is larger than that of abstract.
+
+dat_inter |> 
   summarise(
     mean_se(r),
     .by = c(region_id, word_category)
@@ -31,6 +56,33 @@ rsa_inter |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
   geom_col(aes(fill = word_category), position = position_dodge(width = 0.4), width = 0.4) +
   geom_errorbar(aes(group = word_category), position = position_dodge(width = 0.4), width = 0) +
+  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
+  scale_y_continuous(name = "Intersubject Correlation") +
+  ggthemes::scale_fill_few(name = "Word Type") +
+  ggpubr::theme_pubclean()
+```
+
+```{r}
+#| label: fig-inter-mem-eff
+#| fig-cap: Subsequent memory effect.
+
+dat_inter |> 
+  summarise(
+    mean_se(atanh(r)),
+    .by = c(region_id, response_type)
+  ) |>
+  mutate(
+    response_type = recode_factor(
+      response_type,
+      "remember" = "Rem",
+      "know" = "Know",
+      "unsure" = "Unsure",
+      "new" = "New"
+    )
+  ) |> 
+  ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
+  geom_col(aes(fill = response_type), position = position_dodge(width = 0.4), width = 0.4) +
+  geom_errorbar(aes(group = response_type), position = position_dodge(width = 0.4), width = 0) +
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
   ggthemes::scale_fill_few(name = "Word Type") +
