@@ -11,4 +11,3 @@ for i_col = 1:ncols
     simi(i_col) = corr(cur_rep, grp_rep);
 end
 end
-
