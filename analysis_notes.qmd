@@ -58,7 +58,7 @@ dat_inter |>
   geom_errorbar(aes(group = word_category), position = position_dodge(width = 0.4), width = 0) +
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  ggthemes::scale_fill_few(name = "Word Type") +
+  ggsci::scale_fill_d3(name = "Word Type") +
   ggpubr::theme_pubclean()
 ```
 
@@ -85,6 +85,6 @@ dat_inter |>
   geom_errorbar(aes(group = response_type), position = position_dodge(width = 0.4), width = 0) +
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  ggthemes::scale_fill_few(name = "Word Type") +
+  ggthemes::scale_fill_few(name = "Mem Type") +
   ggpubr::theme_pubclean()
 ```
