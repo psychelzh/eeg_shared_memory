@@ -41,7 +41,7 @@ for i_region = regions_id
     end
     prog_bar.release()
 end
-parquetwrite(fullfile("data", "task-rs_type-inter_acq-trial.parquet"), ...
+parquetwrite(fullfile("data", "type-inter_acq-trial_rs.parquet"), ...
     simi_inter_by_trial(simi_inter_by_trial.subj_id_row < simi_inter_by_trial.subj_id_col, :))
 
 % acquire: whole-time-series
@@ -61,7 +61,7 @@ for i_region = progress(regions_id)
     store_start = store_start + numel_cor_mat;
     store_end = store_end + numel_cor_mat;
 end
-parquetwrite(fullfile("data", "task-rs_type-inter_acq-whole.parquet"), ...
+parquetwrite(fullfile("data", "type-inter_acq-whole_rs.parquet"), ...
     simi_inter_by_whole(simi_inter_by_whole.subj_id_row < simi_inter_by_whole.subj_id_col, :))
 
 %% individual to group similarity
@@ -89,7 +89,7 @@ for i_region = regions_id
     end
     prog_bar.release()
 end
-parquetwrite(fullfile("data", "task-rs_type-group_acq-trial.parquet"), simi_grp_by_trial)
+parquetwrite(fullfile("data", "type-group_acq-trial_rs.parquet"), simi_grp_by_trial)
 
 % acquire: whole-time-series
 simi_grp_by_whole = array2table(...
@@ -107,4 +107,4 @@ for i_region = progress(regions_id)
     store_start = store_start + len_subj;
     store_end = store_end + len_subj;
 end
-parquetwrite(fullfile("data", "task-rs_type-group_acq-whole.parquet"), simi_grp_by_whole)
+parquetwrite(fullfile("data", "type-group_acq-whole_rs.parquet"), simi_grp_by_whole)
