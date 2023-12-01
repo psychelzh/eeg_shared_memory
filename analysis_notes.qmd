@@ -1,13 +1,13 @@
 ---
 title: Representation Analysis
-author: 
+author:
   - name: Liang Zhang
   - name: Jintao Sheng
-format: 
-  html: 
+format:
+  html:
     code-fold: true
     toc: true
-execute: 
+execute:
   warning: false
 bibliography: references.bib
 ---
@@ -23,7 +23,7 @@ library(tidyverse)
 ```{r}
 #| label: load-data-by-trial
 
-rsa_inter_by_trial <- arrow::read_parquet("data/task-rs_type-inter_acq-trial.parquet")
+rsa_inter_by_trial <- arrow::read_parquet("data/type-inter_acq-trial_rs.parquet")
 events_encoding <- read_csv(
   "data/group_task-wordencoding_events.csv",
   show_col_types = FALSE
@@ -35,26 +35,26 @@ events_retrieval <- read_csv(
   "data/group_task-wordretrieval_events.csv",
   show_col_types = FALSE
 )
-subj_resp_types <- events_retrieval |> 
-  filter(memory_type > 0) |> 
+subj_resp_types <- events_retrieval |>
+  filter(memory_type > 0) |>
   select(subj_id, word_id, response_type)
 rsa_inter_by_trial_with_resp <- rsa_inter_by_trial |>
   left_join(words_type, by = "trial_id") |>
   left_join(
     subj_resp_types,
     by = join_by(subj_id_row == subj_id, word_id)
-  ) |> 
+  ) |>
   left_join(
     subj_resp_types,
     by = join_by(subj_id_col == subj_id, word_id),
     suffix = c("_row", "_col")
-  ) |> 
-  filter(response_type_row == response_type_col) |> 
+  ) |>
+  filter(response_type_row == response_type_col) |>
   filter(
-    sum(!is.na(r)) >= 5, 
+    sum(!is.na(fisher_z)) >= 5,
     .by = c(region_id, word_category, contains("subj_id"))
-  ) |> 
-  rename(response_type = response_type_row) |> 
+  ) |>
+  rename(response_type = response_type_row) |>
   select(-response_type_col)
 ```
 
@@ -64,9 +64,9 @@ rsa_inter_by_trial_with_resp <- rsa_inter_by_trial |>
 #| label: fig-inter-abs-con
 #| fig-cap: Verify if intersubject similarity of concrete is larger than that of abstract.
 
-rsa_inter_by_trial_with_resp |> 
+rsa_inter_by_trial_with_resp |>
   summarise(
-    mean_se(r),
+    mean_se(fisher_z),
     .by = c(region_id, word_category)
   ) |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
@@ -84,9 +84,9 @@ rsa_inter_by_trial_with_resp |>
 #| label: fig-inter-mem-eff
 #| fig-cap: Average inter-subject representation similarity among different memory conditions
 
-rsa_inter_by_trial_with_resp |> 
+rsa_inter_by_trial_with_resp |>
   summarise(
-    mean_se(atanh(r)),
+    mean_se(fisher_z),
     .by = c(region_id, response_type)
   ) |>
   mutate(
@@ -98,7 +98,7 @@ rsa_inter_by_trial_with_resp |>
       "new" ~ "New",
       .ptype = factor(levels = c("Rem", "Know", "Unsure", "New"))
     )
-  ) |> 
+  ) |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
   geom_col(aes(fill = response_type), position = position_dodge(width = 0.4), width = 0.4) +
   geom_errorbar(aes(group = response_type), position = position_dodge(width = 0.4), width = 0) +
@@ -116,10 +116,10 @@ The indicator calculation is based on [@manns2003].
 #| label: calc-mem-ability
 
 # mainly d' scores for remember and know
-count_trials <- events_retrieval |> 
-  distinct(word_id, old_new) |> 
+count_trials <- events_retrieval |>
+  distinct(word_id, old_new) |>
   count(old_new, name = "n_total")
-mem_ability <- events_retrieval |> 
+mem_ability <- events_retrieval |>
   mutate(
     old_new = factor(old_new, c("old", "new")),
     response_type = factor(
@@ -127,26 +127,26 @@ mem_ability <- events_retrieval |>
       c("remember", "know", "unsure", "new")
     )
   ) |>
-  filter(memory_type > 0) |> 
-  count(subj_id, response_type, old_new, .drop = FALSE) |> 
-  left_join(count_trials, by = "old_new") |> 
+  filter(memory_type > 0) |>
+  count(subj_id, response_type, old_new, .drop = FALSE) |>
+  left_join(count_trials, by = "old_new") |>
   mutate(
     rate = (n + 0.5) / (n_total + 1),
     .by = c(subj_id, response_type)
-  ) |> 
-  filter(response_type %in% c("remember", "know")) |> 
+  ) |>
+  filter(response_type %in% c("remember", "know")) |>
   mutate(
     type = case_match(
       old_new,
       "old" ~ "hr",
       "new" ~ "far"
     )
-  ) |> 
+  ) |>
   pivot_wider(
     id_cols = subj_id,
     names_from = c(response_type, type),
     values_from = rate
-  ) |> 
+  ) |>
   mutate(
     dplyover::across2(
       contains("know"),
@@ -154,7 +154,7 @@ mem_ability <- events_retrieval |>
       ~ .x / (1 - .y),
       .names = "knowadj_{suf}"
     )
-  ) |> 
+  ) |>
   mutate(
     dplyover::across2(
       contains("hr"),
@@ -162,8 +162,8 @@ mem_ability <- events_retrieval |>
       ~ qnorm(.x) - qnorm(.y),
       .names = "dprime_{pre}"
     )
-  ) |> 
-  select(subj_id, starts_with("dprime")) |> 
+  ) |>
+  select(subj_id, starts_with("dprime")) |>
   pivot_longer(
     starts_with("dprime"),
     names_to = c(".value", "mem_type"),
@@ -179,16 +179,15 @@ mem_ability <- events_retrieval |>
 #| fig-width: 12
 #| fig-height: 6
 #| fig-cap: Predict memory performance from individual-to-group synchronization
-#| fig-subcap: 
+#| fig-subcap:
 #|   - Concatenate all trials into one time series
 #|   - Average all trial-level synchronization
 
-rsa_group_whole <- arrow::read_parquet("data/task-rs_type-group_acq-whole.parquet")
-rsa_group_whole |> 
-  mutate(z_fisher = atanh(r)) |> 
+rsa_group_whole <- arrow::read_parquet("data/type-group_acq-whole_rs.parquet")
+rsa_group_whole |>
   inner_join(mem_ability, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type != "know") |> 
-  ggplot(aes(z_fisher, dprime, color = mem_type)) +
+  filter(mem_type != "know") |>
+  ggplot(aes(fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
   ggpmisc::stat_correlation(
@@ -198,7 +197,7 @@ rsa_group_whole |>
   ) +
   scale_color_brewer(palette = "Dark2", guide = "none") +
   scale_x_continuous(
-    name = "Individual-to-Group Similarity", 
+    name = "Individual-to-Group Similarity",
     breaks = scales::breaks_pretty(n = 4)
   ) +
   scale_y_continuous(name = "d'") +
@@ -207,7 +206,7 @@ rsa_group_whole |>
     cols = vars(region_id),
     labeller = labeller(
       mem_type = c(
-        knowadj = "Familiarity", 
+        knowadj = "Familiarity",
         remember = "Recollection"
       )
     ),
@@ -215,15 +214,15 @@ rsa_group_whole |>
   ) +
   ggpubr::theme_pubr()
 
-rsa_group_by_trial <- arrow::read_parquet("data/task-rs_type-group_acq-trial.parquet")
-rsa_group_by_trial |> 
+rsa_group_by_trial <- arrow::read_parquet("data/type-group_acq-trial_rs.parquet")
+rsa_group_by_trial |>
   summarise(
-    mean_z_fisher = mean(atanh(r), na.rm = TRUE),
+    mean_fisher_z = mean(fisher_z, na.rm = TRUE),
     .by = c(region_id, subj_id)
-  ) |> 
+  ) |>
   inner_join(mem_ability, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type != "know") |> 
-  ggplot(aes(mean_z_fisher, dprime, color = mem_type)) +
+  filter(mem_type != "know") |>
+  ggplot(aes(mean_fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
   ggpmisc::stat_correlation(
@@ -233,7 +232,7 @@ rsa_group_by_trial |>
   ) +
   scale_color_brewer(palette = "Dark2", guide = "none") +
   scale_x_continuous(
-    name = "Average Individual-to-Group Similarity", 
+    name = "Average Individual-to-Group Similarity",
     breaks = scales::breaks_pretty(n = 4)
   ) +
   scale_y_continuous(name = "d'") +
@@ -242,7 +241,7 @@ rsa_group_by_trial |>
     cols = vars(region_id),
     labeller = labeller(
       mem_type = c(
-        knowadj = "Familiarity", 
+        knowadj = "Familiarity",
         remember = "Recollection"
       )
     ),
