@@ -21,20 +21,20 @@ numel_cor_mat = len_subj * len_subj;
 simi_inter_by_trial = array2table(...
     [repelem([regions_id_idx(:), trial_id_idx(:)], numel_cor_mat, 1), ...
     repmat([subjs_id(subj_row), subjs_id(subj_col), nan(numel_cor_mat, 1)], numel_region_trial, 1)], ...
-    "VariableNames", ["region_id", "trial_id", "subj_id_row", "subj_id_col", "r"]);
+    "VariableNames", ["region_id", "trial_id", "subj_id_row", "subj_id_col", "fisher_z"]);
 % easier handle data store
-r_start = 1;
-r_end = numel_cor_mat;
+store_start = 1;
+store_end = numel_cor_mat;
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     for i_trial = 1:len_trial
         % collapse channel and time (thus spatiotemporal pattern)
         cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
             [length(chan_in_reg) * len_time_point, len_subj]);
-        cur_cor_mat = corr(cur_dat);
-        simi_inter_by_trial.r(r_start:r_end) = cur_cor_mat(:);
-        r_start = r_start + numel_cor_mat;
-        r_end = r_end + numel_cor_mat;
+        cur_cor_mat = atanh(corr(cur_dat));
+        simi_inter_by_trial.fisher_z(store_start:store_end) = cur_cor_mat(:);
+        store_start = store_start + numel_cor_mat;
+        store_end = store_end + numel_cor_mat;
     end
 end
 parquetwrite(fullfile("data", "task-rs_type-inter_acq-trial.parquet"), ...
@@ -44,17 +44,17 @@ parquetwrite(fullfile("data", "task-rs_type-inter_acq-trial.parquet"), ...
 simi_inter_by_whole = array2table(...
     [repelem(regions_id(:), numel_cor_mat, 1), ...
     repmat([subjs_id(subj_row), subjs_id(subj_col), nan(numel_cor_mat, 1)], length(regions_id), 1)], ...
-    "VariableNames", ["region_id", "subj_id_row", "subj_id_col", "r"]);
-r_start = 1;
-r_end = numel_cor_mat;
+    "VariableNames", ["region_id", "subj_id_row", "subj_id_col", "fisher_z"]);
+store_start = 1;
+store_end = numel_cor_mat;
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
         [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
-    cur_cor_mat = corr(cur_dat, rows="pairwise");
-    simi_inter_by_whole.r(r_start:r_end) = cur_cor_mat(:);
-    r_start = r_start + numel_cor_mat;
-    r_end = r_end + numel_cor_mat;
+    cur_cor_mat = atanh(corr(cur_dat, rows="pairwise"));
+    simi_inter_by_whole.fisher_z(store_start:store_end) = cur_cor_mat(:);
+    store_start = store_start + numel_cor_mat;
+    store_end = store_end + numel_cor_mat;
 end
 parquetwrite(fullfile("data", "task-rs_type-inter_acq-whole.parquet"), ...
     simi_inter_by_whole(simi_inter_by_whole.subj_id_row < simi_inter_by_whole.subj_id_col, :))
@@ -65,19 +65,19 @@ parquetwrite(fullfile("data", "task-rs_type-inter_acq-whole.parquet"), ...
 simi_grp_by_trial = array2table(...
     [repelem([regions_id_idx(:), trial_id_idx(:)], len_subj, 1), ...
     repmat([subjs_id, nan(len_subj, 1)], numel_region_trial, 1)], ...
-    "VariableNames", ["region_id", "trial_id", "subj_id", "r"]);
+    "VariableNames", ["region_id", "trial_id", "subj_id", "fisher_z"]);
 % easier handle data store
-r_start = 1;
-r_end = len_subj;
+store_start = 1;
+store_end = len_subj;
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     for i_trial = 1:len_trial
         % collapse channel and time (thus spatiotemporal pattern)
         cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
             [length(chan_in_reg) * len_time_point, len_subj]);
-        simi_grp_by_trial.r(r_start:r_end) = utils.calc_simi_ind_to_grp(cur_dat);
-        r_start = r_start + len_subj;
-        r_end = r_end + len_subj;
+        simi_grp_by_trial.fisher_z(store_start:store_end) = utils.calc_simi_ind_to_grp(cur_dat);
+        store_start = store_start + len_subj;
+        store_end = store_end + len_subj;
     end
 end
 parquetwrite(fullfile("data", "task-rs_type-group_acq-trial.parquet"), simi_grp_by_trial)
@@ -86,15 +86,15 @@ parquetwrite(fullfile("data", "task-rs_type-group_acq-trial.parquet"), simi_grp_
 simi_grp_by_whole = array2table(...
     [repelem(regions_id(:), len_subj, 1), ...
     repmat([subjs_id, nan(len_subj, 1)], length(regions_id), 1)], ...
-    "VariableNames", ["region_id", "subj_id", "r"]);
-r_start = 1;
-r_end = len_subj;
+    "VariableNames", ["region_id", "subj_id", "fisher_z"]);
+store_start = 1;
+store_end = len_subj;
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
         [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
-    simi_grp_by_whole.r(r_start:r_end) = utils.calc_simi_ind_to_grp(cur_dat);
-    r_start = r_start + len_subj;
-    r_end = r_end + len_subj;
+    simi_grp_by_whole.fisher_z(store_start:store_end) = utils.calc_simi_ind_to_grp(cur_dat);
+    store_start = store_start + len_subj;
+    store_end = store_end + len_subj;
 end
 parquetwrite(fullfile("data", "task-rs_type-group_acq-whole.parquet"), simi_grp_by_whole)
