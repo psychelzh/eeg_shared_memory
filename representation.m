@@ -25,8 +25,10 @@ simi_inter_by_trial = array2table(...
 % easier handle data store
 store_start = 1;
 store_end = numel_cor_mat;
+fprintf("Processing trial level intersubject similarity...\n")
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
+    prog_bar = ProgressBar(len_trial, Title=['Region ', num2str(i_region)]);
     for i_trial = 1:len_trial
         % collapse channel and time (thus spatiotemporal pattern)
         cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
@@ -35,7 +37,9 @@ for i_region = regions_id
         simi_inter_by_trial.fisher_z(store_start:store_end) = cur_cor_mat(:);
         store_start = store_start + numel_cor_mat;
         store_end = store_end + numel_cor_mat;
+        prog_bar([], [], [])
     end
+    prog_bar.release()
 end
 parquetwrite(fullfile("data", "task-rs_type-inter_acq-trial.parquet"), ...
     simi_inter_by_trial(simi_inter_by_trial.subj_id_row < simi_inter_by_trial.subj_id_col, :))
@@ -47,7 +51,8 @@ simi_inter_by_whole = array2table(...
     "VariableNames", ["region_id", "subj_id_row", "subj_id_col", "fisher_z"]);
 store_start = 1;
 store_end = numel_cor_mat;
-for i_region = regions_id
+fprintf("Processing whole time series intersubject similarity...\n")
+for i_region = progress(regions_id)
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
         [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
@@ -69,8 +74,10 @@ simi_grp_by_trial = array2table(...
 % easier handle data store
 store_start = 1;
 store_end = len_subj;
+fprintf("Processing trial level individual to group similarity...\n")
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
+    prog_bar = ProgressBar(len_trial, Title=['Region ', num2str(i_region)]);
     for i_trial = 1:len_trial
         % collapse channel and time (thus spatiotemporal pattern)
         cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
@@ -78,7 +85,9 @@ for i_region = regions_id
         simi_grp_by_trial.fisher_z(store_start:store_end) = utils.calc_simi_ind_to_grp(cur_dat);
         store_start = store_start + len_subj;
         store_end = store_end + len_subj;
+        prog_bar([], [], [])
     end
+    prog_bar.release()
 end
 parquetwrite(fullfile("data", "task-rs_type-group_acq-trial.parquet"), simi_grp_by_trial)
 
@@ -89,7 +98,8 @@ simi_grp_by_whole = array2table(...
     "VariableNames", ["region_id", "subj_id", "fisher_z"]);
 store_start = 1;
 store_end = len_subj;
-for i_region = regions_id
+fprintf("Processing whole time series individual to group similarity...\n")
+for i_region = progress(regions_id)
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
         [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
