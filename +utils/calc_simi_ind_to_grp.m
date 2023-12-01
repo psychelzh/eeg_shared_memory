@@ -8,6 +8,6 @@ simi = nan(ncols, 1);
 for i_col = 1:ncols
     cur_rep = dat(:, i_col);
     grp_rep = mean(dat(:, setdiff(1:ncols, i_col)), 2, "omitmissing");
-    simi(i_col) = corr(cur_rep, grp_rep);
+    simi(i_col) = corr(cur_rep, grp_rep, rows="pairwise");
 end
 end
