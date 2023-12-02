@@ -82,7 +82,8 @@ for i_region = regions_id
         % collapse channel and time (thus spatiotemporal pattern)
         cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
             [length(chan_in_reg) * len_time_point, len_subj]);
-        simi_grp_by_trial.fisher_z(store_start:store_end) = utils.calc_simi_ind_to_grp(cur_dat);
+        simi_grp_by_trial.fisher_z(store_start:store_end) = ...
+            utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
         store_start = store_start + len_subj;
         store_end = store_end + len_subj;
         prog_bar([], [], [])
@@ -103,7 +104,8 @@ for i_region = progress(regions_id)
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
         [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
-    simi_grp_by_whole.fisher_z(store_start:store_end) = utils.calc_simi_ind_to_grp(cur_dat);
+    simi_grp_by_whole.fisher_z(store_start:store_end) = ...
+        utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
     store_start = store_start + len_subj;
     store_end = store_end + len_subj;
 end
