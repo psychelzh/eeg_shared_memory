@@ -104,7 +104,7 @@ rsa_inter_by_trial_with_resp |>
   geom_errorbar(aes(group = response_type), position = position_dodge(width = 0.4), width = 0) +
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  ggthemes::scale_fill_few(name = "Mem Type") +
+  scale_fill_brewer(name = "Mem Type", palette = "Oranges", direction = -1) +
   ggpubr::theme_pubclean()
 ```
 
@@ -186,7 +186,7 @@ mem_ability <- events_retrieval |>
 rsa_group_whole <- arrow::read_parquet("data/type-group_acq-whole_rs.parquet")
 rsa_group_whole |>
   inner_join(mem_ability, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type != "know") |>
+  filter(mem_type %in% c("knowadj", "remember")) |>
   ggplot(aes(fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
