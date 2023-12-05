@@ -10,100 +10,93 @@ regions_id = 1:6;
 
 %% intersubject similarity
 
+% we keep the lower triangular correlation (no diagonal)
+idx_keep_cors = tril(true(len_subj, len_subj), -1);
+
 % acquire: trial-level
 simi_inter_by_trial = ...
-    combinations(regions_id, 1:len_trial, subjs_id, subjs_id);
-simi_inter_by_trial.Properties.VariableNames = ...
-    ["region_id", "trial_id", "subj_id_col", "subj_id_row"];
-simi_inter_by_trial.fisher_z = nan(height(simi_inter_by_trial), 1);
-
-% easier handle data store
-numel_cor_mat = len_subj * len_subj;
-store_start = 1;
-store_end = numel_cor_mat;
+    utils.preallocate(regions_id, 1:len_trial, subjs_id, subjs_id, ...
+    VariableNames=["region_id", "trial_id", "subj_id_col", "subj_id_row"]);
+simi_inter_by_trial = simi_inter_by_trial( ...
+    simi_inter_by_trial.subj_id_row > simi_inter_by_trial.subj_id_col, :);
 fprintf("Processing trial level intersubject similarity...\n")
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
-    prog_bar = ProgressBar(len_trial, Title=['Region ', num2str(i_region)]);
-    for i_trial = 1:len_trial
+    fprintf("Region " + string(i_region) + "\n")
+    for i_trial = progress(1:len_trial)
         % collapse channel and time (thus spatiotemporal pattern)
-        cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
-            [length(chan_in_reg) * len_time_point, len_subj]);
-        cur_cor_mat = corr(cur_dat);
-        simi_inter_by_trial.fisher_z(store_start:store_end) = atanh(cur_cor_mat(:));
-        store_start = store_start + numel_cor_mat;
-        store_end = store_end + numel_cor_mat;
-        prog_bar([], [], [])
+        cur_cor_mat = corr(reshape(grp_data(chan_in_reg, :, i_trial, :), ...
+            length(chan_in_reg) * len_time_point, []));
+        simi_inter_by_trial.fisher_z( ...
+            simi_inter_by_trial.region_id == i_region & ...
+            simi_inter_by_trial.trial_id == i_trial) = ...
+            atanh(cur_cor_mat(idx_keep_cors));
     end
-    prog_bar.release()
 end
-parquetwrite(fullfile("data", "type-inter_acq-trial_rs.parquet"), ...
-    simi_inter_by_trial(simi_inter_by_trial.subj_id_row < simi_inter_by_trial.subj_id_col, :))
+parquetwrite( ...
+    fullfile("data", "type-inter_acq-trial_rs.parquet"), ...
+    simi_inter_by_trial)
+clearvars simi_inter_by_trial
 
 % acquire: whole-time-series
-simi_inter_by_whole = combinations(regions_id, subjs_id, subjs_id);
-simi_inter_by_whole.Properties.VariableNames = ...
-    ["region_id", "subj_id_col", "subj_id_row"];
-simi_inter_by_whole.fisher_z = nan(height(simi_inter_by_whole), 1);
-
-store_start = 1;
-store_end = numel_cor_mat;
+simi_inter_by_whole = ...
+    utils.preallocate(regions_id, subjs_id, subjs_id, ...
+    VariableNames=["region_id", "subj_id_col", "subj_id_row"]);
+simi_inter_by_whole = simi_inter_by_whole( ...
+    simi_inter_by_whole.subj_id_row > simi_inter_by_whole.subj_id_col, :);
 fprintf("Processing whole time series intersubject similarity...\n")
 for i_region = progress(regions_id)
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
-    cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
-        [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
-    cur_cor_mat = corr(cur_dat, rows="pairwise");
-    simi_inter_by_whole.fisher_z(store_start:store_end) = atanh(cur_cor_mat(:));
-    store_start = store_start + numel_cor_mat;
-    store_end = store_end + numel_cor_mat;
+    cur_cor_mat = corr(reshape(grp_data(chan_in_reg, :, :, :), ...
+        length(chan_in_reg) * len_time_point * len_trial, []), ...
+        rows="pairwise");
+    simi_inter_by_whole.fisher_z( ...
+        simi_inter_by_whole.region_id == i_region) = ...
+        atanh(cur_cor_mat(idx_keep_cors));
 end
-parquetwrite(fullfile("data", "type-inter_acq-whole_rs.parquet"), ...
-    simi_inter_by_whole(simi_inter_by_whole.subj_id_row < simi_inter_by_whole.subj_id_col, :))
+parquetwrite( ...
+    fullfile("data", "type-inter_acq-whole_rs.parquet"), ...
+    simi_inter_by_whole)
+clearvars simi_inter_by_whole
 
 %% individual to group similarity
 
 % acquire: trial-level
-simi_grp_by_trial = combinations(regions_id, 1:len_trial, subjs_id);
-simi_grp_by_trial.Properties.VariableNames = ["region_id", "trial_id", "subj_id"];
-simi_grp_by_trial.fisher_z = nan(height(simi_grp_by_trial), 1);
-
-% easier handle data store
-store_start = 1;
-store_end = len_subj;
+simi_grp_by_trial = ...
+    utils.preallocate(regions_id, 1:len_trial, subjs_id, ...
+    VariableNames=["region_id", "trial_id", "subj_id"]);
 fprintf("Processing trial level individual to group similarity...\n")
 for i_region = regions_id
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
-    prog_bar = ProgressBar(len_trial, Title=['Region ', num2str(i_region)]);
-    for i_trial = 1:len_trial
+    fprintf("Region " + string(i_region) + "\n")
+    for i_trial = progress(1:len_trial)
         % collapse channel and time (thus spatiotemporal pattern)
         cur_dat = reshape(grp_data(chan_in_reg, :, i_trial, :), ...
-            [length(chan_in_reg) * len_time_point, len_subj]);
-        simi_grp_by_trial.fisher_z(store_start:store_end) = ...
+            length(chan_in_reg) * len_time_point, []);
+        simi_grp_by_trial.fisher_z(...
+            simi_grp_by_trial.region_id == i_region & ...
+            simi_grp_by_trial.trial_id == i_trial) = ...
             utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
-        store_start = store_start + len_subj;
-        store_end = store_end + len_subj;
-        prog_bar([], [], [])
     end
-    prog_bar.release()
 end
-parquetwrite(fullfile("data", "type-group_acq-trial_rs.parquet"), simi_grp_by_trial)
+parquetwrite( ...
+    fullfile("data", "type-group_acq-trial_rs.parquet"), ...
+    simi_grp_by_trial)
+clearvars simi_grp_by_trial
 
 % acquire: whole-time-series
-simi_grp_by_whole = combinations(regions_id, subjs_id);
-simi_grp_by_whole.Properties.VariableNames = ["region_id", "subj_id"];
-simi_grp_by_whole.fisher_z = nan(height(simi_grp_by_whole), 1);
-
-store_start = 1;
-store_end = len_subj;
+simi_grp_by_whole = utils.preallocate(regions_id, subjs_id, ...
+    VariableNames=["region_id", "subj_id"]);
 fprintf("Processing whole time series individual to group similarity...\n")
 for i_region = progress(regions_id)
     chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
     cur_dat = reshape(grp_data(chan_in_reg, :, :, :), ...
-        [length(chan_in_reg) * len_time_point * len_trial, len_subj]);
-    simi_grp_by_whole.fisher_z(store_start:store_end) = ...
+        length(chan_in_reg) * len_time_point * len_trial, []);
+    simi_grp_by_whole.fisher_z(...
+        simi_grp_by_whole.region_id == i_region) = ...
         utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
-    store_start = store_start + len_subj;
-    store_end = store_end + len_subj;
 end
-parquetwrite(fullfile("data", "type-group_acq-whole_rs.parquet"), simi_grp_by_whole)
+parquetwrite( ...
+    fullfile("data", "type-group_acq-whole_rs.parquet"), ...
+    simi_grp_by_whole)
+clearvars simi_grp_by_whole
