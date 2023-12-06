@@ -96,7 +96,7 @@ parquetwrite( ...
     simi_grp_by_whole)
 clearvars simi_grp_by_whole
 
-%% windowed results (separate regions)
+%% windowed results (separate regions, deprecated due to memory consuming)
 
 % setup for windowed calculations
 size_window = 26;
@@ -107,8 +107,8 @@ step = 5;
 fprintf("Processing stepped window intersubject similarity...\n")
 for i_region = regions_id
     cur_simi_inter_by_window = utils.filter_triangular( ...
-        utils.preallocate(1:len_trial, 1:length(window_start), subjs_id, subjs_id, ...
-        VariableNames=["trial_id", "window_id", "subj_id_col", "subj_id_row"]));
+        utils.preallocate(i_region, 1:len_trial, 1:length(window_start), subjs_id, subjs_id, ...
+        VariableNames=["region_id", "trial_id", "window_id", "subj_id_col", "subj_id_row"]));
     cur_reg = "region" + string(i_region);
     chan_in_reg = channel.code(channel.(cur_reg) ~= 0);
     fprintf(cur_reg + "\n")
@@ -137,8 +137,8 @@ simi_grp_by_window = nan(length(regions_id), len_trial, length(window_start), le
 fprintf("Processing stepped window intersubject similarity...\n")
 for i_region = regions_id
     cur_simi_grp_by_window = ...
-        utils.preallocate(1:len_trial, 1:length(window_start), subjs_id, ...
-        VariableNames=["trial_id", "window_id", "subj_id"]);
+        utils.preallocate(i_region, 1:len_trial, 1:length(window_start), subjs_id, ...
+        VariableNames=["region_id", "trial_id", "window_id", "subj_id"]);
     cur_reg = "region" + string(i_region);
     chan_in_reg = channel.code(channel.(cur_reg) ~= 0);
     fprintf(cur_reg + "\n")
@@ -190,8 +190,8 @@ for i_region = regions_id
             fisher_z{i_win} = atanh(cur_cor_mat(idx_keep_cors));
         end
         cur_simi_inter_by_window = utils.filter_triangular( ...
-            utils.preallocate(1:length(window_start), subjs_id, subjs_id, ...
-            VariableNames=["winow_id", "subj_id_col", "subj_id_row"]));
+            utils.preallocate(i_region, i_trial, 1:length(window_start), subjs_id, subjs_id, ...
+            VariableNames=["region_id", "trial_id", "winow_id", "subj_id_col", "subj_id_row"]));
         cur_simi_inter_by_window.fisher_z = vertcat(fisher_z{:});
         path_trial = fullfile(path_region, "trial-" + string(i_trial));
         if (~exist(path_trial, "dir")), mkdir(path_trial), end
@@ -220,8 +220,8 @@ for i_region = regions_id
             fisher_z{i_win} = utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
         end
         cur_simi_grp_by_window = ...
-            utils.preallocate(1:length(window_start), subjs_id, ...
-            VariableNames=["window_id", "subj_id"]);
+            utils.preallocate(i_region, i_trial, 1:length(window_start), subjs_id, ...
+            VariableNames=["region_id", "trial_id", "window_id", "subj_id"]);
         cur_simi_grp_by_window.fisher_z = vertcat(fisher_z{:});
         path_trial = fullfile(path_region, "trial-" + string(i_trial));
         if (~exist(path_trial, "dir")), mkdir(path_trial), end
