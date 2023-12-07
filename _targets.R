@@ -10,21 +10,18 @@ tar_option_set(
 future::plan(future.callr::callr)
 tar_source()
 
-path_template <- "data/type-{type}_acq-{acq}/region-{region}"
 config_window_rs <- tidyr::expand_grid(
   type = c("inter", "group"),
   acq = c("window"),
   region = paste0("region", 1:6)
-) |>
-  dplyr::mutate(path_dat = stringr::str_glue(path_template))
+)
 
 group_pred_perf <- tarchetypes::tar_map(
   config_window_rs |>
     dplyr::filter(type == "group"),
-  names = -path_dat,
   tar_target(
     path_dataset,
-    path_dat,
+    config_path_dataset(type, acq, region),
     format = "file"
   ),
   tar_target(
