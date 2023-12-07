@@ -96,72 +96,6 @@ parquetwrite( ...
     simi_grp_by_whole)
 clearvars simi_grp_by_whole
 
-%% windowed results (separate regions, deprecated due to memory consuming)
-
-% setup for windowed calculations
-size_window = 26;
-step = 5;
-[window_start, window_end] = utils.setup_window(len_time_point, size_window, step);
-
-% type: intersubject similarity
-fprintf("Processing stepped window intersubject similarity...\n")
-for i_region = regions_id
-    cur_simi_inter_by_window = utils.filter_triangular( ...
-        utils.preallocate(i_region, 1:len_trial, 1:length(window_start), subjs_id, subjs_id, ...
-        VariableNames=["region_id", "trial_id", "window_id", "subj_id_col", "subj_id_row"]));
-    cur_reg = "region" + string(i_region);
-    chan_in_reg = channel.code(channel.(cur_reg) ~= 0);
-    fprintf(cur_reg + "\n")
-    for i_trial = progress(1:len_trial)
-        cur_trial_dat = grp_data(chan_in_reg, :, i_trial, :);
-        fisher_z = cell(length(window_start), 1);
-        parfor i_win = 1:length(window_start)
-            % collapse channel and time (thus spatiotemporal pattern)
-            cur_cor_mat = corr(reshape( ...
-                cur_trial_dat(:, window_start(i_win):window_end(i_win), :, :), ...
-                length(chan_in_reg) * size_window, [])); %#ok<*PFBNS>
-            fisher_z{i_win} = atanh(cur_cor_mat(idx_keep_cors));
-        end
-        cur_simi_inter_by_window.fisher_z( ...
-            cur_simi_inter_by_window.trial_id == i_trial) = ...
-            vertcat(fisher_z{:});
-    end
-    parquetwrite( ...
-        fullfile("data", "type-inter_acq-window_region-" + cur_reg + "_rs.parquet"), ...
-        cur_simi_inter_by_window)
-end
-clearvars cur_simi_inter_by_window
-
-% type: individual to group similarity
-simi_grp_by_window = nan(length(regions_id), len_trial, length(window_start), len_subj);
-fprintf("Processing stepped window intersubject similarity...\n")
-for i_region = regions_id
-    cur_simi_grp_by_window = ...
-        utils.preallocate(i_region, 1:len_trial, 1:length(window_start), subjs_id, ...
-        VariableNames=["region_id", "trial_id", "window_id", "subj_id"]);
-    cur_reg = "region" + string(i_region);
-    chan_in_reg = channel.code(channel.(cur_reg) ~= 0);
-    fprintf(cur_reg + "\n")
-    for i_trial = progress(1:len_trial)
-        cur_trial_dat = grp_data(chan_in_reg, :, i_trial, :);
-        fisher_z = cell(length(window_start), 1);
-        parfor i_win = 1:length(window_start)
-            % collapse channel and time (thus spatiotemporal pattern)
-            cur_dat = reshape( ...
-                cur_trial_dat(:, window_start(i_win):window_end(i_win), :, :), ...
-                length(chan_in_reg) * size_window, []);
-            fisher_z{i_win} = utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
-        end
-        cur_simi_grp_by_window.fisher_z(...
-            cur_simi_grp_by_window.trial_id == i_trial) = ...
-            vertcat(fisher_z{:});
-    end
-    parquetwrite( ...
-        fullfile("data", "type-group_acq-window_region-" + cur_reg + "_rs.parquet"), ...
-        cur_simi_grp_by_window)
-end
-clearvars cur_simi_grp_by_window
-
 %% windowed results (separate trials)
 
 % setup for windowed calculations
@@ -229,3 +163,116 @@ for i_region = regions_id
     end
 end
 clearvars cur_simi_grp_by_window
+
+%% windowed results (separate regions, deprecated due to memory consuming)
+
+% setup for windowed calculations
+size_window = 26;
+step = 5;
+[window_start, window_end] = utils.setup_window(len_time_point, size_window, step);
+
+% type: intersubject similarity
+fprintf("Processing stepped window intersubject similarity...\n")
+for i_region = regions_id
+    cur_simi_inter_by_window = utils.filter_triangular( ...
+        utils.preallocate(i_region, 1:len_trial, 1:length(window_start), subjs_id, subjs_id, ...
+        VariableNames=["region_id", "trial_id", "window_id", "subj_id_col", "subj_id_row"]));
+    cur_reg = "region" + string(i_region);
+    chan_in_reg = channel.code(channel.(cur_reg) ~= 0);
+    fprintf(cur_reg + "\n")
+    for i_trial = progress(1:len_trial)
+        cur_trial_dat = grp_data(chan_in_reg, :, i_trial, :);
+        fisher_z = cell(length(window_start), 1);
+        parfor i_win = 1:length(window_start)
+            % collapse channel and time (thus spatiotemporal pattern)
+            cur_cor_mat = corr(reshape( ...
+                cur_trial_dat(:, window_start(i_win):window_end(i_win), :, :), ...
+                length(chan_in_reg) * size_window, [])); %#ok<*PFBNS>
+            fisher_z{i_win} = atanh(cur_cor_mat(idx_keep_cors));
+        end
+        cur_simi_inter_by_window.fisher_z( ...
+            cur_simi_inter_by_window.trial_id == i_trial) = ...
+            vertcat(fisher_z{:});
+    end
+    parquetwrite( ...
+        fullfile("data", "type-inter_acq-window_region-" + cur_reg + "_rs.parquet"), ...
+        cur_simi_inter_by_window)
+end
+clearvars cur_simi_inter_by_window
+
+% type: individual to group similarity
+fprintf("Processing stepped window intersubject similarity...\n")
+for i_region = regions_id
+    cur_simi_grp_by_window = ...
+        utils.preallocate(i_region, 1:len_trial, 1:length(window_start), subjs_id, ...
+        VariableNames=["region_id", "trial_id", "window_id", "subj_id"]);
+    cur_reg = "region" + string(i_region);
+    chan_in_reg = channel.code(channel.(cur_reg) ~= 0);
+    fprintf(cur_reg + "\n")
+    for i_trial = progress(1:len_trial)
+        cur_trial_dat = grp_data(chan_in_reg, :, i_trial, :);
+        fisher_z = cell(length(window_start), 1);
+        parfor i_win = 1:length(window_start)
+            % collapse channel and time (thus spatiotemporal pattern)
+            cur_dat = reshape( ...
+                cur_trial_dat(:, window_start(i_win):window_end(i_win), :, :), ...
+                length(chan_in_reg) * size_window, []);
+            fisher_z{i_win} = utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
+        end
+        cur_simi_grp_by_window.fisher_z(...
+            cur_simi_grp_by_window.trial_id == i_trial) = ...
+            vertcat(fisher_z{:});
+    end
+    parquetwrite( ...
+        fullfile("data", "type-group_acq-window_region-" + cur_reg + "_rs.parquet"), ...
+        cur_simi_grp_by_window)
+end
+clearvars cur_simi_grp_by_window
+
+%% windowed results (MATLAB native, deprecated, hard for further analysis)
+
+% setup for windowed calculations
+size_window = 26;
+step = 5;
+[window_start, window_end] = utils.setup_window(len_time_point, size_window, step);
+
+% type: intersubject similarity
+fprintf("Processing stepped window intersubject similarity...\n")
+simi_inter_by_window = nan(length(regions_id), len_trial, length(window_start), ...
+    sum(idx_keep_cors, "all"));
+for i_region = regions_id
+    chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
+    fprintf("Region " + string(i_region) + "\n")
+    for i_trial = progress(1:len_trial)
+        for i_win = 1:length(window_start)
+            % collapse channel and time (thus spatiotemporal pattern)
+            cur_cor_mat = corr(reshape( ...
+                grp_data(chan_in_reg, window_start(i_win):window_end(i_win), i_trial, :), ...
+                length(chan_in_reg) * size_window, []));
+            simi_inter_by_window(i_region, i_trial, i_win, :) = ...
+                atanh(cur_cor_mat(idx_keep_cors));
+        end
+    end
+end
+save(fullfile("data", "type-inter_acq-window_rs.mat"), "simi_inter_by_window", "-v7.3")
+clearvars simi_inter_by_window
+
+% type: individual to group similarity
+simi_grp_by_window = nan(length(regions_id), len_trial, length(window_start), len_subj);
+fprintf("Processing stepped window intersubject similarity...\n")
+for i_region = regions_id
+    chan_in_reg = channel.code(channel.("region" + string(i_region)) ~= 0);
+    fprintf("Region " + string(i_region) + "\n")
+    for i_trial = progress(1:len_trial)
+        for i_win = 1:length(window_start)
+            % collapse channel and time (thus spatiotemporal pattern)
+            cur_dat = reshape( ...
+                grp_data(chan_in_reg, window_start(i_win):window_end(i_win), i_trial, :), ...
+                length(chan_in_reg) * size_window, []);
+            simi_grp_by_window(i_region, i_trial, i_win, :) = ...
+                utils.calc_simi_ind_to_grp(cur_dat, FisherZ=true);
+        end
+    end
+end
+save(fullfile("data", "type-group_acq-window_rs.mat"), "simi_grp_by_window", "-v7.3")
+clearvars simi_grp_by_window
