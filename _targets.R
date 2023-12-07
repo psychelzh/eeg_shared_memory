@@ -27,21 +27,18 @@ group_pred_perf <- tarchetypes::tar_map(
     path_dat,
     format = "file"
   ),
-  tarchetypes::tar_map(
-    list(alternative = c("less", "greater")),
-    tar_target(
-      stats,
-      extract_stats_group(path_dataset, mem_perf)
+  tar_target(
+    stats,
+    extract_stats_group(path_dataset, mem_perf)
+  ),
+  tarchetypes::tar_rep(
+    stats_perm,
+    extract_stats_group(
+      path_dataset,
+      permutate_behav(mem_perf, "subj_id")
     ),
-    tarchetypes::tar_rep(
-      stats_perm,
-      extract_stats_group(
-        path_dataset,
-        permutate_behav(mem_perf, "subj_id")
-      ),
-      batches = 100,
-      reps = 10
-    )
+    batches = 100,
+    reps = 10
   )
 )
 
