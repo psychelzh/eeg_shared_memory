@@ -125,7 +125,7 @@ for i_region = regions_id
         end
         cur_simi_inter_by_window = utils.filter_triangular( ...
             utils.preallocate(i_region, i_trial, 1:length(window_start), subjs_id, subjs_id, ...
-            VariableNames=["region_id", "trial_id", "winow_id", "subj_id_col", "subj_id_row"]));
+            VariableNames=["region_id", "trial_id", "window_id", "subj_id_col", "subj_id_row"]));
         cur_simi_inter_by_window.fisher_z = vertcat(fisher_z{:});
         path_trial = fullfile(path_region, "trial-" + string(i_trial));
         if (~exist(path_trial, "dir")), mkdir(path_trial), end
