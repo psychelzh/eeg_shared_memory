@@ -1,0 +1,15 @@
+project:
+  type: website
+
+website:
+  title: Shared Memory among Individuals (EEG study)
+  navbar:
+    right:
+      - icon: github
+        href: https://github.com/psychelzh/eeg_shared_memory
+
+comments:
+  hypothesis: true
+
+execute:
+  freeze: true

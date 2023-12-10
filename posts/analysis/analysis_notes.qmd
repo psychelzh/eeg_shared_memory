@@ -23,16 +23,18 @@ library(tidyverse)
 ```{r}
 #| label: load-data-by-trial
 
-rsa_inter_by_trial <- arrow::read_parquet("data/type-inter_acq-trial_rs.parquet")
+rsa_inter_by_trial <- arrow::read_parquet(
+  here::here("data/type-inter_acq-trial_rs.parquet")
+)
 events_encoding <- read_csv(
-  "data/group_task-wordencoding_events.csv",
+  here::here("data/group_task-wordencoding_events.csv"),
   show_col_types = FALSE
 )
 subjs_id <- unique(events_encoding$subj_id)
 words_type <- events_encoding |>
   distinct(trial_id, word_id, word_category)
 events_retrieval <- read_csv(
-  "data/group_task-wordretrieval_events.csv",
+  here::here("data/group_task-wordretrieval_events.csv"),
   show_col_types = FALSE
 )
 subj_resp_types <- events_retrieval |>
@@ -183,7 +185,9 @@ mem_ability <- events_retrieval |>
 #|   - Concatenate all trials into one time series
 #|   - Average all trial-level synchronization
 
-rsa_group_whole <- arrow::read_parquet("data/type-group_acq-whole_rs.parquet")
+rsa_group_whole <- arrow::read_parquet(
+  here::here("data/type-group_acq-whole_rs.parquet")
+)
 rsa_group_whole |>
   inner_join(mem_ability, by = "subj_id", relationship = "many-to-many") |>
   filter(mem_type %in% c("knowadj", "remember")) |>
@@ -214,7 +218,9 @@ rsa_group_whole |>
   ) +
   ggpubr::theme_pubr()
 
-rsa_group_by_trial <- arrow::read_parquet("data/type-group_acq-trial_rs.parquet")
+rsa_group_by_trial <- arrow::read_parquet(
+  here::here("data/type-group_acq-trial_rs.parquet")
+)
 rsa_group_by_trial |>
   summarise(
     mean_fisher_z = mean(fisher_z, na.rm = TRUE),
