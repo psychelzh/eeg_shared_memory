@@ -41,10 +41,16 @@ group_pred_perf <- tarchetypes::tar_map(
 
 list(
   tarchetypes::tar_file_read(
+    events_encoding,
+    "data/group_task-wordencoding_events.csv",
+    read = readr::read_csv(!!.x, show_col_types = FALSE)
+  ),
+  tarchetypes::tar_file_read(
     events_retrieval,
     "data/group_task-wordretrieval_events.csv",
     read = readr::read_csv(!!.x, show_col_types = FALSE)
   ),
+  tar_target(subj_pair_filter, prepare_subj_pair_common(events_retrieval)),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
   group_pred_perf
 )

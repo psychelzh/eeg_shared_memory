@@ -54,16 +54,31 @@ calc_mem_perf <- function(events_retrieval) {
     )
 }
 
-permutate_behav <- function(data, cols_id) {
-  data_ids <- unique(data[cols_id])
-  data_ids_perm <- data_ids[sample.int(nrow(data_ids)), ]
-  suff_tmp <- "_perm"
-  names(data_ids_perm) <- paste0(cols_id, suff_tmp)
-  bind_cols(data_ids, data_ids_perm) |>
-    left_join(data, by = cols_id) |>
-    select(-all_of(cols_id)) |>
-    rename_with(
-      ~ str_remove(.x, suff_tmp),
-      ends_with(suff_tmp)
+prepare_subj_pair_common <- function(events_retrieval) {
+  events_retrieval |>
+    filter(memory_type != 0) |>
+    pivot_wider(
+      id_cols = word_id,
+      names_from = subj_id,
+      values_from = response_type
+    ) |>
+    mutate(
+      dplyover::across2x(
+        -1, -1,
+        ~ if_else(.x == .y, .x, NA),
+        .comb = "minimal"
+      )
+    ) |>
+    select(contains("_")) |>
+    pivot_longer(
+      -word_id,
+      names_to = "subj_pair",
+      values_to = "response_type_shared"
+    ) |>
+    filter(!is.na(response_type_shared)) |>
+    separate(
+      subj_pair,
+      c("subj_id_col", "subj_id_row"),
+      convert = TRUE
     )
 }
