@@ -20,19 +20,16 @@ library(tidyverse)
 
 # Inter-subject representation similarity
 
-```{r}
-#| label: load-data-by-trial
-
-targets::tar_load(c(subj_pair_filter, rsa_inter_common_trials, mem_perf))
-```
-
 ## Abstract vs Concrete
 
 ```{r}
 #| label: fig-inter-abs-con
 #| fig-cap: Verify if intersubject similarity of concrete is larger than that of abstract.
+#| fig-subcap:
+#|   - Without window
+#|   - Dynamic of a trial
 
-rsa_inter_common_trials |>
+targets::tar_read(rsa_inter_common_trials) |>
   summarise(
     mean_se(fisher_z),
     .by = c(region_id, word_category)
@@ -44,6 +41,17 @@ rsa_inter_common_trials |>
   scale_y_continuous(name = "Intersubject Correlation") +
   ggsci::scale_fill_d3(name = "Word Type") +
   ggpubr::theme_pubclean()
+
+targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
+  ggplot(aes(window_id, y, ymax = ymax, ymin = ymin)) +
+  geom_line(aes(color = word_category, group = word_category)) +
+  geom_ribbon(aes(fill = word_category), alpha = 0.5) +
+  scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
+  scale_y_continuous(name = "Intersubject Correlation") +
+  ggsci::scale_fill_d3(name = "Word Type") +
+  ggsci::scale_color_d3(name = "Word Type") +
+  facet_wrap(vars(region_id)) +
+  ggpubr::theme_pubclean()
 ```
 
 ## Subsequent memory effect
@@ -52,7 +60,7 @@ rsa_inter_common_trials |>
 #| label: fig-inter-mem-eff
 #| fig-cap: Average inter-subject representation similarity among different memory conditions
 
-rsa_inter_common_trials |>
+targets::tar_read(rsa_inter_common_trials) |>
   summarise(
     mean_se(fisher_z),
     .by = c(region_id, response_type_shared)
@@ -82,6 +90,7 @@ The indicator calculation is based on [@manns2003].
 #|   - Concatenate all trials into one time series
 #|   - Average all trial-level synchronization
 
+targets::tar_load(mem_perf)
 arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
   filter(mem_type %in% c("knowadj", "remember")) |>
