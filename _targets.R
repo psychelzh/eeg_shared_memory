@@ -49,6 +49,34 @@ group_pred_perf <- tarchetypes::tar_map(
   )
 )
 
+inter_check_window <- tarchetypes::tar_map(
+  config_window_rs |>
+    dplyr::filter(type == "inter"),
+  names = c(type, acq, region),
+  tar_target(
+    path_chunks,
+    fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
+      split(1:10)
+  ),
+  tar_target(
+    rsa_inter_common_trials,
+    filter_inter_rs_by_trial(
+      path_chunks[[1]],
+      events_encoding,
+      subj_pair_filter
+    ),
+    pattern = map(path_chunks)
+  ),
+  tar_target(
+    summary_word_cat,
+    rsa_inter_common_trials |>
+      summarise(
+        mean_se(fisher_z),
+        .by = c(region_id, word_category, window_id)
+      )
+  )
+)
+
 list(
   tarchetypes::tar_file_read(
     events_encoding,
@@ -72,7 +100,7 @@ list(
     tar_target(
       tar_name_path,
       config_path_dataset(type, acq, region),
-      format = "file"
+      format = "file_fast"
     ),
     values = config_window_rs
   ),
@@ -89,5 +117,10 @@ list(
     )
   ),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
-  group_pred_perf
+  group_pred_perf,
+  inter_check_window,
+  tarchetypes::tar_combine(
+    summary_word_cat_rsa_inter_common_trials_window,
+    inter_check_window$summary_word_cat
+  )
 )

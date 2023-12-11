@@ -94,7 +94,8 @@ prepare_subj_pair_common <- function(events_retrieval) {
 }
 
 filter_inter_rs_by_trial <- function(file, events_encoding, subj_pair_filter) {
-  arrow::read_parquet(file) |>
+  arrow::open_dataset(file) |>
+    collect() |>
     left_join(
       events_encoding |>
         distinct(trial_id, word_id, word_category),
