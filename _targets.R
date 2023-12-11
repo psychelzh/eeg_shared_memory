@@ -15,6 +15,10 @@ config_window_rs <- tidyr::expand_grid(
   acq = c("window"),
   region = paste0("region", 1:6)
 )
+config_nonwin_rs <- tidyr::expand_grid(
+  type = c("inter", "group"),
+  acq = c("trial", "whole")
+)
 
 group_pred_perf <- tarchetypes::tar_map(
   config_window_rs |>
@@ -50,7 +54,26 @@ list(
     "data/group_task-wordretrieval_events.csv",
     read = readr::read_csv(!!.x, show_col_types = FALSE)
   ),
-  tar_target(subj_pair_filter, prepare_subj_pair_common(events_retrieval)),
+  tarchetypes::tar_map(
+    config_nonwin_rs,
+    tar_target(
+      file_rs,
+      config_path_file(type, acq),
+      format = "file"
+    )
+  ),
+  tar_target(
+    subj_pair_filter,
+    prepare_subj_pair_common(events_retrieval)
+  ),
+  tar_target(
+    rsa_inter_common_trials,
+    filter_inter_rs_by_trial(
+      file_rs_inter_trial,
+      events_encoding,
+      subj_pair_filter
+    )
+  ),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
   group_pred_perf
 )

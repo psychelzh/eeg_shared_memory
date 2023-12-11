@@ -80,5 +80,32 @@ prepare_subj_pair_common <- function(events_retrieval) {
       subj_pair,
       c("subj_id_col", "subj_id_row"),
       convert = TRUE
+    ) |>
+    mutate(
+      response_type_shared = case_match(
+        response_type_shared,
+        "remember" ~ "Rem",
+        "know" ~ "Know",
+        "unsure" ~ "Unsure",
+        "new" ~ "New",
+        .ptype = factor(levels = c("Rem", "Know", "Unsure", "New"))
+      )
+    )
+}
+
+filter_inter_rs_by_trial <- function(file, events_encoding, subj_pair_filter) {
+  arrow::read_parquet(file) |>
+    left_join(
+      events_encoding |>
+        distinct(trial_id, word_id, word_category),
+      by = "trial_id"
+    ) |>
+    inner_join(
+      subj_pair_filter,
+      by = c("word_id", "subj_id_col", "subj_id_row")
+    ) |>
+    filter(
+      sum(!is.na(fisher_z)) >= 5,
+      .by = c(region_id, word_category, contains("subj_id"))
     )
 }
