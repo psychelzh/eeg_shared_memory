@@ -10,32 +10,38 @@ tar_option_set(
 future::plan(future.callr::callr)
 tar_source()
 
+config_nonwin_rs <- tidyr::expand_grid(
+  type = c("inter", "group"),
+  acq = c("trial", "whole")
+) |>
+  dplyr::mutate(
+    tar_name_file = rlang::syms(
+      sprintf("file_rs_%s_%s", type, acq)
+    )
+  )
 config_window_rs <- tidyr::expand_grid(
   type = c("inter", "group"),
   acq = c("window"),
   region = paste0("region", 1:6)
-)
-config_nonwin_rs <- tidyr::expand_grid(
-  type = c("inter", "group"),
-  acq = c("trial", "whole")
-)
+) |>
+  dplyr::mutate(
+    tar_name_path = rlang::syms(
+      sprintf("path_dataset_%s_%s_%s", type, acq, region)
+    )
+  )
 
 group_pred_perf <- tarchetypes::tar_map(
   config_window_rs |>
     dplyr::filter(type == "group"),
-  tar_target(
-    path_dataset,
-    config_path_dataset(type, acq, region),
-    format = "file"
-  ),
+  names = c(type, acq, region),
   tar_target(
     stats,
-    extract_stats_group(path_dataset, mem_perf)
+    extract_stats_group(tar_name_path, mem_perf)
   ),
   tarchetypes::tar_rep(
     stats_perm,
     extract_stats_group(
-      path_dataset,
+      tar_name_path,
       permutate_behav(mem_perf, "subj_id")
     ),
     batches = 100,
@@ -54,13 +60,21 @@ list(
     "data/group_task-wordretrieval_events.csv",
     read = readr::read_csv(!!.x, show_col_types = FALSE)
   ),
-  tarchetypes::tar_map(
-    config_nonwin_rs,
+  tarchetypes::tar_eval(
     tar_target(
-      file_rs,
+      tar_name_file,
       config_path_file(type, acq),
       format = "file"
-    )
+    ),
+    values = config_nonwin_rs
+  ),
+  tarchetypes::tar_eval(
+    tar_target(
+      tar_name_path,
+      config_path_dataset(type, acq, region),
+      format = "file"
+    ),
+    values = config_window_rs
   ),
   tar_target(
     subj_pair_filter,
