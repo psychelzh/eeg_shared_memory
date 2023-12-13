@@ -70,25 +70,15 @@ inter_check_window <- tarchetypes::tar_map(
     ),
     pattern = map(path_chunks)
   ),
-  tar_target(
-    summary_word_cat_branches,
-    rsa_inter_common_trials |>
-      lapply(
-        summarise,
-        n = n(),
-        sum_fisher_z = sum(fisher_z),
-        .by = c(region_id, word_category, window_id)
-      ) |>
-      list_rbind(),
-    pattern = map(rsa_inter_common_trials)
-  ),
-  tar_target(
+  tar_summary_with_branches(
     summary_word_cat,
-    summary_word_cat_branches |>
-      summarise(
-        mean_fisher_z = sum(sum_fisher_z) / sum(n),
-        .by = c(region_id, word_category, window_id)
-      )
+    rsa_inter_common_trials,
+    .by = c(region_id, word_category, window_id)
+  ),
+  tar_summary_with_branches(
+    summary_word_mem,
+    rsa_inter_common_trials,
+    .by = c(region_id, response_type_shared, window_id)
   )
 )
 
@@ -137,6 +127,10 @@ list(
   tarchetypes::tar_combine(
     summary_word_cat_rsa_inter_common_trials_window,
     inter_check_window$summary_word_cat
+  ),
+  tarchetypes::tar_combine(
+    summary_word_mem_rsa_inter_common_trials_window,
+    inter_check_window$summary_word_mem
   ),
   tarchetypes::tar_quarto(website)
 )

@@ -57,6 +57,9 @@ targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
 ```{r}
 #| label: fig-inter-mem-eff
 #| fig-cap: Average inter-subject representation similarity among different memory conditions
+#| fig-subcap:
+#|   - Without window
+#|   - Dynamic of a trial
 
 targets::tar_read(rsa_inter_common_trials) |>
   summarise(
@@ -69,6 +72,15 @@ targets::tar_read(rsa_inter_common_trials) |>
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
   scale_fill_brewer(name = "Mem Type Common", palette = "Oranges", direction = -1) +
+  ggpubr::theme_pubclean()
+
+targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
+  ggplot(aes(window_id, mean_fisher_z)) +
+  geom_line(aes(color = response_type_shared, group = response_type_shared)) +
+  scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
+  scale_y_continuous(name = "Intersubject Correlation") +
+  scale_color_brewer(name = "Mem Type Common", palette = "Oranges", direction = -1) +
+  facet_wrap(vars(region_id)) +
   ggpubr::theme_pubclean()
 ```
 
