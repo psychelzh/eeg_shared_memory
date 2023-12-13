@@ -132,5 +132,6 @@ list(
   tarchetypes::tar_combine(
     summary_word_cat_rsa_inter_common_trials_window,
     inter_check_window$summary_word_cat
-  )
+  ),
+  tarchetypes::tar_quarto(website)
 )
