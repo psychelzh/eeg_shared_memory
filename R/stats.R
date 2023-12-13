@@ -10,6 +10,7 @@ extract_stats_group <- function(file_parquet, mem_perf, ...) {
     )
 }
 
+# permutate subject id to get surrogate null distribution
 permutate_behav <- function(data, cols_id) {
   data_ids <- unique(data[cols_id])
   data_ids_perm <- data_ids[sample.int(nrow(data_ids)), ]

@@ -32,25 +32,7 @@ config_window_rs <- tidyr::expand_grid(
     )
   )
 
-group_pred_perf <- tarchetypes::tar_map(
-  config_window_rs |>
-    dplyr::filter(type == "group"),
-  names = c(type, acq, region),
-  tar_target(
-    stats,
-    extract_stats_group(tar_name_path, mem_perf)
-  ),
-  tarchetypes::tar_rep(
-    stats_perm,
-    extract_stats_group(
-      tar_name_path,
-      permutate_behav(mem_perf, "subj_id")
-    ),
-    batches = 100,
-    reps = 10
-  )
-)
-
+# compare abstract and concrete and subsequent memory effect
 inter_check_window <- tarchetypes::tar_map(
   config_window_rs |>
     dplyr::filter(type == "inter"),
@@ -79,6 +61,25 @@ inter_check_window <- tarchetypes::tar_map(
     summary_word_mem,
     rsa_inter_common_trials,
     .by = c(region_id, response_type_shared, window_id)
+  )
+)
+
+group_pred_perf <- tarchetypes::tar_map(
+  config_window_rs |>
+    dplyr::filter(type == "group"),
+  names = c(type, acq, region),
+  tar_target(
+    stats,
+    extract_stats_group(tar_name_path, mem_perf)
+  ),
+  tarchetypes::tar_rep(
+    stats_perm,
+    extract_stats_group(
+      tar_name_path,
+      permutate_behav(mem_perf, "subj_id")
+    ),
+    batches = 100,
+    reps = 10
   )
 )
 
