@@ -62,26 +62,22 @@ inter_check_window <- tarchetypes::tar_map(
   ),
   tar_target(
     rsa_inter_common_trials,
-    unlist(path_chunks) |>
-      lapply(
-        \(file) filter_inter_rs_by_trial(
-          file,
-          events_encoding,
-          subj_pair_filter
-        )
-      ),
+    lapply(
+      unlist(path_chunks),
+      filter_inter_rs_by_trial,
+      events_encoding,
+      subj_pair_filter
+    ),
     pattern = map(path_chunks)
   ),
   tar_target(
     summary_word_cat,
-    lapply(
-      rsa_inter_common_trials,
-      \(dat) dat |>
-        summarise(
-          mean_se(fisher_z),
-          .by = c(region_id, word_category, window_id)
-        )
-    ) |>
+    rsa_inter_common_trials |>
+      lapply(
+        summarise,
+        mean_se(fisher_z),
+        .by = c(region_id, word_category, window_id)
+      ) |>
       list_rbind(),
     pattern = map(rsa_inter_common_trials)
   )
