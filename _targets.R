@@ -5,7 +5,9 @@ tar_option_set(
   controller = crew::crew_controller_local(
     name = "local",
     workers = 8
-  )
+  ),
+  memory = "transient",
+  garbage_collection = TRUE
 )
 future::plan(future.callr::callr)
 tar_source()
@@ -56,7 +58,7 @@ inter_check_window <- tarchetypes::tar_map(
   tar_target(
     path_chunks,
     fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
-      split(1:10)
+      split(1:30)
   ),
   tar_target(
     rsa_inter_common_trials,
@@ -67,17 +69,21 @@ inter_check_window <- tarchetypes::tar_map(
           events_encoding,
           subj_pair_filter
         )
-      ) |>
-      list_rbind(),
+      ),
     pattern = map(path_chunks)
   ),
   tar_target(
     summary_word_cat,
-    rsa_inter_common_trials |>
-      summarise(
-        mean_se(fisher_z),
-        .by = c(region_id, word_category, window_id)
-      )
+    lapply(
+      rsa_inter_common_trials,
+      \(dat) dat |>
+        summarise(
+          mean_se(fisher_z),
+          .by = c(region_id, word_category, window_id)
+        )
+    ) |>
+      list_rbind(),
+    pattern = map(rsa_inter_common_trials)
   )
 )
 
