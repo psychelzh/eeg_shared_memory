@@ -4,7 +4,7 @@ tar_option_set(
   format = "qs",
   controller = crew::crew_controller_local(
     name = "local",
-    workers = 8
+    workers = 20
   ),
   memory = "transient",
   garbage_collection = TRUE
@@ -58,7 +58,7 @@ inter_check_window <- tarchetypes::tar_map(
   tar_target(
     path_chunks,
     fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
-      split(1:50)
+      as_tibble_col()
   ),
   tar_target(
     rsa_inter_common_trials,
@@ -71,15 +71,24 @@ inter_check_window <- tarchetypes::tar_map(
     pattern = map(path_chunks)
   ),
   tar_target(
-    summary_word_cat,
+    summary_word_cat_branches,
     rsa_inter_common_trials |>
       lapply(
         summarise,
-        mean_se(fisher_z),
+        n = n(),
+        sum_fisher_z = sum(fisher_z),
         .by = c(region_id, word_category, window_id)
       ) |>
       list_rbind(),
     pattern = map(rsa_inter_common_trials)
+  ),
+  tar_target(
+    summary_word_cat,
+    summary_word_cat_branches |>
+      summarise(
+        mean_fisher_z = sum(sum_fisher_z) / sum(n),
+        .by = c(region_id, word_category, window_id)
+      )
   )
 )
 

@@ -43,12 +43,10 @@ targets::tar_read(rsa_inter_common_trials) |>
   ggpubr::theme_pubclean()
 
 targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
-  ggplot(aes(window_id, y, ymax = ymax, ymin = ymin)) +
+  ggplot(aes(window_id, mean_fisher_z)) +
   geom_line(aes(color = word_category, group = word_category)) +
-  geom_ribbon(aes(fill = word_category), alpha = 0.5) +
   scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  ggsci::scale_fill_d3(name = "Word Type") +
   ggsci::scale_color_d3(name = "Word Type") +
   facet_wrap(vars(region_id)) +
   ggpubr::theme_pubclean()
