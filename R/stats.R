@@ -1,12 +1,17 @@
 extract_stats_group <- function(file_parquet, mem_perf, ...) {
   arrow::open_dataset(file_parquet) |>
+    # here we must average across different trials
+    summarise(
+      mean_fisher_z = mean(fisher_z, na.rm = TRUE),
+      .by = c(subj_id, region_id, window_id)
+    ) |>
     left_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
     collect() |>
     summarise(
-      cor.test(fisher_z, dprime, ...) |>
+      cor.test(mean_fisher_z, dprime, ...) |>
         broom::tidy() |>
         select(r = estimate, t = statistic, p = p.value),
-      .by = c(region_id, trial_id, window_id, mem_type)
+      .by = c(region_id, window_id, mem_type)
     )
 }
 
@@ -23,4 +28,64 @@ permutate_behav <- function(data, cols_id) {
       ~ str_remove(.x, suff_tmp),
       ends_with(suff_tmp)
     )
+}
+
+extract_cluster_stats <- function(stats,
+                                  alternative = c("greater", "less"),
+                                  alpha = 0.05) {
+  alternative <- match.arg(alternative)
+  stats |>
+    mutate(
+      is_sig = map2_dbl(
+        p, r,
+        convert_p2_to_p1,
+        alternative = alternative
+      ) < alpha,
+      .keep = "unused"
+    ) |>
+    arrange(window_id) |>
+    summarise(
+      find_largest_cluster(t, is_sig),
+      .by = -c(window_id, t, is_sig)
+    )
+}
+
+find_largest_cluster <- function(t, is_sig) {
+  clusters <- as_tibble(find_cluster(is_sig))
+  if (nrow(clusters) == 0) {
+    return(tibble(start = NA, end = NA, sum_t = 0))
+  }
+  clusters |>
+    mutate(
+      sum_t = map2_dbl(
+        start, end,
+        \(start, end) {
+          sum(t[start:end])
+        }
+      )
+    ) |>
+    slice_max(sum_t)
+}
+
+find_cluster <- function(x, values_keep = 1) {
+  # https://stackoverflow.com/a/43875717/5996475
+  rle_x <- rle(x)
+  end <- cumsum(rle_x$lengths)
+  start <- c(1, lag(end)[-1] + 1)
+  list(
+    start = start[rle_x$values == values_keep],
+    end = end[rle_x$values == values_keep]
+  )
+}
+
+# https://www.graphpad.com/guides/prism/latest/statistics/one-tail_vs__two-tail_p_values.htm
+convert_p2_to_p1 <- function(p, statistic,
+                             alternative = c("greater", "less")) {
+  alternative <- match.arg(alternative)
+  true_dir <- xor(statistic > 0, alternative == "less")
+  if (true_dir) {
+    p / 2
+  } else {
+    1 - p / 2
+  }
 }

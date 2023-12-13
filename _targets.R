@@ -64,6 +64,7 @@ inter_check_window <- tarchetypes::tar_map(
   )
 )
 
+hypers_alternative <- list(alternative = c("greater", "less"))
 group_pred_perf <- tarchetypes::tar_map(
   config_window_rs |>
     dplyr::filter(type == "group"),
@@ -80,6 +81,30 @@ group_pred_perf <- tarchetypes::tar_map(
     ),
     batches = 100,
     reps = 10
+  ),
+  tarchetypes::tar_map(
+    hypers_alternative,
+    tar_target(
+      clusters,
+      extract_cluster_stats(stats, alternative)
+    ),
+    tar_target(
+      clusters_perm,
+      extract_cluster_stats(stats_perm, alternative)
+    ),
+    tar_target(
+      clusters_p,
+      clusters |>
+        left_join(
+          clusters_perm,
+          by = c("region_id", "mem_type"),
+          suffix = c("", "_perm")
+        ) |>
+        summarise(
+          p_perm = mean(sum_t_perm > sum_t),
+          .by = c(region_id, mem_type, start, end, sum_t)
+        )
+    )
   )
 )
 
@@ -132,6 +157,18 @@ list(
   tarchetypes::tar_combine(
     summary_word_mem_rsa_inter_common_trials_window,
     inter_check_window$summary_word_mem
+  ),
+  tarchetypes::tar_combine(
+    stats_group_window,
+    group_pred_perf$stats
+  ),
+  tarchetypes::tar_combine(
+    clusters_p_greater_group_window,
+    group_pred_perf$clusters_p_greater
+  ),
+  tarchetypes::tar_combine(
+    clusters_p_less_group_window,
+    group_pred_perf$clusters_p_less
   ),
   tarchetypes::tar_quarto(website)
 )
