@@ -60,11 +60,15 @@ inter_check_window <- tarchetypes::tar_map(
   ),
   tar_target(
     rsa_inter_common_trials,
-    filter_inter_rs_by_trial(
-      path_chunks[[1]],
-      events_encoding,
-      subj_pair_filter
-    ),
+    unlist(path_chunks) |>
+      lapply(
+        \(file) filter_inter_rs_by_trial(
+          file,
+          events_encoding,
+          subj_pair_filter
+        )
+      ) |>
+      list_rbind(),
     pattern = map(path_chunks)
   ),
   tar_target(
