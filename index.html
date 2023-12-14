@@ -367,16 +367,16 @@ div.csl-indent {
 <span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>  ggpubr<span class="sc">::</span><span class="fu">theme_pubr</span>()</span>
 <span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>clusters_p_greater <span class="ot">&lt;-</span> targets<span class="sc">::</span><span class="fu">tar_read</span>(clusters_p_greater_group_window) <span class="sc">|&gt;</span> </span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>clusters_p_greater <span class="ot">&lt;-</span> targets<span class="sc">::</span><span class="fu">tar_read</span>(clusters_p_greater_group_window) <span class="sc">|&gt;</span></span>
 <span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(mem_type <span class="sc">%in%</span> <span class="fu">names</span>(mem_types_report))</span>
-<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>stats <span class="ot">&lt;-</span> targets<span class="sc">::</span><span class="fu">tar_read</span>(stats_group_window) <span class="sc">|&gt;</span> </span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>stats <span class="ot">&lt;-</span> targets<span class="sc">::</span><span class="fu">tar_read</span>(stats_group_window) <span class="sc">|&gt;</span></span>
 <span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(mem_type <span class="sc">%in%</span> <span class="fu">names</span>(mem_types_report))</span>
-<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>stats <span class="sc">|&gt;</span> </span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>stats <span class="sc">|&gt;</span></span>
 <span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(window_id, estimate)) <span class="sc">+</span></span>
 <span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_area</span>(</span>
-<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> stats <span class="sc">|&gt;</span> </span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> stats <span class="sc">|&gt;</span></span>
 <span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a>      <span class="fu">inner_join</span>(</span>
-<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a>        clusters_p_greater, </span>
+<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a>        clusters_p_greater,</span>
 <span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a>        <span class="at">by =</span> <span class="fu">join_by</span>(region_id, mem_type, window_id <span class="sc">&gt;=</span> start, window_id <span class="sc">&lt;=</span> end)</span>
 <span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a>      ),</span>
 <span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.5</span></span>
@@ -384,17 +384,17 @@ div.csl-indent {
 <span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
 <span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(</span>
 <span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="fu">vars</span>(mem_type),</span>
-<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">cols =</span> <span class="fu">vars</span>(region_id), </span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">cols =</span> <span class="fu">vars</span>(region_id),</span>
 <span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a>    <span class="at">labeller =</span> <span class="fu">labeller</span>(<span class="at">mem_type =</span> mem_types_report)</span>
 <span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(</span>
 <span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(mid, estimate <span class="sc">/</span> <span class="dv">2</span>, <span class="at">label =</span> label),</span>
-<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> clusters_p_greater <span class="sc">|&gt;</span> </span>
-<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">mid =</span> <span class="fu">round</span>((start <span class="sc">+</span> end) <span class="sc">/</span> <span class="dv">2</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> clusters_p_greater <span class="sc">|&gt;</span></span>
+<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">mid =</span> <span class="fu">round</span>((start <span class="sc">+</span> end) <span class="sc">/</span> <span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
 <span id="cb4-81"><a href="#cb4-81" aria-hidden="true" tabindex="-1"></a>      <span class="fu">inner_join</span>(</span>
 <span id="cb4-82"><a href="#cb4-82" aria-hidden="true" tabindex="-1"></a>        stats,</span>
 <span id="cb4-83"><a href="#cb4-83" aria-hidden="true" tabindex="-1"></a>        <span class="at">by =</span> <span class="fu">join_by</span>(region_id, mem_type, mid <span class="sc">==</span> window_id)</span>
-<span id="cb4-84"><a href="#cb4-84" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb4-84"><a href="#cb4-84" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span></span>
 <span id="cb4-85"><a href="#cb4-85" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(</span>
 <span id="cb4-86"><a href="#cb4-86" aria-hidden="true" tabindex="-1"></a>        <span class="at">label =</span> <span class="fu">str_glue</span>(</span>
 <span id="cb4-87"><a href="#cb4-87" aria-hidden="true" tabindex="-1"></a>          <span class="st">"italic('p')=='{rstatix::p_mark_significant(p_perm)}'"</span></span>
