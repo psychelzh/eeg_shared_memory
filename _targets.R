@@ -40,7 +40,7 @@ inter_check_window <- tarchetypes::tar_map(
   tar_target(
     path_chunks,
     fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
-      as_tibble_col()
+      split(1:50)
   ),
   tar_target(
     rsa_inter_common_trials,
