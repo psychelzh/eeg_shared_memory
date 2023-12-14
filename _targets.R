@@ -29,6 +29,9 @@ config_window_rs <- tidyr::expand_grid(
   dplyr::mutate(
     tar_name_path = rlang::syms(
       sprintf("path_dataset_%s_%s_%s", type, acq, region)
+    ),
+    tar_path_chunks = rlang::syms(
+      sprintf("path_chunks_%s_%s_%s", type, acq, region)
     )
   )
 
@@ -38,19 +41,14 @@ inter_check_window <- tarchetypes::tar_map(
     dplyr::filter(type == "inter"),
   names = c(type, acq, region),
   tar_target(
-    path_chunks,
-    fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
-      split(1:50)
-  ),
-  tar_target(
     rsa_inter_common_trials,
     lapply(
-      unlist(path_chunks),
+      unlist(tar_path_chunks),
       filter_inter_rs_by_trial,
       events_encoding,
       subj_pair_filter
     ),
-    pattern = map(path_chunks)
+    pattern = map(tar_path_chunks)
   ),
   tar_summary_with_branches(
     summary_word_cat,
@@ -132,6 +130,14 @@ list(
       tar_name_path,
       config_path_dataset(type, acq, region),
       format = "file_fast"
+    ),
+    values = config_window_rs
+  ),
+  tarchetypes::tar_eval(
+    tar_target(
+      tar_path_chunks,
+      fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
+        split(1:50)
     ),
     values = config_window_rs
   ),
