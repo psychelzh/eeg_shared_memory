@@ -8,3 +8,5 @@ _targets
 
 /.quarto/
 _site
+
+/_*.local
