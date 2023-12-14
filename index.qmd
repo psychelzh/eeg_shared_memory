@@ -99,11 +99,13 @@ The indicator calculation is based on [@manns2003].
 #| fig-subcap:
 #|   - Concatenate all trials into one time series
 #|   - Average all trial-level synchronization
+#|   - Time-windowed Cluster Results
 
+mem_types_report <- c("knowadj" = "Familiarity", "remember" = "Recollection")
 targets::tar_load(mem_perf)
 arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type %in% c("knowadj", "remember")) |>
+  filter(mem_type %in% names(mem_types_report)) |>
   ggplot(aes(fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
@@ -121,12 +123,7 @@ arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   facet_grid(
     rows = vars(mem_type),
     cols = vars(region_id),
-    labeller = labeller(
-      mem_type = c(
-        knowadj = "Familiarity",
-        remember = "Recollection"
-      )
-    ),
+    labeller = labeller(mem_type = mem_types_report),
     scales = "free_x",
   ) +
   ggpubr::theme_pubr()
@@ -137,7 +134,7 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
     .by = c(region_id, subj_id)
   ) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type %in% c("knowadj", "remember")) |>
+  filter(mem_type %in% names(mem_types_report)) |>
   ggplot(aes(mean_fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
@@ -155,15 +152,56 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   facet_grid(
     rows = vars(mem_type),
     cols = vars(region_id),
-    labeller = labeller(
-      mem_type = c(
-        knowadj = "Familiarity",
-        remember = "Recollection"
-      )
-    ),
+    labeller = labeller(mem_type = mem_types_report),
     scales = "free_x",
   ) +
   ggpubr::theme_pubr()
+
+clusters_p_greater <- targets::tar_read(clusters_p_greater_group_window) |> 
+  filter(mem_type %in% names(mem_types_report))
+stats <- targets::tar_read(stats_group_window) |> 
+  filter(mem_type %in% names(mem_types_report))
+stats |> 
+  ggplot(aes(window_id, estimate)) +
+  geom_area(
+    data = stats |> 
+      inner_join(
+        clusters_p_greater, 
+        by = join_by(region_id, mem_type, window_id >= start, window_id <= end)
+      ),
+    alpha = 0.5
+  ) +
+  geom_line() +
+  facet_grid(
+    rows = vars(mem_type),
+    cols = vars(region_id), 
+    labeller = labeller(mem_type = mem_types_report)
+  ) +
+  geom_text(
+    aes(mid, estimate / 2, label = label),
+    data = clusters_p_greater |> 
+      mutate(mid = round((start + end) / 2)) |> 
+      inner_join(
+        stats,
+        by = join_by(region_id, mem_type, mid == window_id)
+      ) |> 
+      mutate(
+        label = str_glue(
+          "italic('p')=='{rstatix::p_mark_significant(p_perm)}'"
+        )
+      ),
+    parse = TRUE
+  ) +
+  scale_x_continuous(name = "Time (s)", labels = \(x) x * 0.02) +
+  scale_y_continuous(name = "Pearson's Correlation") +
+  ggh4x::coord_axes_inside(labels_inside = TRUE, expand = FALSE) +
+  ggpubr::theme_pubr() +
+  theme(
+    axis.title.y.left = element_text(
+      margin = margin(r = 30)
+    ),
+    panel.spacing.x = unit(1.5, "lines")
+  )
 ```
 
 # References
