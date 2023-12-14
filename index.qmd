@@ -157,16 +157,16 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   ) +
   ggpubr::theme_pubr()
 
-clusters_p_greater <- targets::tar_read(clusters_p_greater_group_window) |> 
+clusters_p_greater <- targets::tar_read(clusters_p_greater_group_window) |>
   filter(mem_type %in% names(mem_types_report))
-stats <- targets::tar_read(stats_group_window) |> 
+stats <- targets::tar_read(stats_group_window) |>
   filter(mem_type %in% names(mem_types_report))
-stats |> 
+stats |>
   ggplot(aes(window_id, estimate)) +
   geom_area(
-    data = stats |> 
+    data = stats |>
       inner_join(
-        clusters_p_greater, 
+        clusters_p_greater,
         by = join_by(region_id, mem_type, window_id >= start, window_id <= end)
       ),
     alpha = 0.5
@@ -174,17 +174,17 @@ stats |>
   geom_line() +
   facet_grid(
     rows = vars(mem_type),
-    cols = vars(region_id), 
+    cols = vars(region_id),
     labeller = labeller(mem_type = mem_types_report)
   ) +
   geom_text(
     aes(mid, estimate / 2, label = label),
-    data = clusters_p_greater |> 
-      mutate(mid = round((start + end) / 2)) |> 
+    data = clusters_p_greater |>
+      mutate(mid = round((start + end) / 2)) |>
       inner_join(
         stats,
         by = join_by(region_id, mem_type, mid == window_id)
-      ) |> 
+      ) |>
       mutate(
         label = str_glue(
           "italic('p')=='{rstatix::p_mark_significant(p_perm)}'"
