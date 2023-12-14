@@ -199,7 +199,8 @@ for i_region = regions_id
             fisher_z;
     end
     parquetwrite( ...
-        fullfile("data", "type-inter_acq-window_region-" + cur_reg + "_rs.parquet"), ...
+        fullfile("data", "deprecated", ...
+        "type-inter_acq-window_region-" + cur_reg + "_rs.parquet"), ...
         cur_simi_inter_by_window)
 end
 clearvars cur_simi_inter_by_window
@@ -228,7 +229,8 @@ for i_region = regions_id
             vertcat(fisher_z{:});
     end
     parquetwrite( ...
-        fullfile("data", "type-group_acq-window_region-" + cur_reg + "_rs.parquet"), ...
+        fullfile("data", "dep   recated", ...
+        "type-group_acq-window_region-" + cur_reg + "_rs.parquet"), ...
         cur_simi_grp_by_window)
 end
 clearvars cur_simi_grp_by_window
@@ -258,7 +260,8 @@ for i_region = regions_id
         end
     end
 end
-save(fullfile("data", "type-inter_acq-window_rs.mat"), "simi_inter_by_window", "-v7.3")
+save(fullfile("data", "deprecated", "type-inter_acq-window_rs.mat"), ...
+    "simi_inter_by_window", "-v7.3")
 clearvars simi_inter_by_window
 
 % type: individual to group similarity
@@ -278,5 +281,6 @@ for i_region = regions_id
         end
     end
 end
-save(fullfile("data", "type-group_acq-window_rs.mat"), "simi_grp_by_window", "-v7.3")
+save(fullfile("data", "deprecated", "type-group_acq-window_rs.mat"), ...
+    "simi_grp_by_window", "-v7.3")
 clearvars simi_grp_by_window
