@@ -54,7 +54,8 @@ calc_mem_perf <- function(events_retrieval) {
     )
 }
 
-prepare_subj_pair_common <- function(events_retrieval) {
+
+extract_response_shared <- function(events_encoding, events_retrieval) {
   events_retrieval |>
     filter(memory_type != 0) |>
     pivot_wider(
@@ -75,12 +76,7 @@ prepare_subj_pair_common <- function(events_retrieval) {
       names_to = "subj_pair",
       values_to = "response_type_shared"
     ) |>
-    filter(!is.na(response_type_shared)) |>
-    separate(
-      subj_pair,
-      c("subj_id_col", "subj_id_row"),
-      convert = TRUE
-    ) |>
+    select(-subj_pair) |>
     mutate(
       response_type_shared = case_match(
         response_type_shared,
@@ -90,20 +86,31 @@ prepare_subj_pair_common <- function(events_retrieval) {
         "new" ~ "New",
         .ptype = factor(levels = c("Rem", "Know", "Unsure", "New"))
       )
+    ) |>
+    chop(response_type_shared) |>
+    left_join(
+      distinct(events_encoding, trial_id, word_id, word_category),
+      by = "word_id"
     )
 }
 
-filter_inter_rs_by_trial <- function(file, events_encoding, subj_pair_filter) {
+filter_inter_rs_by_trial <- function(file, response_shared, subj_id_pairs) {
   arrow::read_parquet(file) |>
-    left_join(
-      events_encoding |>
-        distinct(trial_id, word_id, word_category),
-      by = "trial_id"
+    inner_join(response_shared, by = "trial_id") |>
+    mutate(
+      filtered = map2(
+        fisher_z,
+        response_type_shared,
+        ~ subj_id_pairs |>
+          add_column(
+            fisher_z = .x,
+            response_type_shared = .y
+          ) |>
+          filter(!is.na(response_type_shared))
+      ),
+      .keep = "unused"
     ) |>
-    inner_join(
-      subj_pair_filter,
-      by = c("word_id", "subj_id_col", "subj_id_row")
-    ) |>
+    unnest(filtered) |>
     filter(
       sum(!is.na(fisher_z)) >= 5,
       .by = c(region_id, word_category, contains("subj_id"))

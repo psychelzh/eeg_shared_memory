@@ -45,8 +45,8 @@ inter_check_window <- tarchetypes::tar_map(
     lapply(
       unlist(tar_path_chunks),
       filter_inter_rs_by_trial,
-      events_encoding,
-      subj_pair_filter
+      response_shared,
+      subj_pairs
     ),
     pattern = map(tar_path_chunks)
   ),
@@ -142,15 +142,23 @@ list(
     values = config_window_rs
   ),
   tar_target(
-    subj_pair_filter,
-    prepare_subj_pair_common(events_retrieval)
+    subj_pairs,
+    expand_grid(
+      subj_id_col = unique(events_encoding$subj_id),
+      subj_id_row = unique(events_encoding$subj_id)
+    ) |>
+      filter(subj_id_row > subj_id_col)
+  ),
+  tar_target(
+    response_shared,
+    extract_response_shared(events_encoding, events_retrieval)
   ),
   tar_target(
     rsa_inter_common_trials,
     filter_inter_rs_by_trial(
       file_rs_inter_trial,
-      events_encoding,
-      subj_pair_filter
+      response_shared,
+      subj_pairs
     )
   ),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
