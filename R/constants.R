@@ -24,3 +24,26 @@ hypers_dist_measure <- tibble::tribble(
       proxy::simil(method = "Gower")
   )
 )
+
+hypers_rs_nonwin <- tidyr::expand_grid(
+  type = c("inter", "group"),
+  acq = c("trial", "whole")
+) |>
+  dplyr::mutate(
+    tar_name_file = rlang::syms(
+      sprintf("file_rs_%s_%s", type, acq)
+    )
+  )
+hypers_rs_window <- tidyr::expand_grid(
+  type = c("inter", "group"),
+  acq = c("window"),
+  region = paste0("region", 1:6)
+) |>
+  dplyr::mutate(
+    tar_name_path = rlang::syms(
+      sprintf("path_dataset_%s_%s_%s", type, acq, region)
+    ),
+    tar_path_chunks = rlang::syms(
+      sprintf("path_chunks_%s_%s_%s", type, acq, region)
+    )
+  )

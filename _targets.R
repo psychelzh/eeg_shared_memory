@@ -12,33 +12,10 @@ tar_option_set(
 future::plan(future.callr::callr)
 tar_source()
 
-config_nonwin_rs <- tidyr::expand_grid(
-  type = c("inter", "group"),
-  acq = c("trial", "whole")
-) |>
-  dplyr::mutate(
-    tar_name_file = rlang::syms(
-      sprintf("file_rs_%s_%s", type, acq)
-    )
-  )
-config_window_rs <- tidyr::expand_grid(
-  type = c("inter", "group"),
-  acq = c("window"),
-  region = paste0("region", 1:6)
-) |>
-  dplyr::mutate(
-    tar_name_path = rlang::syms(
-      sprintf("path_dataset_%s_%s_%s", type, acq, region)
-    ),
-    tar_path_chunks = rlang::syms(
-      sprintf("path_chunks_%s_%s_%s", type, acq, region)
-    )
-  )
-
 # config: check inter-subject similarity ----
 # compare abstract and concrete and subsequent memory effect
 inter_check_window <- tarchetypes::tar_map(
-  config_window_rs |>
+  hypers_rs_window |>
     dplyr::filter(type == "inter"),
   names = c(type, acq, region),
   tar_target(
@@ -64,7 +41,7 @@ inter_check_window <- tarchetypes::tar_map(
 
 # config: predict memory performance ----
 group_pred_perf <- tarchetypes::tar_map(
-  config_window_rs |>
+  hypers_rs_window |>
     dplyr::filter(type == "group"),
   names = c(type, acq, region),
   tar_target(
@@ -134,7 +111,7 @@ list(
       config_path_file(type, acq),
       format = "file"
     ),
-    values = config_nonwin_rs
+    values = hypers_rs_nonwin
   ),
   tarchetypes::tar_eval(
     tar_target(
@@ -142,7 +119,7 @@ list(
       config_path_dataset(type, acq, region),
       format = "file_fast"
     ),
-    values = config_window_rs
+    values = hypers_rs_window
   ),
   tarchetypes::tar_eval(
     tar_target(
@@ -150,7 +127,7 @@ list(
       fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
         split(1:50)
     ),
-    values = config_window_rs
+    values = hypers_rs_window
   ),
   # check inter-subject similarity ----
   tar_target(
