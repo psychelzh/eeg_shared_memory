@@ -87,7 +87,7 @@ shared_content <- tarchetypes::tar_map(
     hypers_dist_measure,
     names = method,
     tar_target(
-      simil,
+      simil_content,
       eval(substitute(call), envir = list(.x = resp_mat))
     )
   )
@@ -157,8 +157,8 @@ list(
   # predict shared memory content ----
   shared_content,
   tar_combine_with_meta(
-    simil,
-    select_list(shared_content, starts_with("simil")),
+    simil_content,
+    select_list(shared_content, starts_with("simil_content")),
     cols_targets = c("method", "resp_trans", "include"),
     fun_pre = ~ tibble(mat = list(.x))
   ),
