@@ -15,7 +15,7 @@ bibliography: references.bib
 ```{r}
 #| label: setup
 
-library(tidyverse)
+devtools::load_all()
 ```
 
 # Inter-subject representation similarity
