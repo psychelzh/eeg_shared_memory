@@ -76,7 +76,7 @@ group_pred_perf <- tarchetypes::tar_map(
       permutate_behav(mem_perf, "subj_id")
     ),
     batches = 100,
-    reps = 10
+    reps = 100
   ),
   tar_target(
     clusters_p,
