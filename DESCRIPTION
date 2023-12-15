@@ -4,11 +4,32 @@ Version: 0.0.0.9000
 Authors@R: 
     person("Liang", "Zhang", , "psychelzh@outlook.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-9041-1150"))
-Description: Based on EEG data, this project continues several analyses of the
-    fMRI project.
+Description: Based on EEG data, this project continues several analyses of
+    the fMRI project.
 License: GPL (>= 3)
+Depends: 
+    tidyverse
+Imports: 
+    arrow,
+    crew,
+    devtools,
+    dplyover (>= 0.0.8.9002),
+    future,
+    future.callr,
+    ggh4x,
+    ggpmisc,
+    ggpubr,
+    ggsci,
+    markdown,
+    nomclust,
+    proxy,
+    qs,
+    Rankcluster,
+    tarchetypes,
+    targets,
+    vegan
+Remotes: 
+    TimTeaFan/dplyover
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-Depends: 
-    tidyverse
