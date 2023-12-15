@@ -84,11 +84,11 @@ group_pred_perf <- tarchetypes::tar_map(
     hypers_alternative,
     tar_target(
       clusters,
-      extract_cluster_stats(stats, alternative)
+      extract_cluster_stats(stats, p.value, statistic, alternative)
     ),
     tar_target(
       clusters_perm,
-      extract_cluster_stats(stats_perm, alternative)
+      extract_cluster_stats(stats_perm, p.value, statistic, alternative)
     ),
     tar_target(
       clusters_p,
