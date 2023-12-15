@@ -117,3 +117,34 @@ filter_shared <- function(file, response_shared) {
       .by = c(region_id, word_category, contains("subj_id"))
     )
 }
+
+transform_resp_precise <- function(events_retrieval) {
+  events_retrieval
+}
+
+transform_resp_coarse <- function(events_retrieval) {
+  events_retrieval |>
+    mutate(
+      memory_type = case_match(
+        memory_type,
+        c(1, 2) ~ 1,
+        c(3, 4) ~ 2,
+        .default = 0
+      )
+    )
+}
+
+prepare_resp_mat <- function(resp, include) {
+  if (include == "all") {
+    include <- c("old", "new")
+  }
+  # note: 0's in memory_type are not removed now
+  resp |>
+    filter(old_new %in% include) |>
+    pivot_wider(
+      id_cols = subj_id,
+      names_from = word_id,
+      values_from = memory_type
+    ) |>
+    column_to_rownames("subj_id")
+}

@@ -105,6 +105,7 @@ group_pred_perf <- tarchetypes::tar_map(
 )
 
 list(
+  # prepare files and paths ----
   tarchetypes::tar_file_read(
     events_encoding,
     "data/group_task-wordencoding_events.csv",
@@ -139,6 +140,7 @@ list(
     ),
     values = config_window_rs
   ),
+  # check inter-subject similarity ----
   tar_target(
     response_shared,
     extract_response_shared(events_encoding, events_retrieval)
@@ -147,8 +149,6 @@ list(
     rsa_inter_common_trials,
     filter_shared(file_rs_inter_trial, response_shared)
   ),
-  tar_target(mem_perf, calc_mem_perf(events_retrieval)),
-  group_pred_perf,
   inter_check_window,
   tarchetypes::tar_combine(
     summary_word_cat_rsa_inter_common_trials_window,
@@ -158,6 +158,9 @@ list(
     summary_word_mem_rsa_inter_common_trials_window,
     inter_check_window$summary_word_mem
   ),
+  # predict memory performance ----
+  tar_target(mem_perf, calc_mem_perf(events_retrieval)),
+  group_pred_perf,
   tarchetypes::tar_combine(
     stats_group_window,
     group_pred_perf$stats
@@ -170,5 +173,25 @@ list(
     clusters_p_less_group_window,
     group_pred_perf$clusters_p_less
   ),
+  # predict shared memory content ----
+  tarchetypes::tar_map(
+    hypers_prep_shared,
+    names = c(resp_trans, include),
+    tar_target(
+      resp_mat,
+      events_retrieval |>
+        transform_resp() |>
+        prepare_resp_mat(include)
+    ),
+    tarchetypes::tar_map(
+      hypers_dist_measure,
+      names = method,
+      tar_target(
+        simil,
+        eval(substitute(call), envir = list(.x = resp_mat))
+      )
+    )
+  ),
+  # render website ----
   tarchetypes::tar_quarto(website)
 )
