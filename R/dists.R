@@ -12,3 +12,17 @@ calc_dist <- function(dat, fun) {
   as.dist(mat)
 }
 
+as_dist_vec <- function(vec, ..., size = NULL, diag = FALSE, upper = FALSE) {
+  if (is.null(size)) {
+    size <- 0.5 + sqrt(0.25 + 2 * length(vec))
+  }
+  stopifnot(all.equal(size, as.integer(size)))
+  structure(
+    vec,
+    class = "dist",
+    Size = size,
+    Diag = diag,
+    Upper = upper,
+    ...
+  )
+}

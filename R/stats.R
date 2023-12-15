@@ -14,6 +14,21 @@ extract_stats_pred_perf <- function(file_parquet, mem_perf) {
     )
 }
 
+extract_stats_pred_content <- function(dat, simil_content, col_rs) {
+  dat |>
+    mutate(
+      map(
+        mean_fisher_z,
+        ~ vegan::mantel(as_dist_vec(.x), simil_content) |>
+          unclass() |>
+          select_list(all_of(c("statistic", "signif"))) |>
+          as_tibble_row()
+      ) |>
+        list_rbind(),
+      .keep = "unused"
+    )
+}
+
 # permutate subject id to get surrogate null distribution
 permutate_behav <- function(data, cols_id) {
   data_ids <- unique(data[cols_id])

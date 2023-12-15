@@ -89,6 +89,21 @@ shared_content <- tarchetypes::tar_map(
     tar_target(
       simil_content,
       eval(substitute(call), envir = list(.x = resp_mat))
+    ),
+    tarchetypes::tar_map(
+      hypers_rs_nonwin |>
+        dplyr::filter(type == "inter", acq == "trial"),
+      tar_target(
+        stats_pred_content,
+        arrow::read_parquet(tar_name_file) |>
+          summarise(
+            mean_fisher_z = do.call(rbind, fisher_z) |>
+              colMeans(na.rm = TRUE) |>
+              list(),
+            .by = region_id
+          ) |>
+          extract_stats_pred_content(simil_content, mean_fisher_z)
+      )
     )
   )
 )
