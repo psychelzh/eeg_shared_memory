@@ -1,4 +1,3 @@
-hypers_alternative <- list(alternative = c("greater", "less"))
 hypers_prep_shared <- tidyr::expand_grid(
   resp_trans = c(
     "precise", # use the original response, i.e., 1-4

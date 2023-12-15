@@ -157,7 +157,7 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   ) +
   ggpubr::theme_pubr()
 
-clusters_p_greater <- targets::tar_read(clusters_p_greater_group_window) |>
+clusters_p_group_window <- targets::tar_read(clusters_p_group_window) |>
   filter(mem_type %in% names(mem_types_report))
 stats <- targets::tar_read(stats_group_window) |>
   filter(mem_type %in% names(mem_types_report))
@@ -166,7 +166,7 @@ stats |>
   geom_area(
     data = stats |>
       inner_join(
-        clusters_p_greater,
+        clusters_p_group_window,
         by = join_by(region_id, mem_type, window_id >= start, window_id <= end)
       ),
     alpha = 0.5
@@ -179,7 +179,7 @@ stats |>
   ) +
   geom_text(
     aes(mid, estimate / 2, label = label),
-    data = clusters_p_greater |>
+    data = clusters_p_group_window |>
       mutate(mid = round((start + end) / 2)) |>
       inner_join(
         stats,
