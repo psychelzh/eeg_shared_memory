@@ -15,3 +15,11 @@ config_path_file <- function(type, acq) {
     )
   )
 }
+
+select_list <- function(.l, ...) {
+  pos <- tidyselect::eval_select(
+    rlang::expr(c(...)),
+    .l
+  )
+  rlang::set_names(.l[pos], names(pos))
+}

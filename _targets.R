@@ -104,6 +104,25 @@ group_pred_perf <- tarchetypes::tar_map(
   )
 )
 
+shared_content <- tarchetypes::tar_map(
+  hypers_prep_shared,
+  names = c(resp_trans, include),
+  tar_target(
+    resp_mat,
+    events_retrieval |>
+      transform_resp() |>
+      prepare_resp_mat(include)
+  ),
+  tarchetypes::tar_map(
+    hypers_dist_measure,
+    names = method,
+    tar_target(
+      simil,
+      eval(substitute(call), envir = list(.x = resp_mat))
+    )
+  )
+)
+
 list(
   # prepare files and paths ----
   tarchetypes::tar_file_read(
@@ -174,23 +193,12 @@ list(
     group_pred_perf$clusters_p_less
   ),
   # predict shared memory content ----
-  tarchetypes::tar_map(
-    hypers_prep_shared,
-    names = c(resp_trans, include),
-    tar_target(
-      resp_mat,
-      events_retrieval |>
-        transform_resp() |>
-        prepare_resp_mat(include)
-    ),
-    tarchetypes::tar_map(
-      hypers_dist_measure,
-      names = method,
-      tar_target(
-        simil,
-        eval(substitute(call), envir = list(.x = resp_mat))
-      )
-    )
+  shared_content,
+  tar_combine_with_meta(
+    simil,
+    select_list(shared_content, starts_with("simil")),
+    cols_targets = c("method", "resp_trans", "include"),
+    fun_pre = ~ tibble(mat = list(.x))
   ),
   # render website ----
   tarchetypes::tar_quarto(website)
