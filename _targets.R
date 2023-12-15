@@ -44,9 +44,8 @@ inter_check_window <- tarchetypes::tar_map(
     rsa_inter_common_trials,
     lapply(
       unlist(tar_path_chunks),
-      filter_inter_rs_by_trial,
-      response_shared,
-      subj_pairs
+      filter_shared,
+      response_shared
     ),
     pattern = map(tar_path_chunks)
   ),
@@ -62,7 +61,6 @@ inter_check_window <- tarchetypes::tar_map(
   )
 )
 
-hypers_alternative <- list(alternative = c("greater", "less"))
 group_pred_perf <- tarchetypes::tar_map(
   config_window_rs |>
     dplyr::filter(type == "group"),
@@ -142,24 +140,12 @@ list(
     values = config_window_rs
   ),
   tar_target(
-    subj_pairs,
-    expand_grid(
-      subj_id_col = unique(events_encoding$subj_id),
-      subj_id_row = unique(events_encoding$subj_id)
-    ) |>
-      filter(subj_id_row > subj_id_col)
-  ),
-  tar_target(
     response_shared,
     extract_response_shared(events_encoding, events_retrieval)
   ),
   tar_target(
     rsa_inter_common_trials,
-    filter_inter_rs_by_trial(
-      file_rs_inter_trial,
-      response_shared,
-      subj_pairs
-    )
+    filter_shared(file_rs_inter_trial, response_shared)
   ),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
   group_pred_perf,

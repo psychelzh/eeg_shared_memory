@@ -76,7 +76,11 @@ extract_response_shared <- function(events_encoding, events_retrieval) {
       names_to = "subj_pair",
       values_to = "response_type_shared"
     ) |>
-    select(-subj_pair) |>
+    separate(
+      subj_pair,
+      c("subj_id_col", "subj_id_row"),
+      convert = TRUE
+    ) |>
     mutate(
       response_type_shared = case_match(
         response_type_shared,
@@ -87,25 +91,22 @@ extract_response_shared <- function(events_encoding, events_retrieval) {
         .ptype = factor(levels = c("Rem", "Know", "Unsure", "New"))
       )
     ) |>
-    chop(response_type_shared) |>
+    nest(.by = word_id, .key = "resp_matched") |>
     left_join(
       distinct(events_encoding, trial_id, word_id, word_category),
       by = "word_id"
     )
 }
 
-filter_inter_rs_by_trial <- function(file, response_shared, subj_id_pairs) {
+filter_shared <- function(file, response_shared) {
   arrow::read_parquet(file) |>
     inner_join(response_shared, by = "trial_id") |>
     mutate(
       filtered = map2(
+        resp_matched,
         fisher_z,
-        response_type_shared,
-        ~ subj_id_pairs |>
-          add_column(
-            fisher_z = .x,
-            response_type_shared = .y
-          ) |>
+        ~ .x |>
+          add_column(fisher_z = .y) |>
           filter(!is.na(response_type_shared))
       ),
       .keep = "unused"
