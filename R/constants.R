@@ -45,5 +45,8 @@ hypers_rs_window <- tidyr::expand_grid(
     ),
     tar_name_files = rlang::syms(
       sprintf("files_%s_%s_%s", type, acq, region)
+    ),
+    tar_name_avg_rs = rlang::syms(
+      sprintf("avg_rs_%s_%s_%s", type, acq, region)
     )
   )

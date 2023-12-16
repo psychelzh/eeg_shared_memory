@@ -57,18 +57,13 @@ targets_pred_perf <- tarchetypes::tar_map(
     dplyr::filter(type == "group"),
   names = c(type, acq, region),
   tar_target(
-    avg_rs,
-    average_rs_trials(tar_name_files, scalar_rs = TRUE),
-    pattern = map(tar_name_files)
-  ),
-  tar_target(
     stats_pred_perf,
-    extract_stats_pred_perf(avg_rs, mem_perf)
+    extract_stats_pred_perf(tar_name_avg_rs, mem_perf)
   ),
   tarchetypes::tar_rep(
     stats_pred_perf_perm,
     extract_stats_pred_perf(
-      avg_rs,
+      tar_name_avg_rs,
       permutate_behav(mem_perf, "subj_id")
     ),
     batches = 100,
@@ -132,18 +127,17 @@ targets_pred_content <- tarchetypes::tar_map(
         dplyr::filter(type == "inter"),
       names = c(type, acq, region),
       tar_target(
-        avg_rs,
-        average_rs_trials(tar_name_files),
-        pattern = map(tar_name_files)
-      ),
-      tar_target(
         stats_pred_content,
-        extract_stats_pred_content(avg_rs, simil_content, mean_fisher_z)
+        extract_stats_pred_content(
+          tar_name_avg_rs,
+          simil_content,
+          mean_fisher_z
+        )
       ),
       tarchetypes::tar_rep(
         stats_pred_content_perm,
         extract_stats_pred_content(
-          avg_rs,
+          tar_name_avg_rs,
           permutate_simil(simil_content),
           mean_fisher_z
         ),
@@ -201,7 +195,22 @@ list(
   tarchetypes::tar_eval(
     tar_target(
       tar_name_files,
-      fs::dir_ls(tar_name_path, recurse = TRUE, type = "file")
+      fs::dir_ls(
+        tar_name_path,
+        recurse = TRUE,
+        type = "file"
+      )
+    ),
+    values = hypers_rs_window
+  ),
+  tarchetypes::tar_eval(
+    tar_target(
+      tar_name_avg_rs,
+      average_rs_trials(
+        tar_name_files,
+        scalar_rs = type == "group"
+      ),
+      pattern = map(tar_name_files)
     ),
     values = hypers_rs_window
   ),
