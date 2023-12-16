@@ -28,8 +28,7 @@ average_rs_trials <- function(file_parquet,
                               col_rs = fisher_z,
                               col_trial = trial_id,
                               scalar_rs = FALSE) {
-  dat <- arrow::open_dataset(file_parquet) |>
-    collect() |>
+  dat <- arrow::read_parquet(file_parquet) |>
     nest(.by = -c({{ col_trial }}, {{ col_rs }}))
   if (scalar_rs) {
     dat |>

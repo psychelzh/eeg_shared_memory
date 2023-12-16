@@ -21,21 +21,33 @@ inter_check_window <- tarchetypes::tar_map(
   tar_target(
     rsa_inter_common_trials,
     lapply(
-      unlist(tar_path_chunks),
+      tar_name_files,
       filter_shared,
       response_shared
     ),
-    pattern = map(tar_path_chunks)
+    pattern = map(tar_name_files)
   ),
-  tar_summary_with_branches(
+  tar_target(
     summary_word_cat,
-    rsa_inter_common_trials,
-    .by = c(region_id, word_category, window_id)
+    lapply(
+      rsa_inter_common_trials,
+      summarise,
+      mean_se(fisher_z),
+      .by = c(region_id, word_category, window_id)
+    ) |>
+      list_rbind(),
+    pattern = map(rsa_inter_common_trials)
   ),
-  tar_summary_with_branches(
+  tar_target(
     summary_word_mem,
-    rsa_inter_common_trials,
-    .by = c(region_id, response_type_shared, window_id)
+    lapply(
+      rsa_inter_common_trials,
+      summarise,
+      mean_se(fisher_z),
+      .by = c(region_id, response_type_shared, window_id)
+    ) |>
+      list_rbind(),
+    pattern = map(rsa_inter_common_trials)
   )
 )
 
@@ -46,7 +58,8 @@ targets_pred_perf <- tarchetypes::tar_map(
   names = c(type, acq, region),
   tar_target(
     avg_rs,
-    average_rs_trials(tar_name_path, scalar_rs = TRUE)
+    average_rs_trials(tar_name_files, scalar_rs = TRUE),
+    pattern = map(tar_name_files)
   ),
   tar_target(
     stats_pred_perf,
@@ -118,7 +131,11 @@ targets_pred_content <- tarchetypes::tar_map(
       hypers_rs_window |>
         dplyr::filter(type == "inter"),
       names = c(type, acq, region),
-      tar_target(avg_rs, average_rs_trials(tar_name_path)),
+      tar_target(
+        avg_rs,
+        average_rs_trials(tar_name_files),
+        pattern = map(tar_name_files)
+      ),
       tar_target(
         stats_pred_content,
         extract_stats_pred_content(avg_rs, simil_content, mean_fisher_z)
@@ -183,9 +200,8 @@ list(
   ),
   tarchetypes::tar_eval(
     tar_target(
-      tar_path_chunks,
-      fs::dir_ls(tar_name_path, type = "file", recurse = TRUE) |>
-        split(1:50)
+      tar_name_files,
+      fs::dir_ls(tar_name_path, recurse = TRUE, type = "file")
     ),
     values = hypers_rs_window
   ),
