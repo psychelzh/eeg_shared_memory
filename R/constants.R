@@ -1,3 +1,7 @@
+# permutations number: 1000 divided into 100 batches of 10 reps
+num_batches <- 100
+num_reps  <- 10
+
 hypers_prep_shared <- tidyr::expand_grid(
   resp_trans = c(
     "precise", # use the original response, i.e., 1-4

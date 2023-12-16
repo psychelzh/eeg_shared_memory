@@ -66,8 +66,8 @@ targets_pred_perf <- tarchetypes::tar_map(
       tar_name_avg_rs,
       permutate_behav(mem_perf, "subj_id")
     ),
-    batches = 100,
-    reps = 100
+    batches = num_batches,
+    reps = num_reps
   ),
   tar_target(
     clusters_p_pred_perf,
@@ -141,8 +141,8 @@ targets_pred_content <- tarchetypes::tar_map(
           permutate_simil(simil_content),
           mean_fisher_z
         ),
-        batches = 100,
-        reps = 100
+        batches = num_batches,
+        reps = num_reps
       ),
       tar_target(
         clusters_p_pred_content,
