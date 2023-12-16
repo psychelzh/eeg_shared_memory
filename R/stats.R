@@ -1,7 +1,6 @@
 extract_stats_pred_perf <- function(dat, mem_perf) {
   dat |>
     left_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-    collect() |>
     summarise(
       cor.test(mean_fisher_z, dprime, alternative = "greater") |>
         broom::tidy(),
