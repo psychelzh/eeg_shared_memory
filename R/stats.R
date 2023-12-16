@@ -1,10 +1,5 @@
-extract_stats_pred_perf <- function(file_parquet, mem_perf) {
-  arrow::open_dataset(file_parquet) |>
-    # here we must average across different trials
-    summarise(
-      mean_fisher_z = mean(fisher_z, na.rm = TRUE),
-      .by = c(subj_id, region_id, window_id)
-    ) |>
+extract_stats_pred_perf <- function(dat, mem_perf) {
+  dat |>
     left_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
     collect() |>
     summarise(
@@ -18,7 +13,7 @@ extract_stats_pred_content <- function(dat, simil_content, col_rs) {
   dat |>
     mutate(
       map(
-        mean_fisher_z,
+        {{ col_rs }},
         ~ vegan::mantel(as_dist_vec(.x), simil_content) |>
           unclass() |>
           select_list(all_of(c("statistic", "signif"))) |>
@@ -27,6 +22,35 @@ extract_stats_pred_content <- function(dat, simil_content, col_rs) {
         list_rbind(),
       .keep = "unused"
     )
+}
+
+average_rs_trials <- function(file_parquet,
+                              col_rs = fisher_z,
+                              col_trial = trial_id,
+                              scalar_rs = FALSE) {
+  dat <- arrow::open_dataset(file_parquet) |>
+    collect() |>
+    nest(.by = -c({{ col_trial }}, {{ col_rs }}))
+  if (scalar_rs) {
+    dat |>
+      mutate(
+        mean_fisher_z = map_dbl(
+          data,
+          ~ mean(pull(.x, {{ col_rs }}), na.rm = TRUE)
+        ),
+        .keep = "unused"
+      )
+  } else {
+    dat |>
+      mutate(
+        mean_fisher_z = map(
+          data,
+          ~ do.call(rbind, pull(.x, {{ col_rs }})) |>
+            colMeans(na.rm = TRUE)
+        ),
+        .keep = "unused"
+      )
+  }
 }
 
 # permutate subject id to get surrogate null distribution
@@ -42,6 +66,10 @@ permutate_behav <- function(data, cols_id) {
       ~ str_remove(.x, suff_tmp),
       ends_with(suff_tmp)
     )
+}
+permutate_simil <- function(simil) {
+  perm <- sample.int(attr(simil, "Size"))
+  as.dist(as.matrix(simil)[perm, perm])
 }
 
 extract_cluster_p <- function(stats_cluster,
@@ -59,7 +87,7 @@ extract_cluster_p <- function(stats_cluster,
     mutate(
       p_perm = map2_dbl(
         data, {{ col_stats }},
-        ~ mean(select(.x, {{ col_stats }}) > {{ col_stats }})
+        ~ mean(pull(.x, {{ col_stats }}) > {{ col_stats }})
       ),
       .keep = "unused"
     )

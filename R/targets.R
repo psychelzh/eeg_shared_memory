@@ -29,6 +29,7 @@ tar_summary_with_branches <- function(name, data, .by) {
 }
 
 tar_combine_with_meta <- function(name, targets, cols_targets,
+                                  prefix = NULL,
                                   fun_pre = NULL,
                                   fun_post = NULL) {
   ischar_name <- tryCatch(
@@ -37,6 +38,9 @@ tar_combine_with_meta <- function(name, targets, cols_targets,
   )
   if (!ischar_name) {
     name <- deparse1(substitute(name))
+  }
+  if (is.null(prefix)) {
+    prefix <- name
   }
   if (is.null(fun_pre)) {
     fun_pre <- \(x) x
@@ -51,8 +55,8 @@ tar_combine_with_meta <- function(name, targets, cols_targets,
       list(!!!.x) |>
         lapply(.(rlang::as_function(fun_pre))) |>
         bind_rows(.id = "id") |>
-        # note there is delimiter after name should be removed too
-        mutate(id = str_remove(id, str_c(.(name), "."))) |>
+        # note there is delimiter after prefix should be removed too
+        mutate(id = str_remove(id, str_c(.(prefix), "."))) |>
         separate(id, .(cols_targets), convert = TRUE) |>
         .(rlang::as_function(fun_post))()
     )

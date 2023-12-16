@@ -157,14 +157,14 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   ) +
   ggpubr::theme_pubr()
 
-clusters_p_group_window <- targets::tar_read(clusters_p_group_window) |>
+clusters_p_pred_perf <- targets::tar_read(clusters_p_pred_perf) |>
   filter(mem_type %in% names(mem_types_report))
-stats <- targets::tar_read(stats_group_window) |>
+stats_pred_perf <- targets::tar_read(stats_pred_perf) |>
   filter(mem_type %in% names(mem_types_report))
-stats |>
+stats_pred_perf |>
   ggplot(aes(window_id, estimate)) +
   geom_area(
-    data = stats |>
+    data = stats_pred_perf |>
       inner_join(
         clusters_p_group_window,
         by = join_by(region_id, mem_type, window_id >= start, window_id <= end)
@@ -182,7 +182,7 @@ stats |>
     data = clusters_p_group_window |>
       mutate(mid = round((start + end) / 2)) |>
       inner_join(
-        stats,
+        stats_pred_perf,
         by = join_by(region_id, mem_type, mid == window_id)
       ) |>
       mutate(
