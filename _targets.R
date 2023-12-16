@@ -185,31 +185,26 @@ list(
     values = hypers_rs_nonwin
   ),
   tarchetypes::tar_eval(
-    tar_target(
-      tar_name_path,
-      config_path_dataset(type, acq, region),
-      format = "file_fast"
-    ),
-    values = hypers_rs_window
-  ),
-  tarchetypes::tar_eval(
-    tar_target(
+    tarchetypes::tar_files_input(
       tar_name_files,
       fs::dir_ls(
-        tar_name_path,
+        config_path_dataset(type, acq, region),
         recurse = TRUE,
         type = "file"
-      )
+      ),
+      batches = 10
     ),
     values = hypers_rs_window
   ),
   tarchetypes::tar_eval(
     tar_target(
       tar_name_avg_rs,
-      average_rs_trials(
+      lapply(
         tar_name_files,
+        average_rs_trials,
         scalar_rs = type == "group"
-      ),
+      ) |>
+        list_rbind(),
       pattern = map(tar_name_files)
     ),
     values = hypers_rs_window

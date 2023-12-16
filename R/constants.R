@@ -44,9 +44,6 @@ hypers_rs_window <- tidyr::expand_grid(
   region = paste0("region", 1:6)
 ) |>
   dplyr::mutate(
-    tar_name_path = rlang::syms(
-      sprintf("path_dataset_%s_%s_%s", type, acq, region)
-    ),
     tar_name_files = rlang::syms(
       sprintf("files_%s_%s_%s", type, acq, region)
     ),
