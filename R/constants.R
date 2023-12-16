@@ -24,7 +24,7 @@ hypers_dist_measure <- tibble::tribble(
   "caylay", quote(calc_dist(.x, Rankcluster::distCayley)),
   "gower", quote(
     .x |>
-      mutate(across(everything(), ~ factor(.x, ordered = TRUE))) |>
+      mutate(across(everything(), \(x) factor(x, ordered = TRUE))) |>
       proxy::simil(method = "Gower")
   )
 )
