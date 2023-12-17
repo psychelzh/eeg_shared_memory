@@ -85,7 +85,7 @@ extract_cluster_p <- function(stats_cluster,
     mutate(
       p_perm = map2_dbl(
         data, {{ col_stats }},
-        ~ mean(pull(.x, {{ col_stats }}) > {{ col_stats }})
+        \(perms, real) mean(pull(perms, {{ col_stats }}) > real)
       ),
       .keep = "unused"
     )
