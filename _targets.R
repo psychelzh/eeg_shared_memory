@@ -6,10 +6,13 @@ tar_option_set(
     name = "local",
     workers = 20
   ),
-  memory = "transient",
-  garbage_collection = TRUE
+  memory = "transient"
 )
-future::plan(future.callr::callr)
+if (Sys.info()["sysname"] == "Windows") {
+  future::plan(future.callr::callr)
+} else {
+  future::plan(future::multicore)
+}
 tar_source()
 
 # config: check inter-subject similarity ----
