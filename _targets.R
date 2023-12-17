@@ -103,7 +103,8 @@ targets_pred_content <- tarchetypes::tar_map(
     names = method,
     tar_target(
       simil_content,
-      eval(substitute(call), envir = list(.x = resp_mat))
+      eval(substitute(call), envir = list(.x = resp_mat)),
+      deployment = "main"
     ),
     tarchetypes::tar_map(
       hypers_rs_nonwin |>
@@ -247,7 +248,8 @@ list(
     simil_content,
     select_list(targets_pred_content, starts_with("simil_content")),
     cols_targets = c("method", "resp_trans", "include"),
-    fun_pre = ~ tibble(mat = list(.x))
+    fun_pre = ~ tibble(mat = list(.x)),
+    deployment = "main"
   ),
   tar_combine_with_meta(
     stats_pred_content_nonwin,
