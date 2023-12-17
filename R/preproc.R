@@ -148,3 +148,31 @@ prepare_resp_mat <- function(resp, include) {
     ) |>
     column_to_rownames("subj_id")
 }
+
+average_rs_trials <- function(file_parquet,
+                              col_rs = fisher_z,
+                              col_trial = trial_id,
+                              scalar_rs = FALSE) {
+  dat <- arrow::read_parquet(file_parquet) |>
+    nest(.by = -c({{ col_trial }}, {{ col_rs }}))
+  if (scalar_rs) {
+    dat |>
+      mutate(
+        mean_fisher_z = map_dbl(
+          data,
+          ~ mean(pull(.x, {{ col_rs }}), na.rm = TRUE)
+        ),
+        .keep = "unused"
+      )
+  } else {
+    dat |>
+      mutate(
+        mean_fisher_z = map(
+          data,
+          ~ do.call(rbind, pull(.x, {{ col_rs }})) |>
+            colMeans(na.rm = TRUE)
+        ),
+        .keep = "unused"
+      )
+  }
+}
