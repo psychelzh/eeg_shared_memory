@@ -23,6 +23,22 @@ extract_stats_pred_content <- function(dat, simil_content, col_rs) {
     )
 }
 
+extract_stats_pred_content_partial <- function(dat, simil_content, covariate,
+                                               col_rs) {
+  dat |>
+    mutate(
+      map(
+        {{ col_rs }},
+        ~ vegan::mantel.partial(as_dist_vec(.x), simil_content, covariate) |>
+          unclass() |>
+          select_list(all_of(c("statistic", "signif"))) |>
+          as_tibble_row()
+      ) |>
+        list_rbind(),
+      .keep = "unused"
+    )
+}
+
 # permutate subject id to get surrogate null distribution
 permutate_behav <- function(data, cols_id) {
   data_ids <- unique(data[cols_id])
