@@ -48,7 +48,8 @@ targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
   geom_ribbon(aes(fill = word_category), alpha = 0.5) +
   scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  ggsci::scale_fill_d3(name = "Word Type", aesthetics = c("colour", "fill")) +
+  ggsci::scale_fill_d3(name = "Word Type") +
+  ggsci::scale_color_d3(name = "Word Type") +
   facet_wrap(vars(region_id)) +
   ggpubr::theme_pubclean()
 ```
@@ -78,7 +79,7 @@ targets::tar_read(rsa_inter_common_trials) |>
 targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
   ggplot(aes(window_id, y, ymax = ymax, ymin = ymin)) +
   geom_line(aes(color = response_type_shared, group = response_type_shared)) +
-  geom_ribbon(aes(fill = response_type_shared))
+  geom_ribbon(aes(fill = response_type_shared)) +
   scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
   scale_y_continuous(name = "Intersubject Correlation") +
   scale_color_brewer(
@@ -172,7 +173,7 @@ stats_pred_perf |>
   geom_area(
     data = stats_pred_perf |>
       inner_join(
-        clusters_p_group_window,
+        clusters_p_pred_perf,
         by = join_by(region_id, mem_type, window_id >= start, window_id <= end)
       ),
     alpha = 0.5
@@ -185,7 +186,7 @@ stats_pred_perf |>
   ) +
   geom_text(
     aes(mid, estimate / 2, label = label),
-    data = clusters_p_group_window |>
+    data = clusters_p_pred_perf |>
       mutate(mid = round((start + end) / 2)) |>
       inner_join(
         stats_pred_perf,
