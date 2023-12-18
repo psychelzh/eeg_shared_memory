@@ -233,6 +233,7 @@ list(
   ),
   # predict memory performance ----
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
+  tar_target(dist_mem_perf, calc_dist_mem_perf(mem_perf)),
   targets_pred_perf,
   tarchetypes::tar_combine(
     stats_pred_perf,

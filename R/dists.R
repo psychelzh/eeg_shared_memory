@@ -12,6 +12,17 @@ calc_dist <- function(dat, fun) {
   as.dist(mat)
 }
 
+calc_dist_mem_perf <- function(mem_perf) {
+  mem_perf |>
+    filter(mem_type %in% names(mem_types_report)) |>
+    pivot_wider(
+      names_from = mem_type,
+      values_from = dprime
+    ) |>
+    column_to_rownames("subj_id") |>
+    dist(method = "euclidean")
+}
+
 as_dist_vec <- function(vec, ..., size = NULL, diag = FALSE, upper = FALSE) {
   if (is.null(size)) {
     size <- 0.5 + sqrt(0.25 + 2 * length(vec))

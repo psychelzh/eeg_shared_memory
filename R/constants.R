@@ -57,3 +57,8 @@ hypers_rs_window <- tidyr::expand_grid(
       sprintf("avg_rs_%s_%s_%s", type, acq, region)
     )
   )
+
+mem_types_report <- c(
+  "knowadj" = "Familiarity",
+  "remember" = "Recollection"
+)

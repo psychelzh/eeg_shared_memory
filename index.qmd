@@ -108,7 +108,6 @@ The indicator calculation is based on [@manns2003].
 #|   - Average all trial-level synchronization
 #|   - Time-windowed Cluster Results
 
-mem_types_report <- c("knowadj" = "Familiarity", "remember" = "Recollection")
 targets::tar_load(mem_perf)
 arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
