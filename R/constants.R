@@ -58,7 +58,20 @@ hypers_rs_window <- tidyr::expand_grid(
     )
   )
 
-mem_types_report <- c(
+labels_acq <- c(
+  "trial" = "Averaged Trial-level",
+  "whole" = "Concatenated Time-series"
+)
+# burden of history: `calc_dist_mem_perf()` used the `mem_types_report` name
+labels_mem_type <- mem_types_report <- c(
   "knowadj" = "Familiarity",
   "remember" = "Recollection"
+)
+labels_include <- c(
+  "all" = "Both Items",
+  "old" = "Old Items Only"
+)
+labels_method <- c(
+  "gower" = "Gower (ordinal)",
+  "sm" = "Simple Match (nomial)"
 )

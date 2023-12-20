@@ -60,8 +60,8 @@ targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
 #| label: fig-inter-mem-eff
 #| fig-cap: Average inter-subject representation similarity among different memory conditions
 #| fig-subcap:
-#|   - Without window
-#|   - Dynamic of a trial
+#|   - Whole trial time series
+#|   - With time window [^window]
 
 targets::tar_read(rsa_inter_common_trials) |>
   summarise(
@@ -91,6 +91,8 @@ targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
   ggpubr::theme_pubclean()
 ```
 
+[^window]: Step size: 20 ms; Window length: 100 ms. The same below.
+
 # Predict Memory ability
 
 The indicator calculation is based on [@manns2003].
@@ -111,7 +113,7 @@ The indicator calculation is based on [@manns2003].
 targets::tar_load(mem_perf)
 arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type %in% names(mem_types_report)) |>
+  filter(mem_type %in% names(labels_mem_type)) |>
   ggplot(aes(fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
@@ -129,7 +131,7 @@ arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   facet_grid(
     rows = vars(mem_type),
     cols = vars(region_id),
-    labeller = labeller(mem_type = mem_types_report),
+    labeller = labeller(mem_type = labels_mem_type),
     scales = "free_x",
   ) +
   ggpubr::theme_pubr()
@@ -140,7 +142,7 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
     .by = c(region_id, subj_id)
   ) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type %in% names(mem_types_report)) |>
+  filter(mem_type %in% names(labels_mem_type)) |>
   ggplot(aes(mean_fisher_z, dprime, color = mem_type)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
@@ -158,15 +160,15 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   facet_grid(
     rows = vars(mem_type),
     cols = vars(region_id),
-    labeller = labeller(mem_type = mem_types_report),
+    labeller = labeller(mem_type = labels_mem_type),
     scales = "free_x",
   ) +
   ggpubr::theme_pubr()
 
 clusters_p_pred_perf <- targets::tar_read(clusters_p_pred_perf) |>
-  filter(mem_type %in% names(mem_types_report))
+  filter(mem_type %in% names(labels_mem_type))
 stats_pred_perf <- targets::tar_read(stats_pred_perf) |>
-  filter(mem_type %in% names(mem_types_report))
+  filter(mem_type %in% names(labels_mem_type))
 stats_pred_perf |>
   ggplot(aes(window_id, estimate)) +
   geom_area(
@@ -181,7 +183,7 @@ stats_pred_perf |>
   facet_grid(
     rows = vars(mem_type),
     cols = vars(region_id),
-    labeller = labeller(mem_type = mem_types_report)
+    labeller = labeller(mem_type = labels_mem_type)
   ) +
   geom_text(
     aes(mid, estimate / 2, label = label),
@@ -208,6 +210,184 @@ stats_pred_perf |>
     ),
     panel.spacing.x = unit(1.5, "lines")
   )
+```
+
+# Predict Memory Content
+
+```{r}
+#| label: fig-predict-content
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
+#| fig-cap: Direct Mantel test without controlling memory ability similarity
+#| fig-subcap: 
+#|   - Without Time Window
+#|   - With Time Window
+
+targets::tar_read(stats_pred_content_nonwin) |> 
+  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |> 
+  ggplot(aes(region_id, statistic, fill = acq)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.5) +
+  geom_text(
+    aes(label = star), 
+    position = position_dodge(width = 0.6),
+    na.rm = TRUE
+  ) +
+  facet_grid(
+    rows = vars(method), 
+    cols = vars(include),
+    labeller = labeller(
+      include = labels_include,
+      method = labels_method
+    )
+  ) +
+  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
+  scale_y_continuous(name = "Pearson's Correlation") +
+  ggsci::scale_fill_npg(name = "Level", labels = labels_acq) +
+  ggpubr::theme_pubclean()
+
+targets::tar_load(stats_pred_content_window)
+targets::tar_load(clusters_p_pred_content)
+ggplot() +
+  geom_raster(
+    data = stats_pred_content_window,
+    mapping = aes(window_id, region_id, fill = statistic)
+  ) +
+  geom_rect(
+    data = clusters_p_pred_content,
+    mapping = aes(
+      xmin = start - 0.5, 
+      xmax = end + 0.5, 
+      ymin = region_id - 0.5, 
+      ymax = region_id + 0.5
+    ),
+    color = "black",
+    fill = NA,
+    na.rm = TRUE
+  ) +
+  geom_text(
+    data = clusters_p_pred_content,
+    mapping = aes(
+      (start + end) / 2,
+      region_id,
+      label = rstatix::p_mark_significant(p_perm)
+    ),
+    color = "blue",
+    na.rm = TRUE
+  ) +
+  scale_fill_gradient2(
+    name = "Pearson's Correlation", 
+    low = "blue", 
+    high = "red"
+  ) +
+  scale_x_continuous(
+    name = "Time (s)", 
+    labels = \(x) x * 0.02, 
+    expand = expansion(mult = .01)
+  ) +
+  scale_y_continuous(
+    name = "Region",
+    breaks = scales::breaks_width(1),
+    expand = expansion(mult = .01)
+  ) +
+  facet_grid(
+    rows = vars(method), 
+    cols = vars(include),
+    labeller = labeller(
+      include = labels_include,
+      method = labels_method
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "top")
+```
+
+```{r}
+#| label: fig-predict-content-partial
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
+#| fig-cap: Partial Mantel test controlling memory ability similarity
+#| fig-subcap: 
+#|   - Without Time Window
+#|   - With Time Window
+
+targets::tar_read(stats_pred_content_partial_nonwin) |> 
+  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |> 
+  ggplot(aes(region_id, statistic, fill = acq)) +
+  geom_col(position = position_dodge(width = 0.6), width = 0.5) +
+  geom_text(
+    aes(label = star), 
+    position = position_dodge(width = 0.6),
+    na.rm = TRUE
+  ) +
+  facet_grid(
+    rows = vars(method), 
+    cols = vars(include),
+    labeller = labeller(
+      include = labels_include,
+      method = labels_method
+    )
+  ) +
+  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
+  scale_y_continuous(name = "Pearson's Correlation") +
+  ggsci::scale_fill_npg(name = "Level", labels = labels_acq) +
+  ggpubr::theme_pubclean()
+
+targets::tar_load(stats_pred_content_partial_window)
+targets::tar_load(clusters_p_pred_content_partial)
+ggplot() +
+  geom_raster(
+    data = stats_pred_content_window,
+    mapping = aes(window_id, region_id, fill = statistic)
+  ) +
+  geom_rect(
+    data = clusters_p_pred_content,
+    mapping = aes(
+      xmin = start - 0.5, 
+      xmax = end + 0.5, 
+      ymin = region_id - 0.5, 
+      ymax = region_id + 0.5
+    ),
+    color = "black",
+    fill = NA,
+    na.rm = TRUE
+  ) +
+  geom_text(
+    data = clusters_p_pred_content,
+    mapping = aes(
+      (start + end) / 2,
+      region_id,
+      label = rstatix::p_mark_significant(p_perm)
+    ),
+    color = "blue",
+    na.rm = TRUE
+  ) +
+  scale_fill_gradient2(
+    name = "Pearson's Correlation", 
+    low = "blue", 
+    high = "red"
+  ) +
+  scale_x_continuous(
+    name = "Time (s)", 
+    labels = \(x) x * 0.02, 
+    expand = expansion(mult = .01)
+  ) +
+  scale_y_continuous(
+    name = "Region",
+    breaks = scales::breaks_width(1),
+    expand = expansion(mult = .01)
+  ) +
+  facet_grid(
+    rows = vars(method), 
+    cols = vars(include),
+    labeller = labeller(
+      include = labels_include,
+      method = labels_method
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "top")
 ```
 
 # References
