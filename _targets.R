@@ -306,16 +306,16 @@ list(
     fun_pre = ~ tibble(mat = list(.x)),
     deployment = "main"
   ),
+  # mantel test
   tar_combine_with_meta(
     stats_pred_content_nonwin,
     select_list(
       targets_pred_content,
-      starts_with("stats_pred_content") & !contains("window")
+      starts_with("stats_pred_content_inter") & !contains("window")
     ),
     cols_targets = c("type", "acq", "method", "resp_trans", "include"),
     prefix = "stats_pred_content"
   ),
-  # mantel test
   tar_combine_with_meta(
     stats_pred_content_window,
     select_list(
@@ -337,6 +337,15 @@ list(
   ),
   # partial mantel test
   tar_combine_with_meta(
+    stats_pred_content_partial_nonwin,
+    select_list(
+      targets_pred_content,
+      starts_with("stats_pred_content_partial_inter") & !contains("window")
+    ),
+    cols_targets = c("type", "acq", "method", "resp_trans", "include"),
+    prefix = "stats_pred_content_partial"
+  ),
+  tar_combine_with_meta(
     stats_pred_content_partial_window,
     select_list(
       targets_pred_content,
@@ -345,7 +354,7 @@ list(
     cols_targets = c(
       "type", "acq", "region", "method", "resp_trans", "include"
     ),
-    prefix = "stats_pred_content"
+    prefix = "stats_pred_content_partial"
   ),
   tar_combine_with_meta(
     clusters_p_pred_content_partial,
