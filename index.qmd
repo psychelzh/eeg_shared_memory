@@ -26,8 +26,8 @@ devtools::load_all()
 #| label: fig-inter-abs-con
 #| fig-cap: Verify if intersubject similarity of concrete is larger than that of abstract.
 #| fig-subcap:
-#|   - Without window
-#|   - Dynamic of a trial
+#|   - Without time window
+#|   - With time window [^window]
 
 targets::tar_read(rsa_inter_common_trials) |>
   summarise(
@@ -54,6 +54,8 @@ targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
   ggpubr::theme_pubclean()
 ```
 
+[^window]: Step size: 20 ms; Window length: 100 ms. The same below.
+
 ## Subsequent memory effect
 
 ```{r}
@@ -61,7 +63,7 @@ targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
 #| fig-cap: Average inter-subject representation similarity among different memory conditions
 #| fig-subcap:
 #|   - Whole trial time series
-#|   - With time window [^window]
+#|   - With time window
 
 targets::tar_read(rsa_inter_common_trials) |>
   summarise(
@@ -90,8 +92,6 @@ targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
   facet_wrap(vars(region_id)) +
   ggpubr::theme_pubclean()
 ```
-
-[^window]: Step size: 20 ms; Window length: 100 ms. The same below.
 
 # Predict Memory ability
 
