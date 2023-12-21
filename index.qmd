@@ -16,7 +16,59 @@ bibliography: references.bib
 #| label: setup
 
 devtools::load_all()
+
+# colors used for correlation values mapping
 colors_cor <- c(pos = "tomato", neg = "deepskyblue")
+
+# visualize significant clusters
+vis_cluster <- function(stats, clusters_p, facet, ...,
+                        col_stats = estimate, col_p = p_perm) {
+  ggplot() +
+    geom_raster(
+      data = stats,
+      mapping = aes(window_id, region_id, fill = {{ col_stats }})
+    ) +
+    geom_rect(
+      data = clusters_p,
+      mapping = aes(
+        xmin = start - 0.5, 
+        xmax = end + 0.5, 
+        ymin = region_id - 0.5, 
+        ymax = region_id + 0.5
+      ),
+      color = "black",
+      fill = NA,
+      na.rm = TRUE
+    ) +
+    geom_text(
+      data = clusters_p,
+      mapping = aes(
+        (start + end) / 2,
+        region_id,
+        label = rstatix::p_mark_significant({{ col_p }})
+      ),
+      color = "blue",
+      na.rm = TRUE
+    ) +
+    scale_fill_gradient2(
+      name = "Pearson's Correlation", 
+      low = colors_cor["neg"], 
+      high = colors_cor["pos"]
+    ) +
+    scale_x_continuous(
+      name = "Time (s)", 
+      labels = \(x) x * 0.02, 
+      expand = expansion(mult = .01)
+    ) +
+    scale_y_continuous(
+      name = "Region",
+      breaks = scales::breaks_width(1),
+      expand = expansion(mult = .01)
+    ) +
+    facet +
+    theme_classic() +
+    theme(legend.position = "top")
+}
 ```
 
 # Inter-subject representation similarity
@@ -166,60 +218,18 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   ) +
   ggpubr::theme_pubr()
 
-stats_pred_perf <- targets::tar_read(stats_pred_perf) |>
-  filter(mem_type %in% names(labels_mem_type))
-clusters_p_pred_perf <- targets::tar_read(clusters_p_pred_perf) |>
-  filter(mem_type %in% names(labels_mem_type))
-ggplot() +
-  geom_raster(
-    data = stats_pred_perf,
-    mapping = aes(window_id, region_id, fill = estimate)
-  ) +
-  geom_rect(
-    data = clusters_p_pred_perf,
-    mapping = aes(
-      xmin = start - 0.5, 
-      xmax = end + 0.5, 
-      ymin = region_id - 0.5, 
-      ymax = region_id + 0.5
-    ),
-    color = "black",
-    fill = NA,
-    na.rm = TRUE
-  ) +
-  geom_text(
-    data = clusters_p_pred_perf,
-    mapping = aes(
-      (start + end) / 2,
-      region_id,
-      label = rstatix::p_mark_significant(p_perm)
-    ),
-    color = "blue",
-    na.rm = TRUE
-  ) +
-  scale_fill_gradient2(
-    name = "Pearson's Correlation", 
-    low = colors_cor["neg"], 
-    high = colors_cor["pos"]
-  ) +
-  scale_x_continuous(
-    name = "Time (s)", 
-    labels = \(x) x * 0.02, 
-    expand = expansion(mult = .01)
-  ) +
-  scale_y_continuous(
-    name = "Region",
-    breaks = scales::breaks_width(1),
-    expand = expansion(mult = .01)
-  ) +
+vis_cluster(
+  targets::tar_read(stats_pred_perf) |>
+    filter(mem_type %in% names(labels_mem_type)),
+  targets::tar_read(clusters_p_pred_perf) |>
+    filter(mem_type %in% names(labels_mem_type)),
   facet_grid(
     rows = vars(mem_type), 
     labeller = labeller(
       mem_type = labels_mem_type
     )
-  ) +
-  theme_classic() +
-  theme(legend.position = "top")
+  )
+)
 ```
 
 # Predict Memory Content
@@ -256,50 +266,9 @@ targets::tar_read(stats_pred_content_nonwin) |>
   ggsci::scale_fill_npg(name = "Level", labels = labels_acq) +
   ggpubr::theme_pubclean()
 
-targets::tar_load(stats_pred_content_window)
-targets::tar_load(clusters_p_pred_content)
-ggplot() +
-  geom_raster(
-    data = stats_pred_content_window,
-    mapping = aes(window_id, region_id, fill = statistic)
-  ) +
-  geom_rect(
-    data = clusters_p_pred_content,
-    mapping = aes(
-      xmin = start - 0.5, 
-      xmax = end + 0.5, 
-      ymin = region_id - 0.5, 
-      ymax = region_id + 0.5
-    ),
-    color = "black",
-    fill = NA,
-    na.rm = TRUE
-  ) +
-  geom_text(
-    data = clusters_p_pred_content,
-    mapping = aes(
-      (start + end) / 2,
-      region_id,
-      label = rstatix::p_mark_significant(p_perm)
-    ),
-    color = "blue",
-    na.rm = TRUE
-  ) +
-  scale_fill_gradient2(
-    name = "Pearson's Correlation", 
-    low = colors_cor["neg"], 
-    high = colors_cor["pos"]
-  ) +
-  scale_x_continuous(
-    name = "Time (s)", 
-    labels = \(x) x * 0.02, 
-    expand = expansion(mult = .01)
-  ) +
-  scale_y_continuous(
-    name = "Region",
-    breaks = scales::breaks_width(1),
-    expand = expansion(mult = .01)
-  ) +
+vis_cluster(
+  targets::tar_read(stats_pred_content_window),
+  targets::tar_read(clusters_p_pred_content),
   facet_grid(
     rows = vars(method), 
     cols = vars(include),
@@ -307,9 +276,9 @@ ggplot() +
       include = labels_include,
       method = labels_method
     )
-  ) +
-  theme_classic() +
-  theme(legend.position = "top")
+  ),
+  col_stats = statistic
+)
 ```
 
 ```{r}
@@ -344,50 +313,9 @@ targets::tar_read(stats_pred_content_partial_nonwin) |>
   ggsci::scale_fill_npg(name = "Level", labels = labels_acq) +
   ggpubr::theme_pubclean()
 
-targets::tar_load(stats_pred_content_partial_window)
-targets::tar_load(clusters_p_pred_content_partial)
-ggplot() +
-  geom_raster(
-    data = stats_pred_content_window,
-    mapping = aes(window_id, region_id, fill = statistic)
-  ) +
-  geom_rect(
-    data = clusters_p_pred_content,
-    mapping = aes(
-      xmin = start - 0.5, 
-      xmax = end + 0.5, 
-      ymin = region_id - 0.5, 
-      ymax = region_id + 0.5
-    ),
-    color = "black",
-    fill = NA,
-    na.rm = TRUE
-  ) +
-  geom_text(
-    data = clusters_p_pred_content,
-    mapping = aes(
-      (start + end) / 2,
-      region_id,
-      label = rstatix::p_mark_significant(p_perm)
-    ),
-    color = "blue",
-    na.rm = TRUE
-  ) +
-  scale_fill_gradient2(
-    name = "Pearson's Correlation", 
-    low = colors_cor["neg"], 
-    high = colors_cor["pos"]
-  ) +
-  scale_x_continuous(
-    name = "Time (s)", 
-    labels = \(x) x * 0.02, 
-    expand = expansion(mult = .01)
-  ) +
-  scale_y_continuous(
-    name = "Region",
-    breaks = scales::breaks_width(1),
-    expand = expansion(mult = .01)
-  ) +
+vis_cluster(
+  targets::tar_read(stats_pred_content_partial_window),
+  targets::tar_read(clusters_p_pred_content_partial),
   facet_grid(
     rows = vars(method), 
     cols = vars(include),
@@ -395,9 +323,9 @@ ggplot() +
       include = labels_include,
       method = labels_method
     )
-  ) +
-  theme_classic() +
-  theme(legend.position = "top")
+  ),
+  col_stats = statistic
+)
 ```
 
 # References
