@@ -16,6 +16,7 @@ bibliography: references.bib
 #| label: setup
 
 devtools::load_all()
+colors_cor <- c(pos = "tomato", neg = "deepskyblue")
 ```
 
 # Inter-subject representation similarity
@@ -165,51 +166,60 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   ) +
   ggpubr::theme_pubr()
 
-clusters_p_pred_perf <- targets::tar_read(clusters_p_pred_perf) |>
-  filter(mem_type %in% names(labels_mem_type))
 stats_pred_perf <- targets::tar_read(stats_pred_perf) |>
   filter(mem_type %in% names(labels_mem_type))
-stats_pred_perf |>
-  ggplot(aes(window_id, estimate)) +
-  geom_area(
-    data = stats_pred_perf |>
-      inner_join(
-        clusters_p_pred_perf,
-        by = join_by(region_id, mem_type, window_id >= start, window_id <= end)
-      ),
-    alpha = 0.5
+clusters_p_pred_perf <- targets::tar_read(clusters_p_pred_perf) |>
+  filter(mem_type %in% names(labels_mem_type))
+ggplot() +
+  geom_raster(
+    data = stats_pred_perf,
+    mapping = aes(window_id, region_id, fill = estimate)
   ) +
-  geom_line() +
-  facet_grid(
-    rows = vars(mem_type),
-    cols = vars(region_id),
-    labeller = labeller(mem_type = labels_mem_type)
+  geom_rect(
+    data = clusters_p_pred_perf,
+    mapping = aes(
+      xmin = start - 0.5, 
+      xmax = end + 0.5, 
+      ymin = region_id - 0.5, 
+      ymax = region_id + 0.5
+    ),
+    color = "black",
+    fill = NA,
+    na.rm = TRUE
   ) +
   geom_text(
-    aes(mid, estimate / 2, label = label),
-    data = clusters_p_pred_perf |>
-      mutate(mid = round((start + end) / 2)) |>
-      inner_join(
-        stats_pred_perf,
-        by = join_by(region_id, mem_type, mid == window_id)
-      ) |>
-      mutate(
-        label = str_glue(
-          "italic('p')=='{rstatix::p_mark_significant(p_perm)}'"
-        )
-      ),
-    parse = TRUE
-  ) +
-  scale_x_continuous(name = "Time (s)", labels = \(x) x * 0.02) +
-  scale_y_continuous(name = "Pearson's Correlation") +
-  ggh4x::coord_axes_inside(labels_inside = TRUE, expand = FALSE) +
-  ggpubr::theme_pubr() +
-  theme(
-    axis.title.y.left = element_text(
-      margin = margin(r = 30)
+    data = clusters_p_pred_perf,
+    mapping = aes(
+      (start + end) / 2,
+      region_id,
+      label = rstatix::p_mark_significant(p_perm)
     ),
-    panel.spacing.x = unit(1.5, "lines")
-  )
+    color = "blue",
+    na.rm = TRUE
+  ) +
+  scale_fill_gradient2(
+    name = "Pearson's Correlation", 
+    low = colors_cor["neg"], 
+    high = colors_cor["pos"]
+  ) +
+  scale_x_continuous(
+    name = "Time (s)", 
+    labels = \(x) x * 0.02, 
+    expand = expansion(mult = .01)
+  ) +
+  scale_y_continuous(
+    name = "Region",
+    breaks = scales::breaks_width(1),
+    expand = expansion(mult = .01)
+  ) +
+  facet_grid(
+    rows = vars(mem_type), 
+    labeller = labeller(
+      mem_type = labels_mem_type
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "top")
 ```
 
 # Predict Memory Content
@@ -277,8 +287,8 @@ ggplot() +
   ) +
   scale_fill_gradient2(
     name = "Pearson's Correlation", 
-    low = "blue", 
-    high = "red"
+    low = colors_cor["neg"], 
+    high = colors_cor["pos"]
   ) +
   scale_x_continuous(
     name = "Time (s)", 
@@ -365,8 +375,8 @@ ggplot() +
   ) +
   scale_fill_gradient2(
     name = "Pearson's Correlation", 
-    low = "blue", 
-    high = "red"
+    low = colors_cor["neg"], 
+    high = colors_cor["pos"]
   ) +
   scale_x_continuous(
     name = "Time (s)", 
