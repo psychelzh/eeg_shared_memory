@@ -21,8 +21,10 @@ devtools::load_all()
 colors_cor <- c(pos = "tomato", neg = "deepskyblue")
 
 # visualize significant clusters
-vis_cluster <- function(stats, clusters_p, facet, ...,
-                        col_stats = estimate, col_p = p_perm) {
+vis_cluster <- function(stats, clusters_p, ...,
+                        col_stats = estimate, 
+                        col_p = p_perm,
+                        facet = NULL) {
   ggplot() +
     geom_raster(
       data = stats,
@@ -223,7 +225,7 @@ vis_cluster(
     filter(mem_type %in% names(labels_mem_type)),
   targets::tar_read(clusters_p_pred_perf) |>
     filter(mem_type %in% names(labels_mem_type)),
-  facet_grid(
+  facet = facet_grid(
     rows = vars(mem_type), 
     labeller = labeller(
       mem_type = labels_mem_type
@@ -269,15 +271,15 @@ targets::tar_read(stats_pred_content_nonwin) |>
 vis_cluster(
   targets::tar_read(stats_pred_content_window),
   targets::tar_read(clusters_p_pred_content),
-  facet_grid(
+  col_stats = statistic,
+  facet = facet_grid(
     rows = vars(method), 
     cols = vars(include),
     labeller = labeller(
       include = labels_include,
       method = labels_method
     )
-  ),
-  col_stats = statistic
+  )
 )
 ```
 
@@ -316,15 +318,15 @@ targets::tar_read(stats_pred_content_partial_nonwin) |>
 vis_cluster(
   targets::tar_read(stats_pred_content_partial_window),
   targets::tar_read(clusters_p_pred_content_partial),
-  facet_grid(
+  col_stats = statistic,
+  facet = facet_grid(
     rows = vars(method), 
     cols = vars(include),
     labeller = labeller(
       include = labels_include,
       method = labels_method
     )
-  ),
-  col_stats = statistic
+  )
 )
 ```
 
