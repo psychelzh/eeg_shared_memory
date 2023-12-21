@@ -152,8 +152,6 @@ targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
 
 The indicator calculation is based on [@manns2003].
 
-## Individual-to-group synchronization predicts memory performance
-
 ```{r}
 #| label: fig-predict-performance
 #| column: page
@@ -232,6 +230,32 @@ vis_cluster(
     )
   )
 )
+```
+
+## The scatter plot of two performance measure
+
+```{r}
+#| label: fig-scatter-mem-perf
+#| fig-cap: Visualize correlation between familiarity and recollection
+
+mem_perf |> 
+  filter(mem_type %in% names(labels_mem_type)) |> 
+  pivot_wider(
+    id_cols = subj_id,
+    names_from = mem_type,
+    values_from = dprime
+  ) |> 
+  ggplot(aes(knowadj, remember)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x) +
+  ggpmisc::stat_correlation(
+    ggpmisc::use_label(c("r", "p.value")),
+    small.r = TRUE, 
+    small.p = TRUE
+  ) +
+  scale_x_continuous(name = labels_mem_type["knowadj"]) +
+  scale_y_continuous(name = labels_mem_type["remember"]) +
+  theme_bw()
 ```
 
 # Predict Memory Content
