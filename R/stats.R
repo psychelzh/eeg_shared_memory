@@ -1,3 +1,4 @@
+# Extract statistics for each type of prediction
 extract_stats_pred_perf <- function(dat, mem_perf) {
   dat |>
     left_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
@@ -39,6 +40,8 @@ extract_stats_pred_content_partial <- function(dat, simil_content, covariate,
     )
 }
 
+
+# extract cluster-based permutation p value
 extract_cluster_p <- function(stats_cluster,
                               stats_cluster_perm,
                               col_stats = sum_t,
@@ -64,22 +67,30 @@ extract_stats_cluster <- function(stats, .by,
                                   col_p_value = p.value,
                                   col_statistic = statistic,
                                   col_window = window_id,
+                                  keep = c("all", "largest"),
                                   alpha = 0.05) {
+  keep <- match.arg(keep)
   stats |>
     # order is essential for cluster detection
     arrange({{ col_window }}) |>
-    summarise(
-      find_largest_cluster({{ col_statistic }}, {{ col_p_value }} < alpha),
+    reframe(
+      find_cluster({{ col_statistic }}, {{ col_p_value }} < alpha, keep),
       .by = {{ .by }}
     )
 }
 
-find_largest_cluster <- function(statistic, is_sig) {
-  clusters <- as_tibble(find_cluster(is_sig))
-  if (nrow(clusters) == 0) {
+find_cluster <- function(statistic, signif, keep) {
+  # https://stackoverflow.com/a/43875717/5996475
+  rle_signif <- rle(signif)
+  if (!any(rle_signif$values)) {
     return(tibble(start = NA, end = NA, sum_t = 0))
   }
-  clusters |>
+  end <- cumsum(rle_signif$lengths)
+  start <- c(1, lag(end)[-1] + 1)
+  clusters <- tibble(
+    start = start[rle_signif$values],
+    end = end[rle_signif$values]
+  ) |>
     mutate(
       sum_t = map2_dbl(
         start, end,
@@ -87,17 +98,9 @@ find_largest_cluster <- function(statistic, is_sig) {
           sum(statistic[start:end])
         }
       )
-    ) |>
-    slice_max(sum_t)
-}
-
-find_cluster <- function(x, values_keep = 1) {
-  # https://stackoverflow.com/a/43875717/5996475
-  rle_x <- rle(x)
-  end <- cumsum(rle_x$lengths)
-  start <- c(1, lag(end)[-1] + 1)
-  list(
-    start = start[rle_x$values == values_keep],
-    end = end[rle_x$values == values_keep]
-  )
+    )
+  if (keep == "largest") {
+    clusters <- slice_max(clusters, sum_t)
+  }
+  clusters
 }
