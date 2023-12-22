@@ -176,3 +176,24 @@ average_rs_trials <- function(file_parquet,
       )
   }
 }
+
+
+# prepare shuffled behavioral measures by permuting subject id
+permutate_behav <- function(data, cols_id) {
+  data_ids <- unique(data[cols_id])
+  data_ids_perm <- data_ids[sample.int(nrow(data_ids)), ]
+  suff_tmp <- "_perm"
+  names(data_ids_perm) <- paste0(cols_id, suff_tmp)
+  bind_cols(data_ids, data_ids_perm) |>
+    left_join(data, by = cols_id) |>
+    select(-all_of(cols_id)) |>
+    rename_with(
+      ~ str_remove(.x, suff_tmp),
+      ends_with(suff_tmp)
+    )
+}
+
+permutate_simil <- function(simil) {
+  perm <- sample.int(attr(simil, "Size"))
+  as.dist(as.matrix(simil)[perm, perm])
+}
