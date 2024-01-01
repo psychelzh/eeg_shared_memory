@@ -3,7 +3,7 @@ calc_mem_perf <- function(events_retrieval) {
   count_trials <- events_retrieval |>
     distinct(word_id, old_new) |>
     count(old_new, name = "n_total")
-  events_retrieval |>
+  dprimes  <- events_retrieval |>
     mutate(
       old_new = factor(old_new, c("old", "new")),
       response_type = factor(
@@ -44,26 +44,42 @@ calc_mem_perf <- function(events_retrieval) {
         contains("hr"),
         contains("far"),
         ~ qnorm(.x) - qnorm(.y),
-        .names = "dprime_{pre}"
+        .names = "{pre}"
       )
     ) |>
-    select(subj_id, starts_with("dprime")) |>
+    select(subj_id, !contains("_")) |>
     pivot_longer(
-      starts_with("dprime"),
-      names_to = c(".value", "mem_type"),
-      names_pattern = "(.+)_(.+)"
+      !subj_id,
+      names_to = "index_name",
+      values_to = "score"
     )
+  grades <- events_retrieval |>
+    filter(memory_type != 0) |>
+    mutate(
+      score = if_else(
+        old_new == "old",
+        5 - memory_type,
+        memory_type
+      )
+    ) |>
+    summarise(
+      score = mean(score),
+      .by = subj_id
+    ) |>
+    add_column(index_name = "score", .before = "score")
+  bind_rows(dprimes, grades)
 }
 
-calc_dist_mem_perf <- function(mem_perf) {
-  mem_perf |>
-    filter(mem_type %in% names(mem_types_report)) |>
+calc_dist_mem_perf <- function(mem_perf, basis = c("knowadj", "remember")) {
+  mat <- mem_perf |>
+    filter(index_name %in% basis) |>
     pivot_wider(
-      names_from = mem_type,
-      values_from = dprime
+      names_from = index_name,
+      values_from = score
     ) |>
-    column_to_rownames("subj_id") |>
-    dist(method = "euclidean")
+    column_to_rownames("subj_id")
+  # use separate expression to make a clean "call" attributes
+  dist(mat, method = "euclidean")
 }
 
 # similarity/distance of participants' responses ----

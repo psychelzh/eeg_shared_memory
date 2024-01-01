@@ -22,7 +22,7 @@ colors_cor <- c(pos = "tomato", neg = "deepskyblue")
 
 # visualize significant clusters
 vis_cluster <- function(stats, clusters_p, ...,
-                        col_stats = estimate, 
+                        col_stats = estimate,
                         col_p = p_perm,
                         facet = NULL) {
   ggplot() +
@@ -33,9 +33,9 @@ vis_cluster <- function(stats, clusters_p, ...,
     geom_rect(
       data = clusters_p,
       mapping = aes(
-        xmin = start - 0.5, 
-        xmax = end + 0.5, 
-        ymin = region_id - 0.5, 
+        xmin = start - 0.5,
+        xmax = end + 0.5,
+        ymin = region_id - 0.5,
         ymax = region_id + 0.5
       ),
       color = "black",
@@ -53,13 +53,13 @@ vis_cluster <- function(stats, clusters_p, ...,
       na.rm = TRUE
     ) +
     scale_fill_gradient2(
-      name = "Pearson's Correlation", 
-      low = colors_cor["neg"], 
+      name = "Pearson's Correlation",
+      low = colors_cor["neg"],
       high = colors_cor["pos"]
     ) +
     scale_x_continuous(
-      name = "Time (s)", 
-      labels = \(x) x * 0.02, 
+      name = "Time (s)",
+      labels = \(x) x * 0.02,
       expand = expansion(mult = .01)
     ) +
     scale_y_continuous(
@@ -140,8 +140,8 @@ targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
   scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
   scale_y_continuous(name = "Intersubject Correlation") +
   scale_color_brewer(
-    name = "Mem Type Common", 
-    palette = "Oranges", direction = -1, 
+    name = "Mem Type Common",
+    palette = "Oranges", direction = -1,
     aesthetics = c("colour", "fill")
   ) +
   facet_wrap(vars(region_id)) +
@@ -156,7 +156,7 @@ The indicator calculation is based on [@manns2003].
 #| label: fig-predict-performance
 #| column: page
 #| fig-width: 12
-#| fig-height: 6
+#| fig-height: 8
 #| fig-cap: Predict memory performance from individual-to-group synchronization
 #| fig-subcap:
 #|   - Concatenate all trials into one time series
@@ -166,8 +166,8 @@ The indicator calculation is based on [@manns2003].
 targets::tar_load(mem_perf)
 arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type %in% names(labels_mem_type)) |>
-  ggplot(aes(fisher_z, dprime, color = mem_type)) +
+  filter(index_name %in% names(labels_index_name)) |>
+  ggplot(aes(fisher_z, score, color = index_name)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
   ggpmisc::stat_correlation(
@@ -182,10 +182,10 @@ arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
   ) +
   scale_y_continuous(name = "d'") +
   facet_grid(
-    rows = vars(mem_type),
+    rows = vars(index_name),
     cols = vars(region_id),
-    labeller = labeller(mem_type = labels_mem_type),
-    scales = "free_x",
+    labeller = labeller(index_name = labels_index_name),
+    scales = "free",
   ) +
   ggpubr::theme_pubr()
 
@@ -195,8 +195,8 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
     .by = c(region_id, subj_id)
   ) |>
   inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(mem_type %in% names(labels_mem_type)) |>
-  ggplot(aes(mean_fisher_z, dprime, color = mem_type)) +
+  filter(index_name %in% names(labels_index_name)) |>
+  ggplot(aes(mean_fisher_z, score, color = index_name)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
   ggpmisc::stat_correlation(
@@ -211,22 +211,22 @@ arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
   ) +
   scale_y_continuous(name = "d'") +
   facet_grid(
-    rows = vars(mem_type),
+    rows = vars(index_name),
     cols = vars(region_id),
-    labeller = labeller(mem_type = labels_mem_type),
-    scales = "free_x",
+    labeller = labeller(index_name = labels_index_name),
+    scales = "free",
   ) +
   ggpubr::theme_pubr()
 
 vis_cluster(
   targets::tar_read(stats_pred_perf) |>
-    filter(mem_type %in% names(labels_mem_type)),
+    filter(index_name %in% names(labels_index_name)),
   targets::tar_read(clusters_p_pred_perf) |>
-    filter(mem_type %in% names(labels_mem_type)),
+    filter(index_name %in% names(labels_index_name)),
   facet = facet_grid(
-    rows = vars(mem_type), 
+    rows = vars(index_name),
     labeller = labeller(
-      mem_type = labels_mem_type
+      index_name = labels_index_name
     )
   )
 )
@@ -238,23 +238,23 @@ vis_cluster(
 #| label: fig-scatter-mem-perf
 #| fig-cap: Visualize correlation between familiarity and recollection
 
-mem_perf |> 
-  filter(mem_type %in% names(labels_mem_type)) |> 
+mem_perf |>
+  filter(index_name %in% names(labels_index_name)) |>
   pivot_wider(
     id_cols = subj_id,
-    names_from = mem_type,
-    values_from = dprime
-  ) |> 
+    names_from = index_name,
+    values_from = score
+  ) |>
   ggplot(aes(knowadj, remember)) +
   geom_point() +
   stat_smooth(method = "lm", formula = y ~ x) +
   ggpmisc::stat_correlation(
     ggpmisc::use_label(c("r", "p.value")),
-    small.r = TRUE, 
+    small.r = TRUE,
     small.p = TRUE
   ) +
-  scale_x_continuous(name = labels_mem_type["knowadj"]) +
-  scale_y_continuous(name = labels_mem_type["remember"]) +
+  scale_x_continuous(name = labels_index_name["knowadj"]) +
+  scale_y_continuous(name = labels_index_name["remember"]) +
   theme_bw()
 ```
 
@@ -266,21 +266,21 @@ mem_perf |>
 #| fig-width: 12
 #| fig-height: 6
 #| fig-cap: Direct Mantel test without controlling memory ability similarity
-#| fig-subcap: 
+#| fig-subcap:
 #|   - Without Time Window
 #|   - With Time Window
 
-targets::tar_read(stats_pred_content_nonwin) |> 
-  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |> 
+targets::tar_read(stats_pred_content_nonwin) |>
+  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |>
   ggplot(aes(region_id, statistic, fill = acq)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.5) +
   geom_text(
-    aes(label = star), 
+    aes(label = star),
     position = position_dodge(width = 0.6),
     na.rm = TRUE
   ) +
   facet_grid(
-    rows = vars(method), 
+    rows = vars(method),
     cols = vars(include),
     labeller = labeller(
       include = labels_include,
@@ -297,7 +297,7 @@ vis_cluster(
   targets::tar_read(clusters_p_pred_content),
   col_stats = statistic,
   facet = facet_grid(
-    rows = vars(method), 
+    rows = vars(method),
     cols = vars(include),
     labeller = labeller(
       include = labels_include,
@@ -313,21 +313,21 @@ vis_cluster(
 #| fig-width: 12
 #| fig-height: 6
 #| fig-cap: Partial Mantel test controlling memory ability similarity
-#| fig-subcap: 
+#| fig-subcap:
 #|   - Without Time Window
 #|   - With Time Window
 
-targets::tar_read(stats_pred_content_partial_nonwin) |> 
-  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |> 
+targets::tar_read(stats_pred_content_partial_nonwin) |>
+  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |>
   ggplot(aes(region_id, statistic, fill = acq)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.5) +
   geom_text(
-    aes(label = star), 
+    aes(label = star),
     position = position_dodge(width = 0.6),
     na.rm = TRUE
   ) +
   facet_grid(
-    rows = vars(method), 
+    rows = vars(method),
     cols = vars(include),
     labeller = labeller(
       include = labels_include,
@@ -344,7 +344,7 @@ vis_cluster(
   targets::tar_read(clusters_p_pred_content_partial),
   col_stats = statistic,
   facet = facet_grid(
-    rows = vars(method), 
+    rows = vars(method),
     cols = vars(include),
     labeller = labeller(
       include = labels_include,

@@ -3,9 +3,9 @@ extract_stats_pred_perf <- function(dat, mem_perf) {
   dat |>
     left_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
     summarise(
-      cor.test(mean_fisher_z, dprime, alternative = "greater") |>
+      cor.test(mean_fisher_z, score, alternative = "greater") |>
         broom::tidy(),
-      .by = c(region_id, window_id, mem_type)
+      .by = c(region_id, window_id, index_name)
     )
 }
 

@@ -1,6 +1,6 @@
 # permutations number: 1000 divided into 100 batches of 10 reps
 num_batches <- 100
-num_reps  <- 10
+num_reps <- 10
 
 hypers_prep_shared <- tidyr::expand_grid(
   resp_trans = "precise",
@@ -48,10 +48,10 @@ labels_acq <- c(
   "trial" = "Averaged Trial-level",
   "whole" = "Concatenated Time-series"
 )
-# burden of history: `calc_dist_mem_perf()` used the `mem_types_report` name
-labels_mem_type <- mem_types_report <- c(
+labels_index_name <- c(
   "knowadj" = "Familiarity",
-  "remember" = "Recollection"
+  "remember" = "Recollection",
+  "score" = "Memory Score"
 )
 labels_include <- c(
   "all" = "Both Items",
