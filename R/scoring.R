@@ -1,3 +1,4 @@
+# memeory ability (performance) ----
 calc_mem_perf <- function(events_retrieval) {
   count_trials <- events_retrieval |>
     distinct(word_id, old_new) |>
@@ -65,6 +66,7 @@ calc_dist_mem_perf <- function(mem_perf) {
     dist(method = "euclidean")
 }
 
+# similarity/distance of participants' responses ----
 transform_resp_precise <- function(events_retrieval) {
   events_retrieval
 }
@@ -94,4 +96,19 @@ prepare_resp_mat <- function(resp, include) {
       values_from = memory_type
     ) |>
     column_to_rownames("subj_id")
+}
+
+calc_dist_resp_mat <- function(resp_mat, method = c("sm", "gower")) {
+  switch(method,
+    sm = 1 - nomclust::sm(resp_mat),
+    gower = resp_mat |>
+      mutate(
+        across(
+          everything(),
+          # 0 means no response and should be removed here
+          \(x) factor(na_if(x, 0), ordered = TRUE)
+        )
+      ) |>
+      proxy::simil(method = "Gower")
+  )
 }

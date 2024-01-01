@@ -100,11 +100,10 @@ targets_pred_content <- tarchetypes::tar_map(
       prepare_resp_mat(include)
   ),
   tarchetypes::tar_map(
-    hypers_dist_measure,
-    names = method,
+    hypers_dist_shared,
     tar_target(
       simil_content,
-      eval(substitute(call), envir = list(.x = resp_mat)),
+      calc_dist_resp_mat(resp_mat, method = method),
       deployment = "main"
     ),
     tarchetypes::tar_map(

@@ -19,21 +19,7 @@ hypers_prep_shared <- tidyr::expand_grid(
       sprintf("resp_mat_%s_%s", resp_trans, include)
     )
   )
-hypers_dist_measure <- tibble::tribble(
-  ~method, ~call,
-  "sm", quote(1 - nomclust::sm(.x)),
-  "gower", quote(
-    .x |>
-      mutate(
-        across(
-          everything(),
-          # 0 means no response and should be removed here
-          \(x) factor(na_if(x, 0), ordered = TRUE)
-        )
-      ) |>
-      proxy::simil(method = "Gower")
-  )
-)
+hypers_dist_shared <- tibble::tibble(method = c("sm", "gower"))
 
 hypers_rs_nonwin <- tidyr::expand_grid(
   type = c("inter", "group"),
