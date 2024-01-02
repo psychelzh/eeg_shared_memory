@@ -1,9 +1,8 @@
 # paths and files ----
-config_path_dataset <- function(type, acq, region) {
+config_path_dataset <- function(type, acq) {
   fs::path(
     "data",
-    sprintf("type-%s_acq-%s", type, acq),
-    sprintf("region-%s", region)
+    sprintf("type-%s_acq-%s", type, acq)
   )
 }
 

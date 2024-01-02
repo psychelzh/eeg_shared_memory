@@ -30,26 +30,13 @@ hypers_prep_shared <- tidyr::expand_grid(
   )
 hypers_dist_shared <- tibble::tibble(method = c("sm", "gower"))
 
-hypers_rs_nonwin <- tidyr::expand_grid(
+hypers_rs <- tidyr::expand_grid(
   type = c("inter", "group"),
-  acq = c("trial", "whole")
+  acq = c("trial", "whole", "window")
 ) |>
   dplyr::mutate(
-    tar_name_file = rlang::syms(
+    tar_name_path = rlang::syms(
       sprintf("file_rs_%s_%s", type, acq)
-    )
-  )
-hypers_rs_window <- tidyr::expand_grid(
-  type = c("inter", "group"),
-  acq = c("window"),
-  region = paste0("region", 1:6)
-) |>
-  dplyr::mutate(
-    tar_name_files = rlang::syms(
-      sprintf("files_%s_%s_%s", type, acq, region)
-    ),
-    tar_name_avg_rs = rlang::syms(
-      sprintf("avg_rs_%s_%s_%s", type, acq, region)
     )
   )
 
