@@ -282,6 +282,26 @@ list(
     rsa_inter_common_trials,
     filter_shared(file_rs_inter_trial, response_shared)
   ),
+  tar_target(
+    rsa_inter_avg_by_category,
+    rsa_inter_common_trials |>
+      summarise(
+        mean_fisher_z = mean(fisher_z, na.rm = TRUE),
+        .by = c(region_id, subj_id_col, subj_id_row, word_category)
+      )
+  ),
+  tar_target(
+    rsa_inter_avg_by_resp,
+    rsa_inter_common_trials |>
+      summarise(
+        mean_fisher_z = mean(fisher_z, na.rm = TRUE),
+        .by = c(region_id, subj_id_col, subj_id_row, response_type_shared)
+      )
+  ),
+  tar_target(
+    stats_rsa_inter_by_resp,
+    extract_stats_sme(rsa_inter_avg_by_resp)
+  ),
   if (FALSE) list(
     inter_check_window,
     tarchetypes::tar_combine(

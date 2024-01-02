@@ -41,3 +41,11 @@ as_dist_vec <- function(vec, ..., size = NULL, diag = FALSE, upper = FALSE) {
     ...
   )
 }
+
+stretch <- function(mat, name_value = "val") {
+  d <- as.dist(mat)
+  combn(names(d), 2, simplify = FALSE) |>
+    do.call(rbind, args = _) |>
+    as_tibble(.name_repair = ~ c("x", "y")) |>
+    mutate("{name_value}" := as.vector(d))
+}

@@ -1,3 +1,38 @@
+# statistics for subsequent memory effect
+extract_stats_sme <- function(dat) {
+  dat |>
+    group_by(region_id) |>
+    group_modify(
+      ~ .x |>
+        rcompanion::pairwisePermutationMatrix(
+          mean_fisher_z ~ response_type_shared,
+          data = _,
+          method = "holm"
+        ) |>
+        tidy_pairwise()
+    ) |>
+    ungroup() |>
+    mutate(across(c(x, y), ~ factor(.x, c("Rem", "Know", "Unsure", "New"))))
+}
+
+tidy_pairwise <- function(m, name_p_col = "p.value") {
+  m[c("Unadjusted", "Adjusted")] |>
+    purrr::map(stretch, name_value = name_p_col) |>
+    bind_rows(.id = "type") |>
+    mutate(
+      type = case_match(
+        type,
+        "Unadjusted" ~ "",
+        "Adjusted" ~ ".adj"
+      )
+    ) |>
+    pivot_wider(
+      names_from = "type",
+      names_prefix = name_p_col,
+      values_from = all_of(name_p_col)
+    )
+}
+
 # Extract statistics for each type of prediction
 extract_stats_pred_perf <- function(dat, mem_perf) {
   dat |>

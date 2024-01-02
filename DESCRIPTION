@@ -25,6 +25,7 @@ Imports:
     proxy,
     qs,
     Rankcluster,
+    rcompanion,
     tarchetypes,
     targets,
     vegan
