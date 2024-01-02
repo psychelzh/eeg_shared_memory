@@ -16,43 +16,45 @@ if (Sys.info()["sysname"] == "Windows") {
 tar_source()
 
 # config: check inter-subject similarity ----
-# compare abstract and concrete and subsequent memory effect
-inter_check_window <- tarchetypes::tar_map(
-  hypers_rs_window |>
-    dplyr::filter(type == "inter"),
-  names = c(type, acq, region),
-  tar_target(
-    rsa_inter_common_trials,
-    lapply(
-      tar_name_files,
-      filter_shared,
-      response_shared
+if (FALSE) { # we do not need to compare windowed results
+  # compare abstract and concrete and subsequent memory effect
+  inter_check_window <- tarchetypes::tar_map(
+    hypers_rs_window |>
+      dplyr::filter(type == "inter"),
+    names = c(type, acq, region),
+    tar_target(
+      rsa_inter_common_trials,
+      lapply(
+        tar_name_files,
+        filter_shared,
+        response_shared
+      ),
+      pattern = map(tar_name_files)
     ),
-    pattern = map(tar_name_files)
-  ),
-  tar_target(
-    summary_word_cat,
-    lapply(
-      rsa_inter_common_trials,
-      summarise,
-      mean_se(fisher_z),
-      .by = c(region_id, word_category, window_id)
-    ) |>
-      list_rbind(),
-    pattern = map(rsa_inter_common_trials)
-  ),
-  tar_target(
-    summary_word_mem,
-    lapply(
-      rsa_inter_common_trials,
-      summarise,
-      mean_se(fisher_z),
-      .by = c(region_id, response_type_shared, window_id)
-    ) |>
-      list_rbind(),
-    pattern = map(rsa_inter_common_trials)
+    tar_target(
+      summary_word_cat,
+      lapply(
+        rsa_inter_common_trials,
+        summarise,
+        mean_se(fisher_z),
+        .by = c(region_id, word_category, window_id)
+      ) |>
+        list_rbind(),
+      pattern = map(rsa_inter_common_trials)
+    ),
+    tar_target(
+      summary_word_mem,
+      lapply(
+        rsa_inter_common_trials,
+        summarise,
+        mean_se(fisher_z),
+        .by = c(region_id, response_type_shared, window_id)
+      ) |>
+        list_rbind(),
+      pattern = map(rsa_inter_common_trials)
+    )
   )
-)
+}
 
 # config: predict memory performance ----
 targets_pred_perf <- tarchetypes::tar_map(
@@ -90,140 +92,142 @@ targets_pred_perf <- tarchetypes::tar_map(
 )
 
 # config: predict shared memory content ----
-targets_pred_content <- tarchetypes::tar_map(
-  hypers_prep_shared,
-  names = c(resp_trans, include),
-  tar_target(
-    resp_mat,
-    events_retrieval |>
-      transform_resp() |>
-      prepare_resp_mat(include)
-  ),
-  tarchetypes::tar_map(
-    hypers_dist_shared,
+if (FALSE)  # now for SJT
+  targets_pred_content <- tarchetypes::tar_map(
+    hypers_prep_shared,
+    names = c(resp_trans, include),
     tar_target(
-      simil_content,
-      calc_dist_resp_mat(resp_mat, method = method),
-      deployment = "main"
+      resp_mat,
+      events_retrieval |>
+        transform_resp() |>
+        prepare_resp_mat(include)
     ),
     tarchetypes::tar_map(
-      hypers_rs_nonwin |>
-        dplyr::filter(type == "inter", acq == "trial"),
-      names = c(type, acq),
+      hypers_dist_shared,
       tar_target(
-        stats_pred_content,
-        average_rs_trials(tar_name_file) |>
-          extract_stats_pred_content(simil_content, mean_fisher_z)
+        simil_content,
+        calc_dist_resp_mat(resp_mat, method = method),
+        deployment = "main"
       ),
-      tar_target(
-        stats_pred_content_partial,
-        average_rs_trials(tar_name_file) |>
-          extract_stats_pred_content_partial(
-            simil_content, dist_mem_perf,
-            col_rs = mean_fisher_z
-          )
-      )
-    ),
-    tarchetypes::tar_map(
-      hypers_rs_nonwin |>
-        dplyr::filter(type == "inter", acq == "whole"),
-      names = c(type, acq),
-      tar_target(
-        stats_pred_content,
-        arrow::read_parquet(tar_name_file) |>
-          extract_stats_pred_content(simil_content, fisher_z)
-      ),
-      tar_target(
-        stats_pred_content_partial,
-        arrow::read_parquet(tar_name_file) |>
-          extract_stats_pred_content_partial(
-            simil_content, dist_mem_perf,
-            col_rs = fisher_z
-          )
-      )
-    ),
-    tarchetypes::tar_map(
-      hypers_rs_window |>
-        dplyr::filter(type == "inter"),
-      names = c(type, acq, region),
-      # mantel test
-      tar_target(
-        stats_pred_content,
-        extract_stats_pred_content(
-          tar_name_avg_rs,
-          simil_content,
-          mean_fisher_z
-        )
-      ),
-      tarchetypes::tar_rep(
-        stats_pred_content_perm,
-        extract_stats_pred_content(
-          tar_name_avg_rs,
-          permutate_simil(simil_content),
-          mean_fisher_z
+      tarchetypes::tar_map(
+        hypers_rs_nonwin |>
+          dplyr::filter(type == "inter", acq == "trial"),
+        names = c(type, acq),
+        tar_target(
+          stats_pred_content,
+          average_rs_trials(tar_name_file) |>
+            extract_stats_pred_content(simil_content, mean_fisher_z)
         ),
-        batches = num_batches,
-        reps = num_reps
-      ),
-      tar_target(
-        clusters_p_pred_content,
-        extract_cluster_p(
-          extract_stats_cluster(
-            stats_pred_content,
-            region_id,
-            col_p_value = signif
-          ),
-          extract_stats_cluster(
-            stats_pred_content_perm,
-            # grouping variables generated by targets' batches start with "tar"
-            c(region_id, starts_with("tar")),
-            col_p_value = signif,
-            keep = "largest"
-          )
+        tar_target(
+          stats_pred_content_partial,
+          average_rs_trials(tar_name_file) |>
+            extract_stats_pred_content_partial(
+              simil_content, dist_mem_perf,
+              col_rs = mean_fisher_z
+            )
         )
       ),
-      # partial mantel test
-      tar_target(
-        stats_pred_content_partial,
-        extract_stats_pred_content_partial(
-          tar_name_avg_rs,
-          simil_content,
-          dist_mem_perf,
-          mean_fisher_z
-        )
-      ),
-      tarchetypes::tar_rep(
-        stats_pred_content_perm_partial,
-        extract_stats_pred_content_partial(
-          tar_name_avg_rs,
-          permutate_simil(simil_content),
-          dist_mem_perf,
-          mean_fisher_z
+      tarchetypes::tar_map(
+        hypers_rs_nonwin |>
+          dplyr::filter(type == "inter", acq == "whole"),
+        names = c(type, acq),
+        tar_target(
+          stats_pred_content,
+          arrow::read_parquet(tar_name_file) |>
+            extract_stats_pred_content(simil_content, fisher_z)
         ),
-        batches = num_batches,
-        reps = num_reps
+        tar_target(
+          stats_pred_content_partial,
+          arrow::read_parquet(tar_name_file) |>
+            extract_stats_pred_content_partial(
+              simil_content, dist_mem_perf,
+              col_rs = fisher_z
+            )
+        )
       ),
-      tar_target(
-        clusters_p_pred_content_partial,
-        extract_cluster_p(
-          extract_stats_cluster(
-            stats_pred_content_partial,
-            region_id,
-            col_p_value = signif
+      tarchetypes::tar_map(
+        hypers_rs_window |>
+          dplyr::filter(type == "inter"),
+        names = c(type, acq, region),
+        # mantel test
+        tar_target(
+          stats_pred_content,
+          extract_stats_pred_content(
+            tar_name_avg_rs,
+            simil_content,
+            mean_fisher_z
+          )
+        ),
+        tarchetypes::tar_rep(
+          stats_pred_content_perm,
+          extract_stats_pred_content(
+            tar_name_avg_rs,
+            permutate_simil(simil_content),
+            mean_fisher_z
           ),
-          extract_stats_cluster(
-            stats_pred_content_perm_partial,
-            # grouping variables generated by targets' batches start with "tar"
-            c(region_id, starts_with("tar")),
-            col_p_value = signif,
-            keep = "largest"
+          batches = num_batches,
+          reps = num_reps
+        ),
+        tar_target(
+          clusters_p_pred_content,
+          extract_cluster_p(
+            extract_stats_cluster(
+              stats_pred_content,
+              region_id,
+              col_p_value = signif
+            ),
+            extract_stats_cluster(
+              stats_pred_content_perm,
+              # grouping variables generated by targets' batches start with "tar"
+              c(region_id, starts_with("tar")),
+              col_p_value = signif,
+              keep = "largest"
+            )
+          )
+        ),
+        # partial mantel test
+        tar_target(
+          stats_pred_content_partial,
+          extract_stats_pred_content_partial(
+            tar_name_avg_rs,
+            simil_content,
+            dist_mem_perf,
+            mean_fisher_z
+          )
+        ),
+        tarchetypes::tar_rep(
+          stats_pred_content_perm_partial,
+          extract_stats_pred_content_partial(
+            tar_name_avg_rs,
+            permutate_simil(simil_content),
+            dist_mem_perf,
+            mean_fisher_z
+          ),
+          batches = num_batches,
+          reps = num_reps
+        ),
+        tar_target(
+          clusters_p_pred_content_partial,
+          extract_cluster_p(
+            extract_stats_cluster(
+              stats_pred_content_partial,
+              region_id,
+              col_p_value = signif
+            ),
+            extract_stats_cluster(
+              stats_pred_content_perm_partial,
+              # grouping variables generated by targets' batches start with "tar"
+              c(region_id, starts_with("tar")),
+              col_p_value = signif,
+              keep = "largest"
+            )
           )
         )
       )
     )
   )
-)
 
+# main targets definition ----
 list(
   # prepare files and paths ----
   tarchetypes::tar_file_read(
@@ -278,14 +282,16 @@ list(
     rsa_inter_common_trials,
     filter_shared(file_rs_inter_trial, response_shared)
   ),
-  inter_check_window,
-  tarchetypes::tar_combine(
-    summary_word_cat_rsa_inter_common_trials_window,
-    inter_check_window$summary_word_cat
-  ),
-  tarchetypes::tar_combine(
-    summary_word_mem_rsa_inter_common_trials_window,
-    inter_check_window$summary_word_mem
+  if (FALSE) list(
+    inter_check_window,
+    tarchetypes::tar_combine(
+      summary_word_cat_rsa_inter_common_trials_window,
+      inter_check_window$summary_word_cat
+    ),
+    tarchetypes::tar_combine(
+      summary_word_mem_rsa_inter_common_trials_window,
+      inter_check_window$summary_word_mem
+    )
   ),
   # predict memory performance ----
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
@@ -300,71 +306,73 @@ list(
     targets_pred_perf$clusters_p_pred_perf
   ),
   # predict shared memory content ----
-  targets_pred_content,
-  tar_combine_with_meta(
-    simil_content,
-    select_list(targets_pred_content, starts_with("simil_content")),
-    cols_targets = c("method", "resp_trans", "include"),
-    fun_pre = ~ tibble(mat = list(.x)),
-    deployment = "main"
-  ),
-  # mantel test
-  tar_combine_with_meta(
-    stats_pred_content_nonwin,
-    select_list(
-      targets_pred_content,
-      starts_with("stats_pred_content_inter") & !contains("window")
+  if (FALSE) list( # now for SJT
+    targets_pred_content,
+    tar_combine_with_meta(
+      simil_content,
+      select_list(targets_pred_content, starts_with("simil_content")),
+      cols_targets = c("method", "resp_trans", "include"),
+      fun_pre = ~ tibble(mat = list(.x)),
+      deployment = "main"
     ),
-    cols_targets = c("type", "acq", "method", "resp_trans", "include"),
-    prefix = "stats_pred_content"
-  ),
-  tar_combine_with_meta(
-    stats_pred_content_window,
-    select_list(
-      targets_pred_content,
-      starts_with("stats_pred_content_inter_window")
+    # mantel test
+    tar_combine_with_meta(
+      stats_pred_content_nonwin,
+      select_list(
+        targets_pred_content,
+        starts_with("stats_pred_content_inter") & !contains("window")
+      ),
+      cols_targets = c("type", "acq", "method", "resp_trans", "include"),
+      prefix = "stats_pred_content"
     ),
-    cols_targets = c(
-      "type", "acq", "region", "method", "resp_trans", "include"
+    tar_combine_with_meta(
+      stats_pred_content_window,
+      select_list(
+        targets_pred_content,
+        starts_with("stats_pred_content_inter_window")
+      ),
+      cols_targets = c(
+        "type", "acq", "region", "method", "resp_trans", "include"
+      ),
+      prefix = "stats_pred_content"
     ),
-    prefix = "stats_pred_content"
-  ),
-  tar_combine_with_meta(
-    clusters_p_pred_content,
-    select_list(
-      targets_pred_content,
-      starts_with("clusters_p_pred_content_inter_window")
+    tar_combine_with_meta(
+      clusters_p_pred_content,
+      select_list(
+        targets_pred_content,
+        starts_with("clusters_p_pred_content_inter_window")
+      ),
+      cols_targets = c("type", "acq", "region", "method", "resp_trans", "include")
     ),
-    cols_targets = c("type", "acq", "region", "method", "resp_trans", "include")
-  ),
-  # partial mantel test
-  tar_combine_with_meta(
-    stats_pred_content_partial_nonwin,
-    select_list(
-      targets_pred_content,
-      starts_with("stats_pred_content_partial_inter") & !contains("window")
+    # partial mantel test
+    tar_combine_with_meta(
+      stats_pred_content_partial_nonwin,
+      select_list(
+        targets_pred_content,
+        starts_with("stats_pred_content_partial_inter") & !contains("window")
+      ),
+      cols_targets = c("type", "acq", "method", "resp_trans", "include"),
+      prefix = "stats_pred_content_partial"
     ),
-    cols_targets = c("type", "acq", "method", "resp_trans", "include"),
-    prefix = "stats_pred_content_partial"
-  ),
-  tar_combine_with_meta(
-    stats_pred_content_partial_window,
-    select_list(
-      targets_pred_content,
-      starts_with("stats_pred_content_partial_inter_window")
+    tar_combine_with_meta(
+      stats_pred_content_partial_window,
+      select_list(
+        targets_pred_content,
+        starts_with("stats_pred_content_partial_inter_window")
+      ),
+      cols_targets = c(
+        "type", "acq", "region", "method", "resp_trans", "include"
+      ),
+      prefix = "stats_pred_content_partial"
     ),
-    cols_targets = c(
-      "type", "acq", "region", "method", "resp_trans", "include"
-    ),
-    prefix = "stats_pred_content_partial"
-  ),
-  tar_combine_with_meta(
-    clusters_p_pred_content_partial,
-    select_list(
-      targets_pred_content,
-      starts_with("clusters_p_pred_content_partial_inter_window")
-    ),
-    cols_targets = c("type", "acq", "region", "method", "resp_trans", "include")
+    tar_combine_with_meta(
+      clusters_p_pred_content_partial,
+      select_list(
+        targets_pred_content,
+        starts_with("clusters_p_pred_content_partial_inter_window")
+      ),
+      cols_targets = c("type", "acq", "region", "method", "resp_trans", "include")
+    )
   ),
   # render website ----
   tarchetypes::tar_quarto(website)
