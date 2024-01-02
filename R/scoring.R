@@ -48,6 +48,7 @@ calc_mem_perf <- function(events_retrieval) {
       )
     ) |>
     select(subj_id, !contains("_")) |>
+    mutate(avg_rk = (remember + knowadj) / 2) |>
     pivot_longer(
       !subj_id,
       names_to = "index_name",
@@ -66,7 +67,7 @@ calc_mem_perf <- function(events_retrieval) {
       score = mean(score),
       .by = subj_id
     ) |>
-    add_column(index_name = "score", .before = "score")
+    add_column(index_name = "avg_score", .before = "score")
   bind_rows(dprimes, grades)
 }
 

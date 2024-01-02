@@ -2,6 +2,15 @@
 num_batches <- 100
 num_reps <- 10
 
+hypers_pred_perf <- tibble::tibble(
+  index_name = c(
+    "remember",
+    "knowadj",
+    "avg_rk",
+    "avg_score"
+  )
+)
+
 hypers_prep_shared <- tidyr::expand_grid(
   resp_trans = "precise",
   # c(
@@ -51,7 +60,8 @@ labels_acq <- c(
 labels_index_name <- c(
   "knowadj" = "Familiarity",
   "remember" = "Recollection",
-  "score" = "Memory Score"
+  "avg_rk" = "Average F/R",
+  "avg_score" = "Memory Score"
 )
 labels_include <- c(
   "all" = "Both Items",
