@@ -2,13 +2,12 @@
 num_batches <- 100
 num_reps <- 10
 
-hypers_pred_perf <- tibble::tibble(
-  index_name = c(
-    "remember",
-    "knowadj",
-    "avg_rk",
-    "avg_score"
-  )
+hypers_pred_perf <- tibble::tribble(
+  ~index_name, ~index_name_sjt,
+  "remember", "rem_dp",
+  "knowadj", "know_dp_adj",
+  "avg_rk", "mean_rem_know",
+  "avg_score", "sum_mean"
 )
 
 hypers_prep_shared <- tidyr::expand_grid(

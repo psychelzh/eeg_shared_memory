@@ -91,7 +91,6 @@ average_rs_trials <- function(file_parquet,
   }
 }
 
-
 # prepare shuffled behavioral measures by permuting subject id
 permutate_behav <- function(data, cols_id) {
   data_ids <- unique(data[cols_id])

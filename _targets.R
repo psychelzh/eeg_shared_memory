@@ -59,6 +59,7 @@ if (FALSE) { # we do not need to compare windowed results
 # config: predict memory performance ----
 targets_pred_perf <- tarchetypes::tar_map(
   hypers_pred_perf,
+  names = index_name,
   tar_target(
     cur_mem_perf,
     filter(mem_perf, .data[["index_name"]] == index_name)
@@ -115,6 +116,49 @@ targets_pred_content <- tarchetypes::tar_map(
           covariate = covariate,
           keep_perms = TRUE
         )
+      )
+    )
+  )
+)
+
+# config: representational space ----
+targets_rps <- c(
+  tarchetypes::tar_map(
+    hypers_pred_perf,
+    names = index_name,
+    tar_target(
+      file_pred_perf_rps,
+      config_files_pred_perf_rps(index_name_sjt)
+    ),
+    tar_target(
+      stats_pred_perf_rps,
+      extract_cluster_p_rps(
+        file_pred_perf_rps,
+        index_name = index_name
+      )
+    )
+  ),
+  tarchetypes::tar_map(
+    hypers_dist_shared,
+    tar_target(
+      file_pred_content_rps_real,
+      config_files_pred_content_rps(method, type = "real")
+    ),
+    tar_target(
+      file_pred_content_rps_perm,
+      config_files_pred_content_rps(method, type = "perm")
+    ),
+    tar_target(
+      clusters_p_pred_content_rps,
+      extract_cluster_p(
+        read_csv(file_pred_content_rps_real, show_col_types = FALSE) |>
+          rename(statistic.r = statistic_r),
+        read_csv(file_pred_content_rps_perm, show_col_types = FALSE),
+        cols_region = region,
+        cols_group = c("method", "include", "mantel_type"),
+        cols_perm = perm_id,
+        col_window = time,
+        col_statistic = statistic.r
       )
     )
   )
@@ -249,6 +293,24 @@ list(
       col_statistic = statistic.r
     ),
     pattern = map(stats_pred_content_real, stats_pred_content_perm)
+  ),
+  # representational space ----
+  targets_rps,
+  tarchetypes::tar_combine(
+    stats_pred_perf_rps,
+    targets_rps$stats_pred_perf_rps,
+    command = {
+      res <- list(!!!.x)
+      setNames(nm = c("stats_real", "clusters_p")) |>
+        purrr::map(
+          ~ purrr::map(res, .x) |>
+            bind_rows()
+        )
+    }
+  ),
+  tarchetypes::tar_combine(
+    clusters_p_pred_content_rps,
+    targets_rps$clusters_p_pred_content_rps
   ),
   # render website ----
   tarchetypes::tar_quarto(website)
