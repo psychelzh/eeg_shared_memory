@@ -45,37 +45,36 @@ extract_stats_pred_perf <- function(dat, mem_perf) {
     )
 }
 
-extract_stats_pred_content <- function(dat, simil_content, col_rs) {
+extract_stats_pred_content <- function(dat, simil_content, ...,
+                                       covariate = NULL,
+                                       col_rs = mean_fisher_z,
+                                       keep_perms = FALSE) {
   dat |>
     mutate(
       map(
         {{ col_rs }},
-        ~ vegan::mantel(as_dist_vec(.x), simil_content) |>
-          unclass() |>
-          select_list(all_of(c("statistic", "signif"))) |>
-          as_tibble_row()
+        ~ stats_mantel(
+          as_dist_vec(.x), simil_content, covariate,
+          keep_perms = keep_perms
+        )
       ) |>
         list_rbind(),
       .keep = "unused"
     )
 }
 
-extract_stats_pred_content_partial <- function(dat, simil_content, covariate,
-                                               col_rs) {
-  dat |>
-    mutate(
-      map(
-        {{ col_rs }},
-        ~ vegan::mantel.partial(as_dist_vec(.x), simil_content, covariate) |>
-          unclass() |>
-          select_list(all_of(c("statistic", "signif"))) |>
-          as_tibble_row()
-      ) |>
-        list_rbind(),
-      .keep = "unused"
-    )
+stats_mantel <- function(x, y, z = NULL, ..., keep_perms = FALSE) {
+  stats <- if (is.null(z)) {
+    vegan::mantel(x, y, ...)
+  } else {
+    vegan::mantel.partial(x, y, z, ...)
+  }
+  stats_tbl <- as_tibble_row(stats[c("statistic", "signif")])
+  if (keep_perms) {
+    stats_tbl$perm <- list(stats$perm)
+  }
+  stats_tbl
 }
-
 
 # extract cluster-based permutation p value
 extract_cluster_p <- function(stats_real, stats_perm) {
