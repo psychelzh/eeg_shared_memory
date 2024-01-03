@@ -17,6 +17,7 @@ extract_stats_sme <- function(dat) {
 
 tidy_pairwise <- function(m, name_p_col = "p.value") {
   m[c("Unadjusted", "Adjusted")] |>
+    purrr::map(t) |> # the matrix for unadjusted is upper triangle
     purrr::map(stretch, name_value = name_p_col) |>
     bind_rows(.id = "type") |>
     mutate(
