@@ -3,7 +3,7 @@ calc_mem_perf <- function(events_retrieval) {
   count_trials <- events_retrieval |>
     distinct(word_id, old_new) |>
     count(old_new, name = "n_total")
-  dprimes  <- events_retrieval |>
+  events_clean <- events_retrieval |>
     mutate(
       old_new = factor(old_new, c("old", "new")),
       response_type = factor(
@@ -11,49 +11,39 @@ calc_mem_perf <- function(events_retrieval) {
         c("remember", "know", "unsure", "new")
       )
     ) |>
-    filter(memory_type > 0) |>
-    count(subj_id, response_type, old_new, .drop = FALSE) |>
-    left_join(count_trials, by = "old_new") |>
-    mutate(
-      rate = (n + 0.5) / (n_total + 1),
-      .by = c(subj_id, response_type)
-    ) |>
-    filter(response_type %in% c("remember", "know")) |>
-    mutate(
-      type = case_match(
-        old_new,
-        "old" ~ "hr",
-        "new" ~ "far"
-      )
-    ) |>
-    pivot_wider(
-      id_cols = subj_id,
-      names_from = c(response_type, type),
-      values_from = rate
+    filter(memory_type > 0)
+  dprime_precise <- calc_dprime(
+    events_clean, count_trials,
+    types_signal = c("remember", "know")
+  )
+  dprime_adj <- dprime_precise |>
+    summarise(
+      across(
+        c(hr, far),
+        ~ .x[response_type == "know"] /
+          (1 - .x[response_type == "remember"])
+      ),
+      .by = subj_id
     ) |>
     mutate(
-      dplyover::across2(
-        contains("know"),
-        contains("remember"),
-        ~ .x / (1 - .y),
-        .names = "knowadj_{suf}"
-      )
-    ) |>
-    mutate(
-      dplyover::across2(
-        contains("hr"),
-        contains("far"),
-        ~ qnorm(.x) - qnorm(.y),
-        .names = "{pre}"
-      )
-    ) |>
-    select(subj_id, !contains("_")) |>
-    mutate(avg_rk = (remember + knowadj) / 2) |>
-    pivot_longer(
-      !subj_id,
-      names_to = "index_name",
-      values_to = "score"
+      response_type = "knowadj",
+      dprime = qnorm(hr) - qnorm(far)
     )
+  dprime_avg <- bind_rows(dprime_precise, dprime_adj) |>
+    summarise(
+      dprime = mean(dprime[response_type != "know"]),
+      .by = subj_id
+    ) |>
+    mutate(response_type = "avg_rk")
+  dprime_coarse <- events_clean |>
+    mutate(
+      response_type = fct_collapse(
+        response_type,
+        old = c("remember", "know"),
+        new = c("unsure", "new")
+      )
+    ) |>
+    calc_dprime(count_trials, types_signal = "old")
   grades <- events_retrieval |>
     filter(memory_type != 0) |>
     mutate(
@@ -68,7 +58,14 @@ calc_mem_perf <- function(events_retrieval) {
       .by = subj_id
     ) |>
     add_column(index_name = "avg_score", .before = "score")
-  bind_rows(dprimes, grades)
+  bind_rows(
+    dprime_precise,
+    dprime_adj,
+    dprime_avg,
+    dprime_coarse
+  ) |>
+    select(subj_id, index_name = response_type, score = dprime) |>
+    bind_rows(grades)
 }
 
 calc_dist_mem_perf <- function(mem_perf, basis = c("knowadj", "remember")) {
@@ -128,4 +125,29 @@ calc_dist_resp_mat <- function(resp_mat, method = c("sm", "gower")) {
       ) |>
       proxy::simil(method = "Gower")
   )
+}
+
+# helper functions ----
+calc_dprime <- function(data, count_trials, types_signal) {
+  data |>
+    count(subj_id, response_type, old_new, .drop = FALSE) |>
+    left_join(count_trials, by = "old_new") |>
+    mutate(
+      rate = (n + 0.5) / (n_total + 1),
+      .by = c(subj_id, response_type)
+    ) |>
+    filter(response_type %in% types_signal) |>
+    mutate(
+      type = case_match(
+        old_new,
+        "old" ~ "hr",
+        "new" ~ "far"
+      )
+    ) |>
+    pivot_wider(
+      id_cols = c(subj_id, response_type),
+      names_from = type,
+      values_from = rate
+    ) |>
+    mutate(dprime = qnorm(hr) - qnorm(far))
 }
