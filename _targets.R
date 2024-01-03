@@ -218,6 +218,38 @@ list(
     cols_targets = c("mantel", "method", "resp_trans", "include"),
     prefix = "stats_pred_content"
   ),
+  tar_target(
+    file_stats_pred_content_real,
+    "data/pred_content/res_par-mantel_isc_rps_trial_avg_smc_gower.csv",
+    format = "file"
+  ),
+  tarchetypes::tar_group_by(
+    stats_pred_content_real,
+    read_csv(file_stats_pred_content_real, show_col_types = FALSE) |>
+      rename(statistic.r = statistic_r),
+    mantel_type, method, include
+  ),
+  tar_target(
+    file_stats_pred_content_perm,
+    "data/pred_content/res_par-mantel_isc_rps_trial-avg_smc_rand1000_gower.csv",
+    format = "file"
+  ),
+  tarchetypes::tar_group_by(
+    stats_pred_content_perm,
+    read_csv(file_stats_pred_content_perm, show_col_types = FALSE),
+    mantel_type, method, include
+  ),
+  tar_target(
+    clusters_p_pred_content,
+    extract_cluster_p(
+      stats_pred_content_real,
+      stats_pred_content_perm,
+      cols_group = c(method, include, mantel_type),
+      cols_perm = perm_id,
+      col_statistic = statistic.r
+    ),
+    pattern = map(stats_pred_content_real, stats_pred_content_perm)
+  ),
   # render website ----
   tarchetypes::tar_quarto(website)
 )
