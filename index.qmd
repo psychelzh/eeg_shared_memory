@@ -16,15 +16,48 @@ bibliography: references.bib
 #| label: setup
 
 devtools::load_all()
+library(patchwork)
+
+base_family <- "Gill Sans MT"
 
 # colors used for correlation values mapping
-colors_cor <- c(pos = "tomato", neg = "deepskyblue")
+colors_cor <- c(pos = "#CA6628", neg = "#018E3C")
+
+# visualize scatter
+vis_scatter <- function(data, use, ylab, ..., facet = NULL) {
+  labels_used <- labels_index_name[use]
+  data |> 
+    filter(index_name %in% use) |> 
+    ggplot(aes(mean_fisher_z, score)) +
+    geom_point() +
+    stat_smooth(method = "lm", formula = y ~ x) +
+    ggpmisc::stat_correlation(
+      ggpmisc::use_label(c("r", "p.value")),
+      small.r = TRUE,
+      small.p = TRUE
+    ) +
+    scale_x_continuous(
+      name = "Average Individual-to-Group Similarity",
+      breaks = scales::breaks_pretty(n = 4)
+    ) +
+    scale_y_continuous(name = ylab) +
+    facet +
+    ggpubr::theme_pubr(base_family = base_family) +
+    theme(axis.line = element_line(linewidth = 1))
+}
 
 # visualize significant clusters
 vis_cluster <- function(stats, clusters_p, ...,
+                        subset = NULL,
+                        thresh_p = 0.05,
                         col_stats = estimate,
                         col_p = p_perm,
                         facet = NULL) {
+  if (!missing(subset)) {
+    stats <- filter(stats, {{ subset }})
+    clusters_p <- filter(clusters_p, {{ subset }})
+  }
+  clusters_p <- filter(clusters_p, {{ col_p }} < thresh_p)
   ggplot() +
     geom_raster(
       data = stats,
@@ -47,7 +80,11 @@ vis_cluster <- function(stats, clusters_p, ...,
       mapping = aes(
         (start + end) / 2,
         region_id,
-        label = rstatix::p_mark_significant({{ col_p }})
+        label = rstatix::p_format(
+          {{ col_p }}, 
+          accuracy = 0.001
+        ) |> 
+          rstatix::p_mark_significant()
       ),
       color = "blue",
       na.rm = TRUE
@@ -60,16 +97,20 @@ vis_cluster <- function(stats, clusters_p, ...,
     scale_x_continuous(
       name = "Time (s)",
       labels = \(x) x * 0.02,
-      expand = expansion(mult = .01)
+      expand = expansion()
     ) +
     scale_y_continuous(
       name = "Region",
       breaks = scales::breaks_width(1),
-      expand = expansion(mult = .01)
+      expand = expansion()
     ) +
     facet +
-    theme_classic() +
-    theme(legend.position = "top")
+    ggpubr::theme_pubr(base_family = base_family) +
+    theme(
+      strip.background = element_blank(),
+      panel.spacing = unit(1, "lines"),
+      axis.line = element_blank()
+    )
 }
 ```
 
@@ -84,29 +125,29 @@ vis_cluster <- function(stats, clusters_p, ...,
 #|   - Without time window
 #|   - With time window [^window]
 
-targets::tar_read(rsa_inter_common_trials) |>
+targets::tar_read(rsa_inter_avg_by_category) |>
   summarise(
-    mean_se(fisher_z),
+    mean_se(mean_fisher_z),
     .by = c(region_id, word_category)
   ) |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
-  geom_col(aes(fill = word_category), position = position_dodge(width = 0.4), width = 0.4) +
-  geom_errorbar(aes(group = word_category), position = position_dodge(width = 0.4), width = 0) +
+  geom_col(
+    aes(fill = word_category), 
+    position = position_dodge(width = 0.8), 
+    width = 0.7
+  ) +
+  geom_errorbar(
+    aes(group = word_category), 
+    position = position_dodge(width = 0.8),
+    linewidth = 1,
+    width = 0.2
+  ) +
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  ggsci::scale_fill_d3(name = "Word Type") +
-  ggpubr::theme_pubclean()
-
-targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
-  ggplot(aes(window_id, y, ymax = ymax, ymin = ymin)) +
-  geom_line(aes(color = word_category, group = word_category)) +
-  geom_ribbon(aes(fill = word_category), alpha = 0.5) +
-  scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
-  scale_y_continuous(name = "Intersubject Correlation") +
-  ggsci::scale_fill_d3(name = "Word Type") +
-  ggsci::scale_color_d3(name = "Word Type") +
-  facet_wrap(vars(region_id)) +
-  ggpubr::theme_pubclean()
+  scale_fill_grey(name = NULL, labels = str_to_title) +
+  ggpubr::theme_pubr(base_size = 24, base_family = base_family) +
+  theme(axis.line = element_line(linewidth = 1))
+ggsave("publish/concr-vs-abstr.png", width = 10, height = 6)
 ```
 
 [^window]: Step size: 20 ms; Window length: 100 ms. The same below.
@@ -120,32 +161,57 @@ targets::tar_read(summary_word_cat_rsa_inter_common_trials_window) |>
 #|   - Whole trial time series
 #|   - With time window
 
-targets::tar_read(rsa_inter_common_trials) |>
+p_upper <- targets::tar_read(rsa_inter_avg_by_resp) |>
   summarise(
-    mean_se(fisher_z),
+    mean_se(mean_fisher_z),
     .by = c(region_id, response_type_shared)
   ) |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
-  geom_col(aes(fill = response_type_shared), position = position_dodge(width = 0.4), width = 0.4) +
-  geom_errorbar(aes(group = response_type_shared), position = position_dodge(width = 0.4), width = 0) +
+  geom_col(
+    aes(fill = response_type_shared), 
+    position = position_dodge(width = 0.9), 
+    width = 0.9
+  ) +
+  geom_errorbar(
+    aes(group = response_type_shared), 
+    position = position_dodge(width = 0.9), 
+    linewidth = 1,
+    width = 0.2
+  ) +
   scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
   scale_y_continuous(name = "Intersubject Correlation") +
-  scale_fill_brewer(name = "Mem Type Common", palette = "Oranges", direction = -1) +
-  ggpubr::theme_pubclean()
-
-targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
-  ggplot(aes(window_id, y, ymax = ymax, ymin = ymin)) +
-  geom_line(aes(color = response_type_shared, group = response_type_shared)) +
-  geom_ribbon(aes(fill = response_type_shared)) +
-  scale_x_continuous(name = "Time (ms)", labels = \(x) x * 20) +
-  scale_y_continuous(name = "Intersubject Correlation") +
-  scale_color_brewer(
-    name = "Mem Type Common",
-    palette = "Oranges", direction = -1,
-    aesthetics = c("colour", "fill")
+  scale_fill_brewer(name = NULL, palette = "Greens", direction = -1) +
+  ggpubr::theme_pubr(base_size = 24, base_family = base_family) +
+  theme(axis.line = element_line(linewidth = 1))
+ggsave("publish/sme_bars.png", p_upper, width = 8, height = 6)
+stats <- targets::tar_read(stats_rsa_inter_by_resp) |> 
+  rstatix::add_significance(p.col = "p.value.adj") |> 
+  mutate(p.value.adj.signif = str_remove(p.value.adj.signif, "ns")) |> 
+  complete(x, y, nesting(region_id))
+p_lower <- stats |> 
+  ggplot(aes(x, y)) +
+  geom_raster(aes(fill = p.value.adj)) +
+  geom_text(aes(label = p.value.adj.signif), size = 2) +
+  geom_text(
+    data = stats |> 
+      filter(x == y) |> 
+      mutate(label = as.character(x)),
+    mapping = aes(x, y, label = label), 
+    size = 2.5,
+    hjust = 0.35
   ) +
-  facet_wrap(vars(region_id)) +
-  ggpubr::theme_pubclean()
+  facet_grid(cols = vars(region_id)) +
+  scale_fill_gradient(
+    na.value = "#EDF8E9", 
+    low = "grey66", high = "grey92", 
+    guide = "none"
+  ) +
+  coord_fixed() +
+  theme_void(base_size = 8, base_family = base_family) +
+  theme(strip.text = element_blank())
+ggsave("publish/sme_pairwise.png", p_lower, width = 8, height = 2)
+p_upper / p_lower + plot_layout(heights = c(2, 1))
+ggsave("publish/sme.png", width = 8, height = 5)
 ```
 
 # Predict Memory ability
@@ -153,109 +219,160 @@ targets::tar_read(summary_word_mem_rsa_inter_common_trials_window) |>
 The indicator calculation is based on [@manns2003].
 
 ```{r}
-#| label: fig-predict-performance
+data_perf <- arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
+  summarise(
+    mean_fisher_z = mean(fisher_z, na.rm = TRUE),
+    .by = c(region_id, subj_id)
+  ) |>
+  inner_join(
+    targets::tar_read(mem_perf), 
+    by = "subj_id", 
+    relationship = "many-to-many"
+  )
+targets::tar_load(stats_pred_perf_rps)
+```
+
+## Separate recollection and familiarity
+
+```{r}
+#| label: fig-predict-performance-sep
 #| column: page
 #| fig-width: 12
 #| fig-height: 8
 #| fig-cap: Predict memory performance from individual-to-group synchronization
 #| fig-subcap:
-#|   - Concatenate all trials into one time series
 #|   - Average all trial-level synchronization
 #|   - Time-windowed Cluster Results
 
-targets::tar_load(mem_perf)
-arrow::read_parquet(targets::tar_read(file_rs_group_whole)) |>
-  inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(index_name %in% names(labels_index_name)) |>
-  ggplot(aes(fisher_z, score, color = index_name)) +
-  geom_point() +
-  stat_smooth(method = "lm", formula = y ~ x) +
-  ggpmisc::stat_correlation(
-    ggpmisc::use_label(c("r", "p.value")),
-    small.r = TRUE,
-    small.p = TRUE
-  ) +
-  scale_color_brewer(palette = "Dark2", guide = "none") +
-  scale_x_continuous(
-    name = "Individual-to-Group Similarity",
-    breaks = scales::breaks_pretty(n = 4)
-  ) +
-  scale_y_continuous(name = "d'") +
-  facet_grid(
-    rows = vars(index_name),
-    cols = vars(region_id),
-    labeller = labeller(index_name = labels_index_name),
-    scales = "free",
-  ) +
-  ggpubr::theme_pubr()
-
-arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
-  summarise(
-    mean_fisher_z = mean(fisher_z, na.rm = TRUE),
-    .by = c(region_id, subj_id)
-  ) |>
-  inner_join(mem_perf, by = "subj_id", relationship = "many-to-many") |>
-  filter(index_name %in% names(labels_index_name)) |>
-  ggplot(aes(mean_fisher_z, score, color = index_name)) +
-  geom_point() +
-  stat_smooth(method = "lm", formula = y ~ x) +
-  ggpmisc::stat_correlation(
-    ggpmisc::use_label(c("r", "p.value")),
-    small.r = TRUE,
-    small.p = TRUE
-  ) +
-  scale_color_brewer(palette = "Dark2", guide = "none") +
-  scale_x_continuous(
-    name = "Average Individual-to-Group Similarity",
-    breaks = scales::breaks_pretty(n = 4)
-  ) +
-  scale_y_continuous(name = "d'") +
-  facet_grid(
-    rows = vars(index_name),
-    cols = vars(region_id),
-    labeller = labeller(index_name = labels_index_name),
-    scales = "free",
-  ) +
-  ggpubr::theme_pubr()
-
-vis_cluster(
-  targets::tar_read(stats_pred_perf) |>
-    filter(index_name %in% names(labels_index_name)),
-  targets::tar_read(clusters_p_pred_perf) |>
-    filter(index_name %in% names(labels_index_name)),
+index_names <- c("remember", "knowadj")
+vis_scatter(
+  data_perf, 
+  index_names, 
+  ylab = "d'", 
   facet = facet_grid(
     rows = vars(index_name),
+    cols = vars(region_id),
+    labeller = labeller(index_name = labels_index_name),
+    scales = "free"
+  )
+)
+ggsave("publish/scatter_fr.png", width = 12, height = 6)
+vis_cluster(
+  targets::tar_read(stats_pred_perf),
+  targets::tar_read(clusters_p_pred_perf),
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  facet = facet_grid(
+    cols = vars(index_name),
     labeller = labeller(
       index_name = labels_index_name
     )
   )
 )
+ggsave("publish/cluster_fr.png", width = 8, height = 4)
+
+vis_cluster(
+  stats_pred_perf_rps$stats_real,
+  stats_pred_perf_rps$clusters_p,
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  col_stats = statistic,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_fr_rps.png", width = 8, height = 4)
 ```
 
-## The scatter plot of two performance measure
+## Averaged Scores
 
 ```{r}
-#| label: fig-scatter-mem-perf
-#| fig-cap: Visualize correlation between familiarity and recollection
+#| label: fig-predict-performance-avg
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
+#| fig-cap: Predict memory performance from individual-to-group synchronization
 
-mem_perf |>
-  filter(index_name %in% names(labels_index_name)) |>
-  pivot_wider(
-    id_cols = subj_id,
-    names_from = index_name,
-    values_from = score
-  ) |>
-  ggplot(aes(knowadj, remember)) +
-  geom_point() +
-  stat_smooth(method = "lm", formula = y ~ x) +
-  ggpmisc::stat_correlation(
-    ggpmisc::use_label(c("r", "p.value")),
-    small.r = TRUE,
-    small.p = TRUE
-  ) +
-  scale_x_continuous(name = labels_index_name["knowadj"]) +
-  scale_y_continuous(name = labels_index_name["remember"]) +
-  theme_bw()
+index_names <- c("avg_rk")
+vis_scatter(
+  data_perf, 
+  index_names, 
+  ylab = labels_index_name[index_names],
+  facet = facet_grid(
+    cols = vars(region_id),
+    scales = "free"
+  )
+)
+ggsave("publish/scatter_avg_fr.png", width = 12, height = 4)
+vis_cluster(
+  targets::tar_read(stats_pred_perf),
+  targets::tar_read(clusters_p_pred_perf),
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_avg_fr.png", width = 6, height = 4)
+vis_cluster(
+  stats_pred_perf_rps$stats_real,
+  stats_pred_perf_rps$clusters_p,
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  col_stats = statistic,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_avg_fr_rps.png", width = 6, height = 4)
+
+index_names <- c("avg_score")
+vis_scatter(
+  data_perf, 
+  index_names, 
+  ylab = labels_index_name[index_names],
+  facet = facet_grid(
+    cols = vars(region_id),
+    scales = "free"
+  )
+)
+ggsave("publish/scatter_avg_score.png", width = 12, height = 4)
+vis_cluster(
+  targets::tar_read(stats_pred_perf),
+  targets::tar_read(clusters_p_pred_perf),
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_avg_score.png", width = 6, height = 4)
+vis_cluster(
+  stats_pred_perf_rps$stats_real,
+  stats_pred_perf_rps$clusters_p,
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  col_stats = statistic,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_avg_score_rps.png", width = 6, height = 4)
 ```
 
 # Predict Memory Content
@@ -270,88 +387,70 @@ mem_perf |>
 #|   - Without Time Window
 #|   - With Time Window
 
-targets::tar_read(stats_pred_content_nonwin) |>
-  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |>
-  ggplot(aes(region_id, statistic, fill = acq)) +
-  geom_col(position = position_dodge(width = 0.6), width = 0.5) +
-  geom_text(
-    aes(label = star),
-    position = position_dodge(width = 0.6),
-    na.rm = TRUE
+stats <- targets::tar_read(stats_pred_content) |>
+  filter(mantel == "mantel", method == "gower", include == "all")
+stats |> 
+  unnest(perm) |> 
+  ggplot(aes(perm)) +
+  geom_histogram() +
+  geom_vline(
+    data = stats,
+    mapping = aes(xintercept = statistic),
+    color = "darkgreen"
   ) +
-  facet_grid(
-    rows = vars(method),
-    cols = vars(include),
-    labeller = labeller(
-      include = labels_include,
-      method = labels_method
-    )
+  ggtext::geom_richtext(
+    data = stats |> 
+      rstatix::add_significance(p.col = "signif") |> 
+      mutate(
+        label = sprintf(
+          "*r* = %.2f, *p* = %.3f%s",
+          statistic,
+          signif,
+          str_remove(signif.signif, "ns")
+        )
+      ),
+    mapping = aes(
+      Inf, Inf,
+      label = label
+    ),
+    fill = NA, label.color = NA,
+    hjust = 1, vjust = 1.5
   ) +
-  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
-  scale_y_continuous(name = "Pearson's Correlation") +
-  ggsci::scale_fill_npg(name = "Level", labels = labels_acq) +
-  ggpubr::theme_pubclean()
+  facet_grid(cols = vars(region_id), scales = "free_x") +
+  scale_x_continuous(name = "Pearson's Correlation") +
+  scale_y_continuous(name = "Count") +
+  theme_classic(base_size = 18, base_family = base_family)
+ggsave("publish/pred_content_dist.png", width = 12, height = 4)
+
+targets::tar_load(clusters_p_pred_content)
+targets::tar_load(stats_pred_content_real)
 
 vis_cluster(
-  targets::tar_read(stats_pred_content_window),
-  targets::tar_read(clusters_p_pred_content),
-  col_stats = statistic,
-  facet = facet_grid(
-    rows = vars(method),
-    cols = vars(include),
-    labeller = labeller(
-      include = labels_include,
-      method = labels_method
-    )
-  )
+  stats_pred_content_real |> 
+    filter(mantel_type == "mantel", method == "gower", include == "all"),
+  clusters_p_pred_content |> 
+    filter(mantel_type == "mantel", method == "gower", include == "all"),
+  thresh_p = 0.1,
+  col_stats = statistic.r
 )
-```
+ggsave("publish/pred_content_dist_window.png", width = 6, height = 4)
 
-```{r}
-#| label: fig-predict-content-partial
-#| column: page
-#| fig-width: 12
-#| fig-height: 6
-#| fig-cap: Partial Mantel test controlling memory ability similarity
-#| fig-subcap:
-#|   - Without Time Window
-#|   - With Time Window
-
-targets::tar_read(stats_pred_content_partial_nonwin) |>
-  mutate(star = rstatix::p_mark_significant(signif) |> str_extract("\\*+")) |>
-  ggplot(aes(region_id, statistic, fill = acq)) +
-  geom_col(position = position_dodge(width = 0.6), width = 0.5) +
-  geom_text(
-    aes(label = star),
-    position = position_dodge(width = 0.6),
-    na.rm = TRUE
-  ) +
-  facet_grid(
-    rows = vars(method),
-    cols = vars(include),
-    labeller = labeller(
-      include = labels_include,
-      method = labels_method
-    )
-  ) +
-  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
-  scale_y_continuous(name = "Pearson's Correlation") +
-  ggsci::scale_fill_npg(name = "Level", labels = labels_acq) +
-  ggpubr::theme_pubclean()
-
+stats_real_rps <- read_csv(
+  targets::tar_read(file_pred_content_rps_real_gower), 
+  show_col_types = FALSE
+) |> 
+  filter(mantel_type == "mantel", method == "gower", include == "all") |> 
+  rename(region_id = region, window_id = time)
+clusters_p_rps <- targets::tar_read(clusters_p_pred_content_rps_gower) |> 
+  filter(mantel_type == "mantel", method == "gower", include == "all") |> 
+  rename(region_id = region)
 vis_cluster(
-  targets::tar_read(stats_pred_content_partial_window),
-  targets::tar_read(clusters_p_pred_content_partial),
-  col_stats = statistic,
-  facet = facet_grid(
-    rows = vars(method),
-    cols = vars(include),
-    labeller = labeller(
-      include = labels_include,
-      method = labels_method
-    )
-  )
+  stats_real_rps,
+  clusters_p_rps,
+  thresh_p = 0.1,
+  col_stats = statistic_r
 )
+ggsave("publish/pred_content_dist_rps.png", width = 6, height = 4)
 ```
 
 # References
