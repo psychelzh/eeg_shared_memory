@@ -50,27 +50,6 @@ select_list <- function(.l, ...) {
   rlang::set_names(.l[pos], names(pos))
 }
 
-convert_mat_tbl_long <- function(mat, ...,
-                                 name_row = "r",
-                                 name_col = "c",
-                                 name_value = "val") {
-  dim <- dim(mat)
-  expand_grid(
-    "{name_row}" := seq_len(dim[1]),
-    "{name_col}" := seq_len(dim[2])
-  ) |>
-    mutate(
-      "{name_value}" := mat[
-        sub2ind(dim, .data[[name_row]], .data[[name_col]])
-      ]
-    )
-}
-
-# https://cran.r-project.org/doc/contrib/Hiebeler-matlabR.pdf
-sub2ind <- function(dim, row, col) {
-  (col - 1) * dim[1] + row
-}
-
 # distance ----
 as_dist_vec <- function(vec, ..., size = NULL, diag = FALSE, upper = FALSE) {
   if (is.null(size)) {
