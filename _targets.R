@@ -233,28 +233,16 @@ list(
     read = readr::read_csv(!!.x, show_col_types = FALSE)
   ),
   tarchetypes::tar_eval(
-    tar_target(
-      tar_name_path,
-      config_path_file(type, acq),
-      format = "file"
-    ),
-    values = dplyr::filter(hypers_rs, acq != "window")
-  ),
-  tarchetypes::tar_eval(
     tarchetypes::tar_files_input(
       tar_name_path,
-      fs::dir_ls(
-        config_path_dataset(type, acq),
-        recurse = TRUE,
-        type = "file"
-      ),
-      batches = 50
+      config_files_rs(type, acq),
+      batches = batches_file
     ),
-    dplyr::filter(hypers_rs, acq == "window")
+    hypers_rs
   ),
   tarchetypes::tar_map(
-    dplyr::filter(hypers_rs, acq == "window"),
-    names = !tar_name_path,
+    dplyr::filter(hypers_rs, acq != "whole"),
+    names = c(type, acq),
     tar_target(
       avg_rs,
       lapply(

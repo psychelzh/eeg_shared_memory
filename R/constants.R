@@ -37,7 +37,8 @@ hypers_rs <- tidyr::expand_grid(
   dplyr::mutate(
     tar_name_path = rlang::syms(
       sprintf("file_rs_%s_%s", type, acq)
-    )
+    ),
+    batches_file = dplyr::if_else(acq == "window", 50, 1)
   )
 
 labels_acq <- c(

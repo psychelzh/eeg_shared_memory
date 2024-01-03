@@ -1,18 +1,23 @@
 # paths and files ----
-config_path_dataset <- function(type, acq) {
-  fs::path(
-    "data",
-    sprintf("type-%s_acq-%s", type, acq)
-  )
-}
-
-config_path_file <- function(type, acq) {
-  fs::path(
-    "data",
-    sprintf(
-      "type-%s_acq-%s_rs.parquet",
-      type, acq
-    )
+config_files_rs <- function(type, acq) {
+  switch(acq,
+    window = fs::path(
+      "data",
+      sprintf("type-%s_acq-%s", type, acq)
+    ) |>
+      fs::dir_ls(
+        recurse = TRUE,
+        type = "file"
+      ),
+    trial = ,
+    whole = fs::path(
+      "data",
+      sprintf(
+        "type-%s_acq-%s_rs.parquet",
+        type, acq
+      )
+    ),
+    stop("Unknown parameter")
   )
 }
 
