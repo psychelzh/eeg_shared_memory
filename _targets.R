@@ -312,6 +312,35 @@ list(
     clusters_p_pred_content_rps,
     targets_rps$clusters_p_pred_content_rps
   ),
+  tar_target(
+    file_pred_content_rps_real_manhattan,
+    fs::path(
+      "data", "representational_space",
+      "res_par-mantel_isc_rps_spc_memory_content_rem_allitems.csv"
+    ),
+    format = "file"
+  ),
+  tar_target(
+    file_pred_content_rps_perm_manhattan,
+    fs::path(
+      "data", "representational_space",
+      "res_par-mantel_isc_rps_spc_memory_content_rand1000_rem_allitems.csv"
+    ),
+    format = "file"
+  ),
+  tar_target(
+    clusters_p_pred_content_rps_manhattan,
+    extract_cluster_p(
+      read_csv(file_pred_content_rps_real_manhattan, show_col_types = FALSE) |>
+        rename(statistic.r = statistic_r),
+      read_csv(file_pred_content_rps_perm_manhattan, show_col_types = FALSE),
+      cols_region = region,
+      cols_group = c(memory_precision, mantel_type),
+      cols_perm = perm_id,
+      col_window = time,
+      col_statistic = statistic.r
+    )
+  ),
   # render website ----
   tarchetypes::tar_quarto(website)
 )
