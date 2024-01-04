@@ -7,6 +7,7 @@ hypers_pred_perf <- tibble::tribble(
   "remember", "rem_dp",
   "knowadj", "know_dp_adj",
   "avg_rk", "mean_rem_know",
+  "old", "coarse_dp",
   "avg_score", "sum_mean"
 )
 
@@ -48,6 +49,7 @@ labels_index_name <- c(
   "knowadj" = "Familiarity",
   "remember" = "Recollection",
   "avg_rk" = "Average F/R",
+  "old" = "Coarse d'",
   "avg_score" = "Memory Score"
 )
 labels_include <- c(
