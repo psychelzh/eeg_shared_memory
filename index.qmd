@@ -20,14 +20,11 @@ library(patchwork)
 
 base_family <- "Gill Sans MT"
 
-# colors used for correlation values mapping
-colors_cor <- c(pos = "#CA6628", neg = "#018E3C")
-
 # visualize scatter
 vis_scatter <- function(data, use, ylab, ..., facet = NULL) {
   labels_used <- labels_index_name[use]
-  data |> 
-    filter(index_name %in% use) |> 
+  data |>
+    filter(index_name %in% use) |>
     ggplot(aes(mean_fisher_z, score)) +
     geom_point() +
     stat_smooth(method = "lm", formula = y ~ x) +
@@ -58,6 +55,7 @@ vis_cluster <- function(stats, clusters_p, ...,
     clusters_p <- filter(clusters_p, {{ subset }})
   }
   clusters_p <- filter(clusters_p, {{ col_p }} < thresh_p)
+  max_statistic <- max(abs(range(pull(stats, {{ col_stats }}))))
   ggplot() +
     geom_raster(
       data = stats,
@@ -81,21 +79,21 @@ vis_cluster <- function(stats, clusters_p, ...,
         (start + end) / 2,
         region_id,
         label = rstatix::p_format(
-          {{ col_p }}, 
+          {{ col_p }},
           accuracy = 0.001
-        ) |> 
+        ) |>
           rstatix::p_mark_significant()
       ),
       color = "blue",
       na.rm = TRUE
     ) +
-    scale_fill_gradient2(
+    colorspace::scale_fill_continuous_divergingx(
       name = "Pearson's Correlation",
-      low = colors_cor["neg"],
-      high = colors_cor["pos"]
+      palette = "RdBu",
+      rev = TRUE
     ) +
     scale_x_continuous(
-      name = "Time (s)",
+      name = "Encoding Time (s)",
       labels = \(x) x * 0.02,
       expand = expansion()
     ) +
@@ -132,12 +130,12 @@ targets::tar_read(rsa_inter_avg_by_category) |>
   ) |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
   geom_col(
-    aes(fill = word_category), 
-    position = position_dodge(width = 0.8), 
+    aes(fill = word_category),
+    position = position_dodge(width = 0.8),
     width = 0.7
   ) +
   geom_errorbar(
-    aes(group = word_category), 
+    aes(group = word_category),
     position = position_dodge(width = 0.8),
     linewidth = 1,
     width = 0.2
@@ -168,13 +166,13 @@ p_upper <- targets::tar_read(rsa_inter_avg_by_resp) |>
   ) |>
   ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
   geom_col(
-    aes(fill = response_type_shared), 
-    position = position_dodge(width = 0.9), 
+    aes(fill = response_type_shared),
+    position = position_dodge(width = 0.9),
     width = 0.9
   ) +
   geom_errorbar(
-    aes(group = response_type_shared), 
-    position = position_dodge(width = 0.9), 
+    aes(group = response_type_shared),
+    position = position_dodge(width = 0.9),
     linewidth = 1,
     width = 0.2
   ) +
@@ -184,26 +182,26 @@ p_upper <- targets::tar_read(rsa_inter_avg_by_resp) |>
   ggpubr::theme_pubr(base_size = 24, base_family = base_family) +
   theme(axis.line = element_line(linewidth = 1))
 ggsave("publish/sme_bars.png", p_upper, width = 8, height = 6)
-stats <- targets::tar_read(stats_rsa_inter_by_resp) |> 
-  rstatix::add_significance(p.col = "p.value.adj") |> 
-  mutate(p.value.adj.signif = str_remove(p.value.adj.signif, "ns")) |> 
+stats <- targets::tar_read(stats_rsa_inter_by_resp) |>
+  rstatix::add_significance(p.col = "p.value.adj") |>
+  mutate(p.value.adj.signif = str_remove(p.value.adj.signif, "ns")) |>
   complete(x, y, nesting(region_id))
-p_lower <- stats |> 
+p_lower <- stats |>
   ggplot(aes(x, y)) +
   geom_raster(aes(fill = p.value.adj)) +
   geom_text(aes(label = p.value.adj.signif), size = 2) +
   geom_text(
-    data = stats |> 
-      filter(x == y) |> 
+    data = stats |>
+      filter(x == y) |>
       mutate(label = as.character(x)),
-    mapping = aes(x, y, label = label), 
+    mapping = aes(x, y, label = label),
     size = 2.5,
     hjust = 0.35
   ) +
   facet_grid(cols = vars(region_id)) +
   scale_fill_gradient(
-    na.value = "#EDF8E9", 
-    low = "grey66", high = "grey92", 
+    na.value = "#EDF8E9",
+    low = "grey66", high = "grey92",
     guide = "none"
   ) +
   coord_fixed() +
@@ -225,8 +223,8 @@ data_perf <- arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
     .by = c(region_id, subj_id)
   ) |>
   inner_join(
-    targets::tar_read(mem_perf), 
-    by = "subj_id", 
+    targets::tar_read(mem_perf),
+    by = "subj_id",
     relationship = "many-to-many"
   )
 targets::tar_load(stats_pred_perf_rps)
@@ -238,7 +236,7 @@ targets::tar_load(stats_pred_perf_rps)
 #| label: fig-predict-performance-sep
 #| column: page
 #| fig-width: 12
-#| fig-height: 8
+#| fig-height: 6
 #| fig-cap: Predict memory performance from individual-to-group synchronization
 #| fig-subcap:
 #|   - Average all trial-level synchronization
@@ -246,9 +244,9 @@ targets::tar_load(stats_pred_perf_rps)
 
 index_names <- c("remember", "knowadj")
 vis_scatter(
-  data_perf, 
-  index_names, 
-  ylab = "d'", 
+  data_perf,
+  index_names,
+  ylab = "d'",
   facet = facet_grid(
     rows = vars(index_name),
     cols = vars(region_id),
@@ -296,10 +294,49 @@ ggsave("publish/cluster_fr_rps.png", width = 8, height = 4)
 #| fig-height: 6
 #| fig-cap: Predict memory performance from individual-to-group synchronization
 
+index_names <- c("old")
+vis_scatter(
+  data_perf,
+  index_names,
+  ylab = labels_index_name[index_names],
+  facet = facet_grid(
+    cols = vars(region_id),
+    scales = "free"
+  )
+)
+ggsave("publish/scatter_old.png", width = 12, height = 4)
+vis_cluster(
+  targets::tar_read(stats_pred_perf),
+  targets::tar_read(clusters_p_pred_perf),
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_old.png", width = 6, height = 4)
+vis_cluster(
+  stats_pred_perf_rps$stats_real,
+  stats_pred_perf_rps$clusters_p,
+  subset = index_name %in% index_names,
+  thresh_p = 0.1,
+  col_stats = statistic,
+  facet = facet_grid(
+    cols = vars(index_name),
+    labeller = labeller(
+      index_name = labels_index_name
+    )
+  )
+)
+ggsave("publish/cluster_old_rps.png", width = 6, height = 4)
+
 index_names <- c("avg_rk")
 vis_scatter(
-  data_perf, 
-  index_names, 
+  data_perf,
+  index_names,
   ylab = labels_index_name[index_names],
   facet = facet_grid(
     cols = vars(region_id),
@@ -337,8 +374,8 @@ ggsave("publish/cluster_avg_fr_rps.png", width = 6, height = 4)
 
 index_names <- c("avg_score")
 vis_scatter(
-  data_perf, 
-  index_names, 
+  data_perf,
+  index_names,
   ylab = labels_index_name[index_names],
   facet = facet_grid(
     cols = vars(region_id),
@@ -389,8 +426,8 @@ ggsave("publish/cluster_avg_score_rps.png", width = 6, height = 4)
 
 stats <- targets::tar_read(stats_pred_content) |>
   filter(mantel == "mantel", method == "gower", include == "all")
-stats |> 
-  unnest(perm) |> 
+stats |>
+  unnest(perm) |>
   ggplot(aes(perm)) +
   geom_histogram() +
   geom_vline(
@@ -399,8 +436,8 @@ stats |>
     color = "darkgreen"
   ) +
   ggtext::geom_richtext(
-    data = stats |> 
-      rstatix::add_significance(p.col = "signif") |> 
+    data = stats |>
+      rstatix::add_significance(p.col = "signif") |>
       mutate(
         label = sprintf(
           "*r* = %.2f, *p* = %.3f%s",
@@ -426,9 +463,9 @@ targets::tar_load(clusters_p_pred_content)
 targets::tar_load(stats_pred_content_real)
 
 vis_cluster(
-  stats_pred_content_real |> 
+  stats_pred_content_real |>
     filter(mantel_type == "mantel", method == "gower", include == "all"),
-  clusters_p_pred_content |> 
+  clusters_p_pred_content |>
     filter(mantel_type == "mantel", method == "gower", include == "all"),
   thresh_p = 0.1,
   col_stats = statistic.r
@@ -436,13 +473,13 @@ vis_cluster(
 ggsave("publish/pred_content_dist_window.png", width = 6, height = 4)
 
 stats_real_rps <- read_csv(
-  targets::tar_read(file_pred_content_rps_real_gower), 
+  targets::tar_read(file_pred_content_rps_real_gower),
   show_col_types = FALSE
-) |> 
-  filter(mantel_type == "mantel", method == "gower", include == "all") |> 
+) |>
+  filter(mantel_type == "mantel", method == "gower", include == "all") |>
   rename(region_id = region, window_id = time)
-clusters_p_rps <- targets::tar_read(clusters_p_pred_content_rps_gower) |> 
-  filter(mantel_type == "mantel", method == "gower", include == "all") |> 
+clusters_p_rps <- targets::tar_read(clusters_p_pred_content_rps_gower) |>
+  filter(mantel_type == "mantel", method == "gower", include == "all") |>
   rename(region_id = region)
 vis_cluster(
   stats_real_rps,
@@ -451,6 +488,23 @@ vis_cluster(
   col_stats = statistic_r
 )
 ggsave("publish/pred_content_dist_rps.png", width = 6, height = 4)
+
+stats_real_rps <- read_csv(
+  targets::tar_read(file_pred_content_rps_real_manhattan),
+  show_col_types = FALSE
+) |>
+  filter(mantel_type == "mantel", memory_precision == "precise") |>
+  rename(region_id = region, window_id = time)
+clusters_p_rps <- targets::tar_read(clusters_p_pred_content_rps_manhattan) |>
+  filter(mantel_type == "mantel", memory_precision == "precise") |>
+  rename(region_id = region)
+vis_cluster(
+  stats_real_rps,
+  clusters_p_rps,
+  thresh_p = 0.1,
+  col_stats = statistic_r
+)
+ggsave("publish/pred_content_dist_rps_manhattan.png", width = 6, height = 4)
 ```
 
 # References
