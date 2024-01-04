@@ -88,18 +88,33 @@ extract_cluster_p <- function(stats_real, stats_perm, ...,
     by = c({{ cols_region }}, {{cols_group}}, {{ cols_perm }}),
     keep = "largest"
   ) |>
-    summarise(cluster_mass = max(cluster_mass), .by = {{ cols_perm }}) |>
-    pull(cluster_mass)
-  extract_stats_cluster(
+    summarise(
+      cluster_mass_perm = max(cluster_mass),
+      .by = c({{cols_group}}, {{ cols_perm }})
+    ) |>
+    select(!{{ cols_perm }}) |>
+    chop(cluster_mass_perm)
+  cluster_real <- extract_stats_cluster(
     stats_real,
     ...,
     by = c({{ cols_region }}, {{ cols_group }})
-  ) |>
+  )
+  data <- if (is.null(substitute(cols_group))) {
+    bind_cols(cluster_real, null_distribution)
+  } else {
+    cols_group_chr <- tidyselect::eval_select(
+      substitute(cols_group),
+      cluster_real
+    )
+    inner_join(cluster_real, null_distribution, by = names(cols_group_chr))
+  }
+  data |>
     mutate(
-      p_perm = map_dbl(
-        cluster_mass,
-        \(real) mean(null_distribution > real)
-      )
+      p_perm = map2_dbl(
+        cluster_mass, cluster_mass_perm,
+        \(real, perm) mean(perm > real)
+      ),
+      .keep = "unused"
     )
 }
 
