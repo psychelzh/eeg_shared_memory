@@ -22,6 +22,7 @@ Imports:
     ggsci,
     markdown,
     nomclust,
+    patchwork,
     proxy,
     qs,
     Rankcluster,
