@@ -5,8 +5,6 @@ sz = size(data_source.grp_data);
 % and transform as time x channel x subjects
 X = permute(reshape(data_source.grp_data, sz(1), [], sz(end)), [2, 1, 3]);
 clearvars data_source % raw data is very memory consuming
-fprintf("Begin corrca on real data...\n")
-[W, ISC, Y, A] = cca.corrca(X);
 
 % shuffle to get p values for each component
 fprintf("Begin corrca on shuffle data...\n")
@@ -19,6 +17,9 @@ parfor (i = 1:num_surrogates, NUM_WORKERS)
     ISC_null(i) = ISC(1);
     count(PB)
 end
+
+fprintf("Begin corrca on real data...\n")
+[W, ISC, Y, A] = cca.corrca(X);
 
 fprintf("All done! Now saving results...\n")
 save(fullfile("data", "cca_result_model"), "X", "W", "Y", "A", "-v7.3")
