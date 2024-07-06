@@ -10,7 +10,8 @@ clearvars data_source % raw data is very memory consuming
 fprintf("Begin corrca on shuffle data...\n")
 num_surrogates = 100;
 ISC_null = nan(1, num_surrogates);
-PB = ProgressBar(num_surrogates, taskname = "Shuffle Stats", ui = "cli");
+% https://github.com/elgar328/matlab-code-examples/issues/2
+PB = ProgressBar(num_surrogates, taskname = 'Shuffle Stats', ui = "cli");
 NUM_WORKERS = 4;
 parfor (i = 1:num_surrogates, NUM_WORKERS)
     [~, ISC] = cca.corrca(generate_surrogate(X));
