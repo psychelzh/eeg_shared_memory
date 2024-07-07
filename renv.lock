@@ -1766,6 +1766,22 @@
       ],
       "Hash": "a6f5390caceaa1b23b68f57d663b2061"
     },
+    "lmerTest": {
+      "Package": "lmerTest",
+      "Version": "3.1-3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R",
+        "ggplot2",
+        "lme4",
+        "methods",
+        "numDeriv",
+        "stats"
+      ],
+      "Hash": "f04948de84602afc23bfa9f5427e954d"
+    },
     "lmodel2": {
       "Package": "lmodel2",
       "Version": "1.7-3",

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#$ -cwd
+#$ -S /bin/bash
+#$ -N brm_sme
+#$ -o logs/qsub
+#$ -q withpe.q
+#$ -pe ompi 4
+#$ -j y
+
+Rscript { script }
