@@ -57,10 +57,10 @@ list(
   tar_target(
     fit_sme_clean,
     tibble(
-      component = unique(dat$component),
+      component = unique(dat_clean$component),
       fit = list(lmerTest::lmer(
         corr_fz ~ word_category * memory_type +
-          (word_category * memory_type | subj_id_pair) + (1 | trial_id),
+          (1 | subj_id_pair) + (1 | trial_id),
         data = dat_clean
       ))
     ),
