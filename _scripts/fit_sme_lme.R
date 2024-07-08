@@ -44,5 +44,26 @@ list(
       ))
     ),
     pattern = map(dat)
+  ),
+  tarchetypes::tar_group_by(
+    dat_clean,
+    drop_na(dat) |>
+      filter(
+        sum(!is.na(corr_fz)) >= 5,
+        .by = c(component, word_category, memory_type, contains("subj_id"))
+      ),
+    component
+  ),
+  tar_target(
+    fit_sme_clean,
+    tibble(
+      component = unique(dat$component),
+      fit = list(lmerTest::lmer(
+        corr_fz ~ word_category * memory_type +
+          (word_category * memory_type | subj_id_pair) + (1 | trial_id),
+        data = dat_clean
+      ))
+    ),
+    pattern = map(dat_clean)
   )
 )
