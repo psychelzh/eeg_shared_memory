@@ -49,7 +49,7 @@ list(
     dat_clean,
     drop_na(dat) |>
       filter(
-        sum(!is.na(corr_fz)) >= 5,
+        n() >= 5,
         .by = c(component, word_category, memory_type, contains("subj_id"))
       ),
     component
@@ -63,6 +63,24 @@ list(
           (1 | subj_id_pair) + (1 | trial_id),
         data = dat_clean
       ))
+    ),
+    pattern = map(dat_clean)
+  ),
+  tar_target(
+    fit_sme2_clean,
+    tibble(
+      component = unique(dat_clean$component),
+      sapply(
+        c("word_category", "memory_type"),
+        \(x) {
+          lmerTest::lmer(
+            str_glue("corr_fz ~ {x} + (1 | subj_id_pair) + (1 | trial_id)"),
+            data = dat_clean
+          )
+        },
+        simplify = FALSE
+      ) |>
+        enframe(name = "term", value = "fit")
     ),
     pattern = map(dat_clean)
   )
