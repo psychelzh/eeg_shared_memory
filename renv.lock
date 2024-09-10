@@ -1936,14 +1936,14 @@
     },
     "mirai": {
       "Package": "mirai",
-      "Version": "1.1.1",
+      "Version": "1.2.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
         "nanonext"
       ],
-      "Hash": "f8b0cda5304cad0b629e98c09aad5471"
+      "Hash": "b43c6a7e1e791d2a03b3cefa0ffe2d45"
     },
     "modelr": {
       "Package": "modelr",
@@ -2025,13 +2025,13 @@
     },
     "nanonext": {
       "Package": "nanonext",
-      "Version": "1.1.1",
+      "Version": "1.2.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
-      "Hash": "1f884ea35086b957409a9d351eaa2d9e"
+      "Hash": "c601dd0bd16c37df416cab6c47512815"
     },
     "nlme": {
       "Package": "nlme",
