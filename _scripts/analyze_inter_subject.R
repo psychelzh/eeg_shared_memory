@@ -167,7 +167,7 @@ list(
       proxy::simil(method = "cosine")
   ),
   tar_target(data_iss, calc_iss(patterns_cca, pattern_semantics)),
-  tar_target(iss_stats, calc_iss_stats(data_iss)),
+  tar_target(stats_iss, calc_iss_stats(data_iss)),
   tarchetypes::tar_rep(
     data_iss_permuted,
     calc_iss(
@@ -179,15 +179,15 @@ list(
     iteration = "list"
   ),
   tarchetypes::tar_rep2(
-    iss_stats_permuted,
+    stats_iss_permuted,
     calc_iss_stats(data_iss_permuted, alternative = "greater"),
     data_iss_permuted
   ),
   tar_target(
     clusters_stats_iss,
-    iss_stats |>
+    stats_iss |>
       mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(iss_stats_permuted)
+      calc_clusters_stats(stats_iss_permuted)
   ),
   tar_target(
     patterns_cca_whole,
@@ -219,5 +219,81 @@ list(
         names = c("start", "end")
       ) |>
       mutate(across(c("start", "end"), parse_number))
+  ),
+  tarchetypes::tar_file_read(
+    subjs,
+    "data/subj_206.txt",
+    read = scan(!!.x)
+  ),
+  tarchetypes::tar_file_read(
+    mem_perf,
+    "data/behav/retrieval.tsv",
+    read = read_tsv(!!.x, show_col_types = FALSE) |>
+      mutate(acc = xor(old_new == 1, resp >= 3)) |>
+      preproc.iquizoo:::calc_sdt(
+        type_signal = 1,
+        by = "subj",
+        name_acc = "acc",
+        name_type = "old_new"
+      ) |>
+      mutate(subj_id = match(subj, subjs)) |>
+      filter(!is.na(subj_id)) |>
+      select(subj_id, dprime)
+  ),
+  tar_target(
+    stats_iss_mem_whole,
+    data_iss_whole |>
+      left_join(mem_perf, by = "subj_id") |>
+      summarise(broom::tidy(cor.test(atanh(iss), dprime)), .by = cca_id)
+  ),
+  tar_target(
+    comparison_iss_mem,
+    expand_grid(start = 1:3, end = 1:3) |>
+      filter(start > end) |>
+      mutate(
+        map2(
+          start, end,
+          \(x, y) {
+            with(
+              stats_iss_mem_whole,
+              as_tibble(
+                psych::r.test(206, estimate[[x]], estimate[[y]])[c("z", "p")]
+              )
+            )
+          }
+        ) |>
+          list_rbind()
+      )
+  ),
+  tar_target(
+    stats_iss_mem,
+    data_iss |>
+      left_join(mem_perf, by = "subj_id") |>
+      summarise(
+        broom::tidy(cor.test(iss, dprime, use = "pairwise")),
+        .by = c(cca_id, time_id)
+      )
+  ),
+  tarchetypes::tar_rep(
+    stats_iss_mem_permuted,
+    data_iss |>
+      left_join(
+        mem_perf |>
+          mutate(subj_id = sample(subj_id)),
+        by = "subj_id"
+      ) |>
+      summarise(
+        cor.test(iss, dprime, alternative = "greater", use = "pairwise") |>
+          broom::tidy(),
+        .by = c(cca_id, time_id)
+      ),
+    reps = 10,
+    batches = 100
+  ),
+  tar_target(
+    clusters_stats_iss_mem,
+    stats_iss_mem |>
+      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
+      calc_clusters_stats(stats_iss_mem_permuted)
   )
 )
