@@ -4,9 +4,12 @@ tar_option_set(
   packages = c("tidyverse"),
   controller = crew::crew_controller_local(
     name = "local",
-    workers = 5
+    workers = 8
   ),
-  garbage_collection = TRUE
+  garbage_collection = TRUE,
+  memory = "transient",
+  retrieval = "worker",
+  storage = "worker"
 )
 
 calc_iss <- function(patterns_cca, pattern_semantics) {
