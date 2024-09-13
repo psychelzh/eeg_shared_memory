@@ -295,5 +295,88 @@ list(
     stats_iss_mem |>
       mutate(p.value = convert_p2_p1(statistic, p.value)) |>
       calc_clusters_stats(stats_iss_mem_permuted)
+  ),
+  tar_target(
+    cca_y_halves_trials,
+    arrow::open_dataset(file_cca_y) |>
+      mutate(half = if_else(trial_id <= 75, "first", "second")) |>
+      filter(!is.nan(y)) |>
+      count(subj_id, cca_id, time_id, half) |>
+      distinct(subj_id, cca_id, half, n) |>
+      collect()
+  ),
+  tar_target(
+    cca_y_halves,
+    arrow::open_dataset(file_cca_y) |>
+      mutate(half = if_else(trial_id <= 75, "first", "second")) |>
+      filter(!is.nan(y)) |>
+      summarise(
+        y_avg = mean(y),
+        .by = c(subj_id, cca_id, time_id, half)
+      ) |>
+      collect()
+  ),
+  tar_target(
+    sync_inter_subjs,
+    cca_y_halves |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      reframe(
+        cor(pick(matches("^\\d+$")), use = "pairwise") |>
+          as_tibble(rownames = "row") |>
+          pivot_longer(cols = -row, names_to = "col", values_to = "r") |>
+          mutate(across(c(row, col), as.integer)) |>
+          filter(row < col),
+        .by = c(cca_id, half)
+      )
+  ),
+  tar_target(
+    sync_inter_halves,
+    cca_y_halves |>
+      pivot_wider(names_from = half, values_from = y_avg) |>
+      reframe(
+        {
+          first <- pick(subj_id, time_id, first) |>
+            pivot_wider(names_from = subj_id, values_from = first) |>
+            column_to_rownames("time_id")
+          second <- pick(subj_id, time_id, second) |>
+            pivot_wider(names_from = subj_id, values_from = second) |>
+            column_to_rownames("time_id")
+          cor(first, second, use = "pairwise") |>
+            as_tibble(rownames = "first") |>
+            pivot_longer(cols = -first, names_to = "second", values_to = "r") |>
+            mutate(across(c(first, second), as.integer))
+        },
+        .by = cca_id
+      )
+  ),
+  tar_target(
+    sync_whole_trials,
+    arrow::open_dataset(file_cca_y) |>
+      filter(!is.nan(y)) |>
+      summarise(
+        y_avg = mean(y),
+        .by = c(subj_id, cca_id, time_id)
+      ) |>
+      collect() |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      summarise(
+        neu_sync = list(cor(pick(matches("^\\d+$")), use = "pairwise")),
+        .by = cca_id
+      )
+  ),
+  tarchetypes::tar_file_read(
+    smc,
+    "data/behav/simil.rds",
+    read = readRDS(!!.x)$mat[[4]]
+  ),
+  tar_target(
+    sync_smc,
+    sync_whole_trials |>
+      mutate(
+        mantel = map(
+          neu_sync,
+          ~ vegan::mantel(.x, smc)
+        )
+      )
   )
 )
