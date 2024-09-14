@@ -382,11 +382,45 @@ list(
   tar_target(
     sync_smc,
     sync_whole_trials |>
+      mutate(mantel = map(neu_sync, ~ vegan::mantel(.x, smc)))
+  ),
+  tar_target(
+    sync_dynamic,
+    whole_erps |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      reframe(
+        pick(!time_id) |>
+          slider::slide(
+            \(x) as.dist(cor(x, use = "pairwise")),
+            .before = 25,
+            .after = 25,
+            .step = 5,
+            .complete = TRUE
+          ) |>
+          enframe(name = "time_id", value = "neu_sync") |>
+          filter(!map_lgl(neu_sync, is.null)),
+        .by = cca_id
+      )
+  ),
+  tar_target(
+    sync_smc_dynamic,
+    sync_dynamic |>
+      mutate(
+        mantel = map(neu_sync, ~ vegan::mantel(.x, smc)),
+        .keep = "unused"
+      )
+  ),
+  tarchetypes::tar_rep(
+    sync_smc_dynamic_permuted,
+    sync_dynamic |>
       mutate(
         mantel = map(
           neu_sync,
-          ~ vegan::mantel(.x, smc)
-        )
-      )
+          ~ vegan::mantel(.x, seriation::permute(smc, sample.int(206L)))
+        ),
+        .keep = "unused"
+      ),
+    reps = 10,
+    batches = 100
   )
 )
