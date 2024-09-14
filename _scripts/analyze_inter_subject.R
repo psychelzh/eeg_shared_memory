@@ -12,6 +12,9 @@ tar_option_set(
   storage = "worker"
 )
 
+# for whole times series analysis, we would remove the first 200 ms baseline
+index_onset <- floor(256 * (200 / 1000))
+
 calc_iss <- function(patterns_cca, pattern_semantics) {
   patterns_cca |>
     mutate(
@@ -192,7 +195,7 @@ list(
   tar_target(
     patterns_cca_whole,
     arrow::open_dataset(file_cca_y) |>
-      filter(time_id >= 51) |>
+      filter(time_id >= index_onset) |>
       collect() |>
       pivot_wider(names_from = trial_id, values_from = y) |>
       summarise(
@@ -319,6 +322,7 @@ list(
   tar_target(
     sync_inter_subjs,
     cca_y_halves |>
+      filter(time_id >= index_onset) |>
       pivot_wider(names_from = subj_id, values_from = y_avg) |>
       reframe(
         cor(pick(matches("^\\d+$")), use = "pairwise") |>
@@ -332,6 +336,7 @@ list(
   tar_target(
     sync_inter_halves,
     cca_y_halves |>
+      filter(time_id >= index_onset) |>
       pivot_wider(names_from = half, values_from = y_avg) |>
       reframe(
         {
@@ -350,24 +355,29 @@ list(
       )
   ),
   tar_target(
-    sync_whole_trials,
+    whole_erps,
     arrow::open_dataset(file_cca_y) |>
       filter(!is.nan(y)) |>
       summarise(
         y_avg = mean(y),
         .by = c(subj_id, cca_id, time_id)
       ) |>
-      collect() |>
-      pivot_wider(names_from = subj_id, values_from = y_avg) |>
-      summarise(
-        neu_sync = list(cor(pick(matches("^\\d+$")), use = "pairwise")),
-        .by = cca_id
-      )
+      collect()
   ),
   tarchetypes::tar_file_read(
     smc,
     "data/behav/simil.rds",
     read = readRDS(!!.x)$mat[[4]]
+  ),
+  tar_target(
+    sync_whole_trials,
+    whole_erps |>
+      filter(time_id >= index_onset) |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      summarise(
+        neu_sync = list(cor(pick(matches("^\\d+$")), use = "pairwise")),
+        .by = cca_id
+      )
   ),
   tar_target(
     sync_smc,
