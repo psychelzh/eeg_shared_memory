@@ -36,6 +36,14 @@ calc_iss_stats <- function(data, ..., .by = c(cca_id, time_id)) {
     )
 }
 
+calc_sync_smc <- function(sync_whole_trials, smc) {
+  sync_whole_trials |>
+    mutate(
+      mantel = map(neu_sync, ~ vegan::mantel(.x, smc)),
+      .keep = "unused"
+    )
+}
+
 calc_clusters_stats <- function(stats, stats_permuted,
                                 by = "cca_id",
                                 col_statistic = statistic,
@@ -389,8 +397,7 @@ list(
   ),
   tar_target(
     sync_smc,
-    sync_whole_trials |>
-      mutate(mantel = map(neu_sync, ~ vegan::mantel(.x, smc)))
+    calc_sync_smc(sync_whole_trials, smc)
   ),
   tar_target(
     sync_dynamic,
@@ -412,22 +419,14 @@ list(
   ),
   tar_target(
     sync_smc_dynamic,
-    sync_dynamic |>
-      mutate(
-        mantel = map(neu_sync, ~ vegan::mantel(.x, smc)),
-        .keep = "unused"
-      )
+    calc_sync_smc(sync_dynamic, smc)
   ),
   tarchetypes::tar_rep(
     sync_smc_dynamic_permuted,
-    sync_dynamic |>
-      mutate(
-        mantel = map(
-          neu_sync,
-          ~ vegan::mantel(.x, seriation::permute(smc, sample.int(206L)))
-        ),
-        .keep = "unused"
-      ),
+    calc_sync_smc(
+      sync_dynamic,
+      seriation::permute(smc, sample.int(206L))
+    ),
     reps = 10,
     batches = 100
   ),
