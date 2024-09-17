@@ -121,6 +121,14 @@ convert_p2_p1 <- function(statistic, p.value,
   )
 }
 
+tidy_mantel <- function(mantel) {
+  tibble(
+    statistic = mantel$statistic,
+    p.value = mantel$signif,
+    method = mantel$method
+  )
+}
+
 list(
   tar_target(
     file_cca_y,
@@ -422,5 +430,29 @@ list(
       ),
     reps = 10,
     batches = 100
+  ),
+  tarchetypes::tar_rep2(
+    stats_sync_smc_dynamic_permuted,
+    sync_smc_dynamic_permuted |>
+      mutate(
+        map(mantel, tidy_mantel) |>
+          list_rbind(),
+        .keep = "unused"
+      ),
+    sync_smc_dynamic_permuted
+  ),
+  tar_target(
+    stats_sync_smc_dynamic,
+    sync_smc_dynamic |>
+      mutate(
+        map(mantel, tidy_mantel) |>
+          list_rbind(),
+        .keep = "unused"
+      )
+  ),
+  tar_target(
+    clusters_stats_sync_smc_dynamic,
+    stats_sync_smc_dynamic |>
+      calc_clusters_stats(stats_sync_smc_dynamic_permuted)
   )
 )
