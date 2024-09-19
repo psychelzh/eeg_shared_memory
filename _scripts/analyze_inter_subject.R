@@ -215,7 +215,7 @@ list(
       collect() |>
       pivot_wider(names_from = trial_id, values_from = y) |>
       summarise(
-        pattern = list(as.dist(cor(pick(matches("^\\d+$"))))),
+        pattern = list(as.dist(cor(pick(matches("^\\d+$")), use = "pairwise"))),
         .by = c(subj_id, cca_id)
       )
   ),
