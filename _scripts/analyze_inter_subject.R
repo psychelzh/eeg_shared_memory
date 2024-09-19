@@ -220,7 +220,7 @@ list(
       )
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
-  tar_target(iss_stats_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
+  tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
   tar_target(
     iss_comparison,
     data_iss_whole |>
