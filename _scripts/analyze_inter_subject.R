@@ -15,13 +15,13 @@ tar_option_set(
 # for whole times series analysis, we would remove the first 200 ms baseline
 index_onset <- floor(256 * (200 / 1000))
 
-calc_iss <- function(patterns_cca, pattern_semantics) {
-  patterns_cca |>
+calc_iss <- function(patterns, pattern_semantics) {
+  patterns |>
     mutate(
       iss = map_dbl(
-        pattern_cca,
-        \(pattern_cca) {
-          cor(atanh(pattern_cca), pattern_semantics, use = "pairwise")
+        pattern,
+        \(pattern) {
+          cor(atanh(pattern), pattern_semantics, use = "pairwise")
         }
       ),
       .keep = "unused"
@@ -150,7 +150,7 @@ list(
       pull(subj_id, as_vector = TRUE)
   ),
   tar_target(
-    patterns_cca,
+    patterns_indiv_dynamic,
     arrow::open_dataset(file_cca_y) |>
       filter(subj_id == subj_id_loop) |>
       collect() |>
@@ -164,8 +164,8 @@ list(
             .step = 5,
             .complete = TRUE
           ) |>
-          enframe(name = "time_id", value = "pattern_cca") |>
-          filter(!map_lgl(pattern_cca, is.null)),
+          enframe(name = "time_id", value = "pattern") |>
+          filter(!map_lgl(pattern, is.null)),
         .by = c(subj_id, cca_id)
       ),
     pattern = map(subj_id_loop)
@@ -185,12 +185,12 @@ list(
       column_to_rownames("trial_id") |>
       proxy::simil(method = "cosine")
   ),
-  tar_target(data_iss, calc_iss(patterns_cca, pattern_semantics)),
-  tar_target(stats_iss, calc_iss_stats(data_iss)),
+  tar_target(data_iss_dynamic, calc_iss(patterns_indiv_dynamic, pattern_semantics)),
+  tar_target(stats_iss_dynamic, calc_iss_stats(data_iss_dynamic)),
   tarchetypes::tar_rep(
-    data_iss_permuted,
+    data_iss_dynamic_permuted,
     calc_iss(
-      patterns_cca,
+      patterns_indiv_dynamic,
       seriation::permute(pattern_semantics, sample.int(150L))
     ),
     reps = 10,
@@ -198,28 +198,28 @@ list(
     iteration = "list"
   ),
   tarchetypes::tar_rep2(
-    stats_iss_permuted,
-    calc_iss_stats(data_iss_permuted, alternative = "greater"),
-    data_iss_permuted
+    stats_iss_dynamic_permuted,
+    calc_iss_stats(data_iss_dynamic_permuted, alternative = "greater"),
+    data_iss_dynamic_permuted
   ),
   tar_target(
     clusters_stats_iss,
-    stats_iss |>
+    stats_iss_dynamic |>
       mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(stats_iss_permuted)
+      calc_clusters_stats(stats_iss_dynamic_permuted)
   ),
   tar_target(
-    patterns_cca_whole,
+    patterns_indiv_whole,
     arrow::open_dataset(file_cca_y) |>
       filter(time_id >= index_onset) |>
       collect() |>
       pivot_wider(names_from = trial_id, values_from = y) |>
       summarise(
-        pattern_cca = list(as.dist(cor(pick(matches("^\\d+$"))))),
+        pattern = list(as.dist(cor(pick(matches("^\\d+$"))))),
         .by = c(subj_id, cca_id)
       )
   ),
-  tar_target(data_iss_whole, calc_iss(patterns_cca_whole, pattern_semantics)),
+  tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(iss_stats_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
   tar_target(
     iss_comparison,
@@ -227,7 +227,7 @@ list(
       mutate(cca_id = factor(cca_id)) |>
       lmerTest::lmer(iss ~ cca_id + (1 | subj_id), data = _) |>
       emmeans::emmeans(
-        ~ cca_id,
+        ~cca_id,
         lmer.df = "satterthwaite",
         lmerTest.limit = Inf
       ) |>
@@ -285,8 +285,8 @@ list(
       )
   ),
   tar_target(
-    stats_iss_mem,
-    data_iss |>
+    stats_iss_mem_dynamic,
+    data_iss_dynamic |>
       left_join(mem_perf, by = "subj_id") |>
       summarise(
         broom::tidy(cor.test(iss, dprime, use = "pairwise")),
@@ -294,8 +294,8 @@ list(
       )
   ),
   tarchetypes::tar_rep(
-    stats_iss_mem_permuted,
-    data_iss |>
+    stats_iss_mem_dynamic_permuted,
+    data_iss_dynamic |>
       left_join(
         mem_perf |>
           mutate(subj_id = sample(subj_id)),
@@ -311,9 +311,9 @@ list(
   ),
   tar_target(
     clusters_stats_iss_mem,
-    stats_iss_mem |>
+    stats_iss_mem_dynamic |>
       mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(stats_iss_mem_permuted)
+      calc_clusters_stats(stats_iss_mem_dynamic_permuted)
   ),
   tar_target(
     cca_y_halves_trials,
