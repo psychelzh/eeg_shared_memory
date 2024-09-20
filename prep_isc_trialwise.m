@@ -1,5 +1,5 @@
 load(fullfile("data", "cca_result_model.mat"), "Y")
-num_times = 257;
+num_times = 307;
 num_trials = 150;
 sz = size(Y);
 Y = reshape(Y, num_times, num_trials, sz(2), sz(3));

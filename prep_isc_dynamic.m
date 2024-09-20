@@ -30,7 +30,7 @@ if opts.NComp > num_comp
 end
 num_comp = opts.NComp;
 time_wins = arrayfun(@(start) start + (1:opts.SizeTimeWin), ...
-    1:opts.SizeTimeStep:num_times, 'UniformOutput', false);
+    0:opts.SizeTimeStep:num_times, 'UniformOutput', false);
 isc_cell = cell(size(time_wins));
 
 pb1 = ProgressBar(length(time_wins), ...
