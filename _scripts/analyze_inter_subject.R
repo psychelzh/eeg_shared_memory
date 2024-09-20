@@ -36,6 +36,26 @@ calc_iss_stats <- function(data, ..., .by = c(cca_id, time_id)) {
     )
 }
 
+calc_igs <- function(patterns, patterns_group) {
+  patterns |>
+    mutate(
+      igs = map2_dbl(
+        pattern, cca_id,
+        \(pat, cca) {
+          with(
+            patterns_group,
+            cor(
+              pattern[[which(cca_id == cca)]],
+              pat,
+              use = "pairwise"
+            )
+          )
+        }
+      )
+    ) |>
+    select(!pattern)
+}
+
 calc_sync_smc <- function(sync_whole_trials, smc) {
   sync_whole_trials |>
     mutate(
@@ -135,6 +155,10 @@ tidy_mantel <- function(mantel) {
     p.value = mantel$signif,
     method = mantel$method
   )
+}
+
+get_resid <- function(y, x) {
+  resid(lm(y ~ x, na.action = na.exclude))
 }
 
 list(
@@ -238,6 +262,41 @@ list(
         names = c("start", "end")
       ) |>
       mutate(across(c("start", "end"), parse_number))
+  ),
+  tar_target(
+    patterns_group_whole,
+    # `na.rm` not supported in `open_dataset()`
+    # https://github.com/apache/arrow/issues/44089
+    arrow::read_parquet(file_cca_y) |>
+      filter(time_id >= index_onset) |>
+      summarise(
+        y_avg = mean(y, na.rm = TRUE),
+        .by = c(cca_id, trial_id, time_id)
+      ) |>
+      arrange(trial_id) |> 
+      pivot_wider(
+        names_from = trial_id,
+        values_from = y_avg
+      ) |>
+      summarise(
+        pattern = list(
+          atanh(as.dist(cor(pick(matches("\\d+")), use = "pairwise")))
+        ),
+        .by = cca_id
+      )
+  ),
+  tar_target(
+    data_igs,
+    calc_igs(patterns_indiv_whole, patterns_group_whole)
+  ),
+  tar_target(
+    data_igs_reg_p,
+    calc_igs(
+      patterns_indiv_whole |> 
+        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      patterns_group_whole |> 
+        mutate(pattern = map(pattern, get_resid, pattern_semantics))
+    )
   ),
   tarchetypes::tar_file_read(
     subjs,
