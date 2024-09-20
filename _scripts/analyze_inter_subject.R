@@ -372,13 +372,11 @@ list(
   ),
   tar_target(
     whole_erps,
-    arrow::open_dataset(file_cca_y) |>
-      filter(!is.nan(y)) |>
+    arrow::read_parquet(file_cca_y) |>
       summarise(
-        y_avg = mean(y),
+        y_avg = mean(y, na.rm = TRUE),
         .by = c(subj_id, cca_id, time_id)
-      ) |>
-      collect()
+      )
   ),
   tarchetypes::tar_file_read(
     smc,
