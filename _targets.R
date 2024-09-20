@@ -1,346 +1,370 @@
 library(targets)
+
 tar_option_set(
   packages = c("tidyverse"),
-  format = "qs",
   controller = crew::crew_controller_local(
     name = "local",
-    workers = 20
+    workers = 12
   ),
-  memory = "transient"
+  garbage_collection = TRUE,
+  memory = "transient",
+  retrieval = "worker",
+  storage = "worker"
 )
-if (Sys.info()["sysname"] == "Windows") {
-  future::plan(future.callr::callr)
-} else {
-  future::plan(future::multicore)
-}
+
 tar_source()
 
-# config: check inter-subject similarity ----
-if (FALSE) { # we do not need to compare windowed results
-  # compare abstract and concrete and subsequent memory effect
-  inter_check_window <- tarchetypes::tar_map(
-    hypers_rs_window |>
-      dplyr::filter(type == "inter"),
-    names = c(type, acq, region),
-    tar_target(
-      rsa_inter_common_trials,
-      lapply(
-        tar_name_files,
-        filter_shared,
-        response_shared
-      ),
-      pattern = map(tar_name_files)
-    ),
-    tar_target(
-      summary_word_cat,
-      lapply(
-        rsa_inter_common_trials,
-        summarise,
-        mean_se(fisher_z),
-        .by = c(region_id, word_category, window_id)
-      ) |>
-        list_rbind(),
-      pattern = map(rsa_inter_common_trials)
-    ),
-    tar_target(
-      summary_word_mem,
-      lapply(
-        rsa_inter_common_trials,
-        summarise,
-        mean_se(fisher_z),
-        .by = c(region_id, response_type_shared, window_id)
-      ) |>
-        list_rbind(),
-      pattern = map(rsa_inter_common_trials)
-    )
-  )
-}
+# for whole times series analysis, we would remove the first 200 ms baseline
+index_onset <- floor(256 * (200 / 1000))
 
-# config: predict memory performance ----
-targets_pred_perf <- tarchetypes::tar_map(
-  hypers_pred_perf,
-  names = index_name,
+list(
   tar_target(
-    cur_mem_perf,
-    filter(mem_perf, .data[["index_name"]] == index_name)
+    file_cca_y,
+    "data/CorCAExtra/cca_y_subjs206.parquet",
+    format = "file"
   ),
   tar_target(
-    stats_pred_perf,
-    extract_stats_pred_perf(avg_rs_group_window, cur_mem_perf)
+    subj_id_loop,
+    arrow::open_dataset(file_cca_y) |>
+      distinct(subj_id) |>
+      pull(subj_id, as_vector = TRUE)
+  ),
+  tar_target(
+    patterns_indiv_dynamic,
+    arrow::open_dataset(file_cca_y) |>
+      filter(subj_id == subj_id_loop) |>
+      collect() |>
+      pivot_wider(names_from = trial_id, values_from = y) |>
+      reframe(
+        pick(!time_id) |>
+          slider::slide(
+            \(x) as.dist(cor(x, use = "pairwise")),
+            .before = 25,
+            .after = 25,
+            .step = 5,
+            .complete = TRUE
+          ) |>
+          enframe(name = "time_id", value = "pattern") |>
+          filter(!map_lgl(pattern, is.null)),
+        .by = c(subj_id, cca_id)
+      ),
+    pattern = map(subj_id_loop)
+  ),
+  tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
+  tar_target(file_w2v, "data/stimuli/words_w2v.txt", format = "file"),
+  tar_target(
+    pattern_semantics,
+    raveio::read_mat(file_seq)$SM[, 1:2] |>
+      as_tibble(.name_repair = ~ c("trial_id", "word_id")) |>
+      left_join(
+        read_table(file_w2v, show_col_types = FALSE, col_names = FALSE),
+        by = c("word_id" = "X1")
+      ) |>
+      filter(trial_id > 0) |>
+      select(-word_id, -X2) |>
+      column_to_rownames("trial_id") |>
+      proxy::simil(method = "cosine")
+  ),
+  tar_target(data_iss_dynamic, calc_iss(patterns_indiv_dynamic, pattern_semantics)),
+  tar_target(stats_iss_dynamic, calc_iss_stats(data_iss_dynamic)),
+  tarchetypes::tar_rep(
+    data_iss_dynamic_permuted,
+    calc_iss(
+      patterns_indiv_dynamic,
+      seriation::permute(pattern_semantics, sample.int(150L))
+    ),
+    reps = 10,
+    batches = 100,
+    iteration = "list"
+  ),
+  tarchetypes::tar_rep2(
+    stats_iss_dynamic_permuted,
+    calc_iss_stats(data_iss_dynamic_permuted, alternative = "greater"),
+    data_iss_dynamic_permuted
+  ),
+  tar_target(
+    clusters_stats_iss,
+    stats_iss_dynamic |>
+      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
+      calc_clusters_stats(stats_iss_dynamic_permuted)
+  ),
+  tar_target(
+    patterns_indiv_whole,
+    arrow::open_dataset(file_cca_y) |>
+      filter(time_id >= index_onset) |>
+      collect() |>
+      pivot_wider(names_from = trial_id, values_from = y) |>
+      summarise(
+        pattern = list(as.dist(cor(pick(matches("^\\d+$")), use = "pairwise"))),
+        .by = c(subj_id, cca_id)
+      )
+  ),
+  tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
+  tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
+  tar_target(
+    iss_comparison,
+    data_iss_whole |>
+      mutate(cca_id = factor(cca_id)) |>
+      lmerTest::lmer(iss ~ cca_id + (1 | subj_id), data = _) |>
+      emmeans::emmeans(
+        ~cca_id,
+        lmer.df = "satterthwaite",
+        lmerTest.limit = Inf
+      ) |>
+      emmeans::contrast("pairwise") |>
+      broom::tidy() |>
+      separate_wider_delim(
+        contrast, " - ",
+        names = c("start", "end")
+      ) |>
+      mutate(across(c("start", "end"), parse_number))
+  ),
+  tar_target(
+    patterns_group_whole,
+    # `na.rm` not supported in `open_dataset()`
+    # https://github.com/apache/arrow/issues/44089
+    arrow::read_parquet(file_cca_y) |>
+      filter(time_id >= index_onset) |>
+      summarise(
+        y_avg = mean(y, na.rm = TRUE),
+        .by = c(cca_id, trial_id, time_id)
+      ) |>
+      arrange(trial_id) |> 
+      pivot_wider(
+        names_from = trial_id,
+        values_from = y_avg
+      ) |>
+      summarise(
+        pattern = list(
+          atanh(as.dist(cor(pick(matches("\\d+")), use = "pairwise")))
+        ),
+        .by = cca_id
+      )
+  ),
+  tar_target(
+    data_igs_whole,
+    calc_igs(patterns_indiv_whole, patterns_group_whole)
+  ),
+  tar_target(
+    data_igs_partial_whole,
+    calc_igs(
+      patterns_indiv_whole |> 
+        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      patterns_group_whole |> 
+        mutate(pattern = map(pattern, get_resid, pattern_semantics))
+    )
+  ),
+  tarchetypes::tar_file_read(
+    subjs,
+    "data/subj_206.txt",
+    read = scan(!!.x)
+  ),
+  tarchetypes::tar_file_read(
+    mem_perf,
+    "data/behav/retrieval.tsv",
+    read = read_tsv(!!.x, show_col_types = FALSE) |>
+      mutate(acc = xor(old_new == 1, resp >= 3)) |>
+      preproc.iquizoo:::calc_sdt(
+        type_signal = 1,
+        by = "subj",
+        name_acc = "acc",
+        name_type = "old_new"
+      ) |>
+      mutate(subj_id = match(subj, subjs)) |>
+      filter(!is.na(subj_id)) |>
+      select(subj_id, dprime)
+  ),
+  tar_target(
+    stats_iss_mem_whole,
+    data_iss_whole |>
+      left_join(mem_perf, by = "subj_id") |>
+      summarise(broom::tidy(cor.test(atanh(iss), dprime)), .by = cca_id)
+  ),
+  tar_target(
+    comparison_iss_mem,
+    expand_grid(start = 1:3, end = 1:3) |>
+      filter(start > end) |>
+      mutate(
+        map2(
+          start, end,
+          \(x, y) {
+            with(
+              stats_iss_mem_whole,
+              as_tibble(
+                psych::r.test(206, estimate[[x]], estimate[[y]])[c("z", "p")]
+              )
+            )
+          }
+        ) |>
+          list_rbind()
+      )
+  ),
+  tar_target(
+    stats_iss_mem_dynamic,
+    data_iss_dynamic |>
+      left_join(mem_perf, by = "subj_id") |>
+      summarise(
+        broom::tidy(cor.test(iss, dprime, use = "pairwise")),
+        .by = c(cca_id, time_id)
+      )
   ),
   tarchetypes::tar_rep(
-    stats_pred_perf_perm,
-    extract_stats_pred_perf(
-      avg_rs_group_window,
-      permutate_behav(cur_mem_perf, "subj_id")
-    ),
-    batches = num_batches,
-    reps = num_reps
-  ),
-  tar_target(
-    clusters_p_pred_perf,
-    extract_cluster_p(stats_pred_perf, stats_pred_perf_perm) |>
-      add_column(index_name = index_name, .before = 1L)
-  )
-)
-
-# config: predict shared memory content ----
-targets_pred_content <- tarchetypes::tar_map(
-  hypers_prep_shared,
-  names = c(resp_trans, include),
-  tar_target(
-    resp_mat,
-    events_retrieval |>
-      transform_resp() |>
-      prepare_resp_mat(include)
-  ),
-  tarchetypes::tar_map(
-    hypers_dist_shared,
-    tar_target(
-      simil_content,
-      calc_dist_resp_mat(resp_mat, method = method),
-      deployment = "main"
-    ),
-    tarchetypes::tar_map(
-      tibble::tribble(
-        ~mantel, ~covariate,
-        "mantel", NULL,
-        "partial", quote(dist_mem_perf)
-      ),
-      names = mantel,
-      tar_target(
-        stats_pred_content,
-        extract_stats_pred_content(
-          avg_rs_inter_trial,
-          simil_content,
-          covariate = covariate,
-          keep_perms = TRUE
-        )
-      )
-    )
-  )
-)
-
-# config: representational space ----
-targets_rps <- c(
-  tarchetypes::tar_map(
-    hypers_pred_perf,
-    names = index_name,
-    tar_target(
-      file_pred_perf_rps,
-      config_files_pred_perf_rps(index_name_sjt)
-    ),
-    tar_target(
-      stats_pred_perf_rps,
-      extract_cluster_p_rps(
-        file_pred_perf_rps,
-        index_name = index_name
-      )
-    )
-  ),
-  tarchetypes::tar_map(
-    hypers_dist_shared,
-    tar_target(
-      file_pred_content_rps_real,
-      config_files_pred_content_rps(method, type = "real")
-    ),
-    tar_target(
-      file_pred_content_rps_perm,
-      config_files_pred_content_rps(method, type = "perm")
-    ),
-    tar_target(
-      clusters_p_pred_content_rps,
-      extract_cluster_p(
-        read_csv(file_pred_content_rps_real, show_col_types = FALSE) |>
-          rename(statistic.r = statistic_r),
-        read_csv(file_pred_content_rps_perm, show_col_types = FALSE),
-        cols_region = region,
-        cols_group = c("method", "include", "mantel_type"),
-        cols_perm = perm_id,
-        col_window = time,
-        col_statistic = statistic.r
-      )
-    )
-  )
-)
-
-# main targets definition ----
-list(
-  # prepare files and paths ----
-  tarchetypes::tar_file_read(
-    events_encoding,
-    "data/group_task-wordencoding_events.csv",
-    read = readr::read_csv(!!.x, show_col_types = FALSE)
-  ),
-  tarchetypes::tar_file_read(
-    events_retrieval,
-    "data/group_task-wordretrieval_events.csv",
-    read = readr::read_csv(!!.x, show_col_types = FALSE)
-  ),
-  tarchetypes::tar_eval(
-    tarchetypes::tar_files_input(
-      tar_name_path,
-      config_files_rs(type, acq),
-      batches = batches_file
-    ),
-    hypers_rs
-  ),
-  tarchetypes::tar_map(
-    dplyr::filter(hypers_rs, acq != "whole"),
-    names = c(type, acq),
-    tar_target(
-      avg_rs,
-      lapply(
-        tar_name_path,
-        average_rs_trials,
-        scalar_rs = type == "group"
+    stats_iss_mem_dynamic_permuted,
+    data_iss_dynamic |>
+      left_join(
+        mem_perf |>
+          mutate(subj_id = sample(subj_id)),
+        by = "subj_id"
       ) |>
-        list_rbind(),
-      pattern = map(tar_name_path)
-    )
-  ),
-  # check inter-subject similarity ----
-  tar_target(
-    response_shared,
-    extract_response_shared(events_encoding, events_retrieval)
-  ),
-  tar_target(
-    rsa_inter_common_trials,
-    filter_shared(file_rs_inter_trial, response_shared)
-  ),
-  tar_target(
-    rsa_inter_avg_by_category,
-    rsa_inter_common_trials |>
       summarise(
-        mean_fisher_z = mean(fisher_z, na.rm = TRUE),
-        .by = c(region_id, subj_id_col, subj_id_row, word_category)
+        cor.test(iss, dprime, alternative = "greater", use = "pairwise") |>
+          broom::tidy(),
+        .by = c(cca_id, time_id)
+      ),
+    reps = 10,
+    batches = 100
+  ),
+  tar_target(
+    clusters_stats_iss_mem,
+    stats_iss_mem_dynamic |>
+      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
+      calc_clusters_stats(stats_iss_mem_dynamic_permuted)
+  ),
+  tar_target(
+    cca_y_halves_trials,
+    arrow::open_dataset(file_cca_y) |>
+      mutate(half = if_else(trial_id <= 75, "first", "second")) |>
+      filter(!is.nan(y)) |>
+      count(subj_id, cca_id, time_id, half) |>
+      distinct(subj_id, cca_id, half, n) |>
+      collect()
+  ),
+  tar_target(
+    cca_y_halves,
+    arrow::open_dataset(file_cca_y) |>
+      mutate(half = if_else(trial_id <= 75, "first", "second")) |>
+      filter(!is.nan(y)) |>
+      summarise(
+        y_avg = mean(y),
+        .by = c(subj_id, cca_id, time_id, half)
+      ) |>
+      collect()
+  ),
+  tar_target(
+    sync_inter_subjs,
+    cca_y_halves |>
+      filter(time_id >= index_onset) |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      reframe(
+        cor(pick(matches("^\\d+$")), use = "pairwise") |>
+          as_tibble(rownames = "row") |>
+          pivot_longer(cols = -row, names_to = "col", values_to = "r") |>
+          mutate(across(c(row, col), as.integer)) |>
+          filter(row < col),
+        .by = c(cca_id, half)
       )
   ),
   tar_target(
-    rsa_inter_avg_by_resp,
-    rsa_inter_common_trials |>
-      summarise(
-        mean_fisher_z = mean(fisher_z, na.rm = TRUE),
-        .by = c(region_id, subj_id_col, subj_id_row, response_type_shared)
+    sync_inter_halves,
+    cca_y_halves |>
+      filter(time_id >= index_onset) |>
+      pivot_wider(names_from = half, values_from = y_avg) |>
+      reframe(
+        {
+          first <- pick(subj_id, time_id, first) |>
+            pivot_wider(names_from = subj_id, values_from = first) |>
+            column_to_rownames("time_id")
+          second <- pick(subj_id, time_id, second) |>
+            pivot_wider(names_from = subj_id, values_from = second) |>
+            column_to_rownames("time_id")
+          cor(first, second, use = "pairwise") |>
+            as_tibble(rownames = "first") |>
+            pivot_longer(cols = -first, names_to = "second", values_to = "r") |>
+            mutate(across(c(first, second), as.integer))
+        },
+        .by = cca_id
       )
   ),
   tar_target(
-    stats_rsa_inter_by_resp,
-    extract_stats_sme(rsa_inter_avg_by_resp)
+    whole_erps,
+    arrow::read_parquet(file_cca_y) |>
+      summarise(
+        y_avg = mean(y, na.rm = TRUE),
+        .by = c(subj_id, cca_id, time_id)
+      )
   ),
-  if (FALSE) list(
-    inter_check_window,
-    tarchetypes::tar_combine(
-      summary_word_cat_rsa_inter_common_trials_window,
-      inter_check_window$summary_word_cat
+  tarchetypes::tar_file_read(
+    smc,
+    "data/behav/simil.rds",
+    read = readRDS(!!.x)$mat[[4]]
+  ),
+  tar_target(
+    sync_whole_trials,
+    whole_erps |>
+      filter(time_id >= index_onset) |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      summarise(
+        neu_sync = list(cor(pick(matches("^\\d+$")), use = "pairwise")),
+        .by = cca_id
+      )
+  ),
+  tar_target(
+    sync_smc,
+    calc_sync_smc(sync_whole_trials, smc)
+  ),
+  tar_target(
+    sync_dynamic,
+    whole_erps |>
+      pivot_wider(names_from = subj_id, values_from = y_avg) |>
+      reframe(
+        pick(!time_id) |>
+          slider::slide(
+            \(x) as.dist(cor(x, use = "pairwise")),
+            .before = 25,
+            .after = 25,
+            .step = 5,
+            .complete = TRUE
+          ) |>
+          enframe(name = "time_id", value = "neu_sync") |>
+          filter(!map_lgl(neu_sync, is.null)),
+        .by = cca_id
+      )
+  ),
+  tar_target(
+    sync_smc_dynamic,
+    calc_sync_smc(sync_dynamic, smc)
+  ),
+  tarchetypes::tar_rep(
+    sync_smc_dynamic_permuted,
+    calc_sync_smc(
+      sync_dynamic,
+      seriation::permute(smc, sample.int(206L))
     ),
-    tarchetypes::tar_combine(
-      summary_word_mem_rsa_inter_common_trials_window,
-      inter_check_window$summary_word_mem
-    )
+    reps = 10,
+    batches = 100
   ),
-  # predict memory performance ----
-  tar_target(mem_perf, calc_mem_perf(events_retrieval)),
-  tar_target(dist_mem_perf, calc_dist_mem_perf(mem_perf)),
-  targets_pred_perf,
-  tarchetypes::tar_combine(
-    stats_pred_perf,
-    targets_pred_perf$stats_pred_perf
-  ),
-  tarchetypes::tar_combine(
-    clusters_p_pred_perf,
-    targets_pred_perf$clusters_p_pred_perf
-  ),
-  # predict shared memory content ----
-  targets_pred_content,
-  tar_combine_with_meta(
-    stats_pred_content,
-    select_list(
-      targets_pred_content,
-      starts_with("stats_pred_content")
-    ),
-    cols_targets = c("mantel", "method", "resp_trans", "include"),
-    prefix = "stats_pred_content"
+  tarchetypes::tar_rep2(
+    stats_sync_smc_dynamic_permuted,
+    sync_smc_dynamic_permuted |>
+      mutate(
+        map(mantel, tidy_mantel) |>
+          list_rbind(),
+        .keep = "unused"
+      ),
+    sync_smc_dynamic_permuted
   ),
   tar_target(
-    file_stats_pred_content_real,
-    "data/pred_content/res_par-mantel_isc_rps_trial_avg_smc_gower.csv",
-    format = "file"
-  ),
-  tarchetypes::tar_group_by(
-    stats_pred_content_real,
-    read_csv(file_stats_pred_content_real, show_col_types = FALSE) |>
-      rename(statistic.r = statistic_r),
-    mantel_type, method, include
+    stats_sync_smc_dynamic,
+    sync_smc_dynamic |>
+      mutate(
+        map(mantel, tidy_mantel) |>
+          list_rbind(),
+        .keep = "unused"
+      )
   ),
   tar_target(
-    file_stats_pred_content_perm,
-    "data/pred_content/res_par-mantel_isc_rps_trial-avg_smc_rand1000_gower.csv",
-    format = "file"
-  ),
-  tarchetypes::tar_group_by(
-    stats_pred_content_perm,
-    read_csv(file_stats_pred_content_perm, show_col_types = FALSE),
-    mantel_type, method, include
-  ),
-  tar_target(
-    clusters_p_pred_content,
-    extract_cluster_p(
-      stats_pred_content_real,
-      stats_pred_content_perm,
-      cols_group = c(method, include, mantel_type),
-      cols_perm = perm_id,
-      col_statistic = statistic.r
-    ),
-    pattern = map(stats_pred_content_real, stats_pred_content_perm)
-  ),
-  # representational space ----
-  targets_rps,
-  tarchetypes::tar_combine(
-    stats_pred_perf_rps,
-    targets_rps$stats_pred_perf_rps,
-    command = {
-      res <- list(!!!.x)
-      setNames(nm = c("stats_real", "clusters_p")) |>
-        purrr::map(
-          ~ purrr::map(res, .x) |>
-            bind_rows()
-        )
-    }
-  ),
-  tarchetypes::tar_combine(
-    clusters_p_pred_content_rps,
-    targets_rps$clusters_p_pred_content_rps
-  ),
-  tar_target(
-    file_pred_content_rps_real_manhattan,
-    fs::path(
-      "data", "representational_space",
-      "res_par-mantel_isc_rps_spc_memory_content_rem_allitems.csv"
-    ),
-    format = "file"
-  ),
-  tar_target(
-    file_pred_content_rps_perm_manhattan,
-    fs::path(
-      "data", "representational_space",
-      "res_par-mantel_isc_rps_spc_memory_content_rand1000_rem_allitems.csv"
-    ),
-    format = "file"
-  ),
-  tar_target(
-    clusters_p_pred_content_rps_manhattan,
-    extract_cluster_p(
-      read_csv(file_pred_content_rps_real_manhattan, show_col_types = FALSE) |>
-        rename(statistic.r = statistic_r),
-      read_csv(file_pred_content_rps_perm_manhattan, show_col_types = FALSE),
-      cols_region = region,
-      cols_group = c(memory_precision, mantel_type),
-      cols_perm = perm_id,
-      col_window = time,
-      col_statistic = statistic.r
-    )
-  ),
-  # render website ----
-  tarchetypes::tar_quarto(website)
+    clusters_stats_sync_smc_dynamic,
+    stats_sync_smc_dynamic |>
+      calc_clusters_stats(stats_sync_smc_dynamic_permuted)
+  )
 )
