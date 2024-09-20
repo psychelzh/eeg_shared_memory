@@ -286,11 +286,11 @@ list(
       )
   ),
   tar_target(
-    data_igs,
+    data_igs_whole,
     calc_igs(patterns_indiv_whole, patterns_group_whole)
   ),
   tar_target(
-    data_igs_reg_p,
+    data_igs_partial_whole,
     calc_igs(
       patterns_indiv_whole |> 
         mutate(pattern = map(pattern, get_resid, pattern_semantics)),
