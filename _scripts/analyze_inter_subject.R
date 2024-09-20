@@ -140,7 +140,7 @@ tidy_mantel <- function(mantel) {
 list(
   tar_target(
     file_cca_y,
-    "data/CorCAExtra/cca_y_subjs206_flat.parquet",
+    "data/CorCAExtra/cca_y_subjs206.parquet",
     format = "file"
   ),
   tar_target(
