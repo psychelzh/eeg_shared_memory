@@ -41,6 +41,17 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
     ) |>
       list_rbind(names_to = "pair"),
     subjs_sampled
+  ),
+  tarchetypes::tar_rep2(
+    patterns_group_stability,
+    if (paired) {
+      patterns_group_whole_resampled |>
+        pivot_wider(names_from = pair, values_from = pattern) |>
+        mutate(r = map2_dbl(`1`, `2`, cor), .keep = "unused")
+    } else {
+      tibble()
+    },
+    patterns_group_whole_resampled
   )
 )
 
@@ -147,6 +158,16 @@ list(
       mutate(across(c("start", "end"), parse_number))
   ),
   targets_patterns_group_whole_resampled,
+  tarchetypes::tar_combine(
+    patterns_group_stability,
+    targets_patterns_group_whole_resampled$patterns_group_stability,
+    command = list_rbind(list(!!!.x), names_to = ".id") |>
+      zutils::separate_wider_dsv(
+        .id,
+        names(config_num_subjs),
+        prefix = "patterns_group_stability"
+      )
+  ),
   tar_target(
     patterns_group_whole,
     arrow::read_parquet(file_cca_y) |>
