@@ -18,9 +18,7 @@ calc_group_pattern <- function(data) {
       values_from = y_avg
     ) |>
     summarise(
-      pattern = list(
-        atanh(as.dist(cor(pick(matches("\\d+")), use = "pairwise")))
-      ),
+      pattern = list(as.dist(cor(pick(matches("\\d+")), use = "pairwise"))),
       .by = cca_id
     )
 }
