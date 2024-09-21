@@ -149,8 +149,6 @@ list(
   targets_patterns_group_whole_resampled,
   tar_target(
     patterns_group_whole,
-    # `na.rm` not supported in `open_dataset()`
-    # https://github.com/apache/arrow/issues/44089
     arrow::read_parquet(file_cca_y) |>
       filter(time_id >= index_onset) |>
       calc_group_pattern()
@@ -301,6 +299,8 @@ list(
   ),
   tar_target(
     whole_erps,
+    # `na.rm` not supported in `open_dataset()`
+    # https://github.com/apache/arrow/issues/44089
     arrow::read_parquet(file_cca_y) |>
       summarise(
         y_avg = mean(y, na.rm = TRUE),
