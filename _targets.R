@@ -61,12 +61,7 @@ list(
     "data/CorCAExtra/cca_y_subjs206.parquet",
     format = "file"
   ),
-  tar_target(
-    subj_id_loop,
-    arrow::open_dataset(file_cca_y) |>
-      distinct(subj_id) |>
-      pull(subj_id, as_vector = TRUE)
-  ),
+  tar_target(subj_id_loop, seq_len(num_subj)),
   tar_target(
     patterns_indiv_dynamic,
     arrow::open_dataset(file_cca_y) |>
@@ -169,21 +164,24 @@ list(
       )
   ),
   tar_target(
-    patterns_group_whole,
+    # leave one out
+    patterns_group_whole_loo,
     arrow::read_parquet(file_cca_y) |>
-      filter(time_id >= index_onset) |>
-      calc_group_pattern()
+      filter(time_id >= index_onset, subj_id != subj_id_loop) |>
+      calc_group_pattern() |>
+      add_column(subj_id = subj_id_loop, .before = 1L),
+    pattern = map(subj_id_loop)
   ),
   tar_target(
     data_igs_whole,
-    calc_igs(patterns_indiv_whole, patterns_group_whole)
+    calc_igs(patterns_indiv_whole, patterns_group_whole_loo)
   ),
   tar_target(
     data_igs_partial_whole,
     calc_igs(
       patterns_indiv_whole |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics)),
-      patterns_group_whole |>
+      patterns_group_whole_loo |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics))
     )
   ),

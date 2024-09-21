@@ -1,21 +1,10 @@
-calc_igs <- function(patterns, patterns_group) {
-  patterns |>
+calc_igs <- function(patterns_indiv, patterns_group) {
+  patterns_indiv |>
+    inner_join(patterns_group, by = c("subj_id", "cca_id")) |>
     mutate(
-      igs = map2_dbl(
-        pattern, cca_id,
-        \(pat, cca) {
-          with(
-            patterns_group,
-            cor(
-              pattern[[which(cca_id == cca)]],
-              pat,
-              use = "pairwise"
-            )
-          )
-        }
-      )
-    ) |>
-    select(!pattern)
+      igs = map2_dbl(pattern.x, pattern.y, cor, use = "pairwise"),
+      .keep = "unused"
+    )
 }
 
 calc_group_pattern <- function(data) {
