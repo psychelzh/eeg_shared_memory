@@ -1,6 +1,3 @@
 fit_sme_lme:
   script: _scripts/fit_sme_lme.R
   store: _targets/fit_sme_lme
-analyze_inter_subject:
-  script: _scripts/analyze_inter_subject.R
-  store: _targets/analyze_inter_subject
