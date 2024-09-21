@@ -13,7 +13,6 @@ calc_group_pattern <- function(data) {
       y_avg = mean(y, na.rm = TRUE),
       .by = c(cca_id, trial_id, time_id)
     ) |>
-    arrange(trial_id) |>
     pivot_wider(
       names_from = trial_id,
       values_from = y_avg
