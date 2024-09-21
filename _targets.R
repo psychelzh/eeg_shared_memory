@@ -16,6 +16,33 @@ tar_source()
 
 # for whole times series analysis, we would remove the first 200 ms baseline
 index_onset <- floor(256 * (200 / 1000))
+num_subj <- 206L
+config_num_subjs <- data.frame(size = seq(20, num_subj, by = 20)) |>
+  dplyr::mutate(paired = num_subj <= 100)
+
+targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
+  config_num_subjs,
+  tarchetypes::tar_rep(
+    subjs_sampled,
+    resample(num_subj, size, paired),
+    reps = 10,
+    batches = 10,
+    iteration = "list"
+  ),
+  tarchetypes::tar_rep2(
+    patterns_group_whole_resampled,
+    lapply(
+      subjs_sampled,
+      \(subjs) {
+        arrow::read_parquet(file_cca_y) |>
+          filter(time_id >= index_onset, subj_id %in% subjs) |>
+          calc_group_pattern()
+      }
+    ) |>
+      list_rbind(names_to = "pair"),
+    subjs_sampled
+  )
+)
 
 list(
   tar_target(
@@ -119,27 +146,14 @@ list(
       ) |>
       mutate(across(c("start", "end"), parse_number))
   ),
+  targets_patterns_group_whole_resampled,
   tar_target(
     patterns_group_whole,
     # `na.rm` not supported in `open_dataset()`
     # https://github.com/apache/arrow/issues/44089
     arrow::read_parquet(file_cca_y) |>
       filter(time_id >= index_onset) |>
-      summarise(
-        y_avg = mean(y, na.rm = TRUE),
-        .by = c(cca_id, trial_id, time_id)
-      ) |>
-      arrange(trial_id) |> 
-      pivot_wider(
-        names_from = trial_id,
-        values_from = y_avg
-      ) |>
-      summarise(
-        pattern = list(
-          atanh(as.dist(cor(pick(matches("\\d+")), use = "pairwise")))
-        ),
-        .by = cca_id
-      )
+      calc_group_pattern()
   ),
   tar_target(
     data_igs_whole,
@@ -148,9 +162,9 @@ list(
   tar_target(
     data_igs_partial_whole,
     calc_igs(
-      patterns_indiv_whole |> 
+      patterns_indiv_whole |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics)),
-      patterns_group_whole |> 
+      patterns_group_whole |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics))
     )
   ),
