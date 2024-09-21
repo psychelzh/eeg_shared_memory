@@ -3992,6 +3992,21 @@
         "utils"
       ],
       "Hash": "5c715954112b45499fb1dadc6ee6ee3e"
+    },
+    "zutils": {
+      "Package": "zutils",
+      "Version": "0.0.10",
+      "Source": "Repository",
+      "Repository": "https://psychelzh.r-universe.dev",
+      "Requirements": [
+        "dplyr",
+        "rlang",
+        "stringr",
+        "tidyr",
+        "tidyselect",
+        "utils"
+      ],
+      "Hash": "a0244d6980705424e39a3d60e69584d2"
     }
   }
 }

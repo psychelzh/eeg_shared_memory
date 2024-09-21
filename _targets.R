@@ -32,7 +32,7 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
   tarchetypes::tar_rep2(
     patterns_group_whole_resampled,
     lapply(
-      subjs_sampled,
+      zutils::select_list(subjs_sampled, !starts_with("tar")),
       \(subjs) {
         arrow::read_parquet(file_cca_y) |>
           filter(time_id >= index_onset, subj_id %in% subjs) |>
