@@ -187,6 +187,20 @@ list(
         mutate(pattern = map(pattern, get_resid, pattern_semantics))
     )
   ),
+  tar_target(
+    # leave one out
+    patterns_group_dynamic_loo,
+    arrow::open_dataset(file_cca_y) |>
+      filter(subj_id != subj_id_loop) |>
+      collect() |>
+      calc_group_pattern_dynamic() |>
+      add_column(subj_id = subj_id_loop, .before = 1L),
+    pattern = map(subj_id_loop)
+  ),
+  tar_target(
+    data_igs_dynamic,
+    calc_igs(patterns_indiv_dynamic, patterns_group_dynamic_loo)
+  ),
   tarchetypes::tar_file_read(
     subjs,
     "data/subj_206.txt",
