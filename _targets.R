@@ -34,8 +34,9 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
     lapply(
       zutils::select_list(subjs_sampled, !starts_with("tar")),
       \(subjs) {
-        arrow::read_parquet(file_cca_y) |>
+        arrow::open_dataset(file_cca_y) |>
           filter(time_id >= index_onset, subj_id %in% subjs) |>
+          collect() |>
           calc_group_pattern()
       }
     ) |>
@@ -166,8 +167,9 @@ list(
   tar_target(
     # leave one out
     patterns_group_whole_loo,
-    arrow::read_parquet(file_cca_y) |>
+    arrow::open_dataset(file_cca_y) |>
       filter(time_id >= index_onset, subj_id != subj_id_loop) |>
+      collect() |>
       calc_group_pattern() |>
       add_column(subj_id = subj_id_loop, .before = 1L),
     pattern = map(subj_id_loop)
