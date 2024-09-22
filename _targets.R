@@ -85,12 +85,16 @@ list(
     pattern = map(subj_id_loop)
   ),
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
+  tar_target(
+    mapping_word_trial,
+    raveio::read_mat(file_seq)$SM[, 1:2] |>
+      as_tibble(.name_repair = ~ c("trial_id", "word_id"))
+  ),
   tar_target(file_w2v, "data/stimuli/words_w2v.txt", format = "file"),
   tar_target(
     pattern_semantics,
-    raveio::read_mat(file_seq)$SM[, 1:2] |>
-      as_tibble(.name_repair = ~ c("trial_id", "word_id")) |>
-      left_join(
+    mapping_word_trial |>
+      inner_join(
         read_table(file_w2v, show_col_types = FALSE, col_names = FALSE),
         by = c("word_id" = "X1")
       ) |>
@@ -98,6 +102,19 @@ list(
       select(-word_id, -X2) |>
       column_to_rownames("trial_id") |>
       proxy::simil(method = "cosine")
+  ),
+  tar_target(
+    file_word_shape,
+    "data/stimuli/words_shape_similarity.tsv",
+    format = "file"
+  ),
+  tar_target(
+    pattern_shapes, {
+      order <- with(mapping_word_trial, word_id[trial_id > 0])
+      x <- read_tsv(file_word_shape, show_col_types = FALSE)$similarity |>
+        pracma::squareform()
+      as.dist(x[order, order])
+    }
   ),
   tar_target(data_iss_dynamic, calc_iss(patterns_indiv_dynamic, pattern_semantics)),
   tar_target(stats_iss_dynamic, calc_iss_stats(data_iss_dynamic)),
