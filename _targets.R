@@ -68,20 +68,7 @@ list(
     arrow::open_dataset(file_cca_y) |>
       filter(subj_id == subj_id_loop) |>
       collect() |>
-      pivot_wider(names_from = trial_id, values_from = y) |>
-      reframe(
-        pick(!time_id) |>
-          slider::slide(
-            \(x) as.dist(cor(x, use = "pairwise")),
-            .before = 25,
-            .after = 25,
-            .step = 5,
-            .complete = TRUE
-          ) |>
-          enframe(name = "time_id", value = "pattern") |>
-          filter(!map_lgl(pattern, is.null)),
-        .by = c(subj_id, cca_id)
-      ),
+      calc_indiv_pattern_dynamic(),
     pattern = map(subj_id_loop)
   ),
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
@@ -145,11 +132,7 @@ list(
     arrow::open_dataset(file_cca_y) |>
       filter(time_id >= index_onset) |>
       collect() |>
-      pivot_wider(names_from = trial_id, values_from = y) |>
-      summarise(
-        pattern = list(as.dist(cor(pick(matches("^\\d+$")), use = "pairwise"))),
-        .by = c(subj_id, cca_id)
-      )
+      calc_indiv_pattern()
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
