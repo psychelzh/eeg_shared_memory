@@ -149,6 +149,13 @@ list(
       )
   ),
   tar_target(
+    patterns_group_whole,
+    arrow::open_dataset(file_cca_y) |>
+      filter(time_id >= index_onset) |>
+      collect() |>
+      calc_group_pattern()
+  ),
+  tar_target(
     # leave one out
     patterns_group_whole_loo,
     arrow::open_dataset(file_cca_y) |>
