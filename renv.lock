@@ -2641,6 +2641,25 @@
       "Repository": "CRAN",
       "Hash": "a555924add98c99d2f411e37e7d25e9f"
     },
+    "preproc.iquizoo": {
+      "Package": "preproc.iquizoo",
+      "Version": "2.8.1",
+      "Source": "Repository",
+      "Repository": "https://psychelzh.r-universe.dev",
+      "Requirements": [
+        "R",
+        "dplyr",
+        "pracma",
+        "purrr",
+        "rlang",
+        "stringr",
+        "tibble",
+        "tidyr",
+        "utils",
+        "vctrs"
+      ],
+      "Hash": "91931ddcbf8dbae37cb78d04d617b940"
+    },
     "prettyunits": {
       "Package": "prettyunits",
       "Version": "1.2.0",
