@@ -109,7 +109,8 @@ list(
     format = "file"
   ),
   tar_target(
-    pattern_shapes, {
+    pattern_shapes,
+    {
       order <- with(mapping_word_trial, word_id[trial_id > 0])
       x <- read_tsv(file_word_shape, show_col_types = FALSE)$similarity |>
         pracma::squareform()
@@ -152,24 +153,7 @@ list(
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
-  tar_target(
-    iss_comparison,
-    data_iss_whole |>
-      mutate(cca_id = factor(cca_id)) |>
-      lmerTest::lmer(iss ~ cca_id + (1 | subj_id), data = _) |>
-      emmeans::emmeans(
-        ~cca_id,
-        lmer.df = "satterthwaite",
-        lmerTest.limit = Inf
-      ) |>
-      emmeans::contrast("pairwise") |>
-      broom::tidy() |>
-      separate_wider_delim(
-        contrast, " - ",
-        names = c("start", "end")
-      ) |>
-      mutate(across(c("start", "end"), parse_number))
-  ),
+  tar_target(iss_comparison, compare_iss(data_iss_whole)),
   targets_patterns_group_whole_resampled,
   tarchetypes::tar_combine(
     patterns_group_stability,
@@ -244,25 +228,7 @@ list(
       left_join(mem_perf, by = "subj_id") |>
       summarise(broom::tidy(cor.test(atanh(iss), dprime)), .by = cca_id)
   ),
-  tar_target(
-    comparison_iss_mem,
-    expand_grid(start = 1:3, end = 1:3) |>
-      filter(start > end) |>
-      mutate(
-        map2(
-          start, end,
-          \(x, y) {
-            with(
-              stats_iss_mem_whole,
-              as_tibble(
-                psych::r.test(206, estimate[[x]], estimate[[y]])[c("z", "p")]
-              )
-            )
-          }
-        ) |>
-          list_rbind()
-      )
-  ),
+  tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
   tar_target(
     stats_iss_mem_dynamic,
     data_iss_dynamic |>
