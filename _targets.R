@@ -53,6 +53,15 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
       tibble()
     },
     patterns_group_whole_resampled
+  ),
+  tarchetypes::tar_rep2(
+    data_gss_whole_resampled,
+    patterns_group_whole_resampled |>
+      mutate(
+        gss = map_dbl(pattern, cor, pattern_semantics),
+        .keep = "unused"
+      ),
+    patterns_group_whole_resampled
   )
 )
 
@@ -146,6 +155,16 @@ list(
         .id,
         names(config_num_subjs),
         prefix = "patterns_group_stability"
+      )
+  ),
+  tarchetypes::tar_combine(
+    data_gss_whole_resampled,
+    targets_patterns_group_whole_resampled$data_gss_whole_resampled,
+    command = list_rbind(list(!!!.x), names_to = ".id") |>
+      zutils::separate_wider_dsv(
+        .id,
+        names(config_num_subjs),
+        prefix = "data_gss_whole_resampled"
       )
   ),
   tar_target(
