@@ -6,7 +6,8 @@ calc_group_pattern <- function(data) {
     ) |>
     pivot_wider(
       names_from = trial_id,
-      values_from = y_avg
+      values_from = y_avg,
+      names_sort = TRUE
     ) |>
     summarise(
       pattern = list(as.dist(cor(pick(matches("\\d+")), use = "pairwise"))),
@@ -22,7 +23,8 @@ calc_group_pattern_dynamic <- function(data) {
     ) |>
     pivot_wider(
       names_from = trial_id,
-      values_from = y_avg
+      values_from = y_avg,
+      names_sort = TRUE
     ) |>
     reframe(
       .calc_pattern_dynamic(pick(!time_id)),
@@ -32,7 +34,11 @@ calc_group_pattern_dynamic <- function(data) {
 
 calc_indiv_pattern <- function(data) {
   data |>
-    pivot_wider(names_from = trial_id, values_from = y) |>
+    pivot_wider(
+      names_from = trial_id,
+      values_from = y,
+      names_sort = TRUE
+    ) |>
     summarise(
       pattern = list(as.dist(cor(pick(matches("^\\d+$")), use = "pairwise"))),
       .by = c(subj_id, cca_id)
@@ -41,7 +47,11 @@ calc_indiv_pattern <- function(data) {
 
 calc_indiv_pattern_dynamic <- function(data) {
   data |>
-    pivot_wider(names_from = trial_id, values_from = y) |>
+    pivot_wider(
+      names_from = trial_id,
+      values_from = y,
+      names_sort = TRUE
+    ) |>
     reframe(
       .calc_pattern_dynamic(pick(!time_id)),
       .by = c(subj_id, cca_id)
