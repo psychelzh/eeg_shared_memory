@@ -8,14 +8,6 @@ convert_p2_p1 <- function(statistic, p.value,
   )
 }
 
-tidy_mantel <- function(mantel) {
-  tibble(
-    statistic = mantel$statistic,
-    p.value = mantel$signif,
-    method = mantel$method
-  )
-}
-
 get_resid <- function(y, x) {
   resid(lm(y ~ x, na.action = na.exclude))
 }

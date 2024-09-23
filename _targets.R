@@ -175,6 +175,31 @@ list(
       calc_group_pattern()
   ),
   tar_target(
+    patterns_group_dynamic,
+    arrow::read_parquet(file_cca_y) |>
+      calc_group_pattern_dynamic()
+  ),
+  tar_target(data_gss_dynamic, calc_mantel(patterns_group_dynamic, pattern_semantics)),
+  tar_target(stats_gss_dynamic, extract_stats_mantel(data_gss_dynamic)),
+  tarchetypes::tar_rep(
+    data_gss_dynamic_permuted,
+    calc_mantel(
+      patterns_group_dynamic,
+      seriation::permute(pattern_semantics, sample.int(150L))
+    ),
+    reps = 10,
+    batches = 100
+  ),
+  tarchetypes::tar_rep2(
+    stats_gss_dynamic_permuted,
+    extract_stats_mantel(data_gss_dynamic_permuted),
+    data_gss_dynamic_permuted
+  ),
+  tar_target(
+    clusters_stats_gss_dynamic,
+    calc_clusters_stats(stats_gss_dynamic, stats_gss_dynamic_permuted)
+  ),
+  tar_target(
     # leave one out
     patterns_group_whole_loo,
     arrow::open_dataset(file_cca_y) |>
@@ -349,10 +374,7 @@ list(
         .by = cca_id
       )
   ),
-  tar_target(
-    sync_smc,
-    calc_sync_smc(sync_whole_trials, smc)
-  ),
+  tar_target(sync_smc, calc_mantel(sync_whole_trials, smc)),
   tar_target(
     sync_dynamic,
     whole_erps |>
@@ -367,13 +389,14 @@ list(
         .by = cca_id
       )
   ),
+  tar_target(sync_smc_dynamic, calc_mantel(sync_dynamic, smc)),
   tar_target(
-    sync_smc_dynamic,
-    calc_sync_smc(sync_dynamic, smc)
+    stats_sync_smc_dynamic,
+    extract_stats_mantel(sync_smc_dynamic)
   ),
   tarchetypes::tar_rep(
     sync_smc_dynamic_permuted,
-    calc_sync_smc(
+    calc_mantel(
       sync_dynamic,
       seriation::permute(smc, sample.int(206L))
     ),
@@ -382,22 +405,8 @@ list(
   ),
   tarchetypes::tar_rep2(
     stats_sync_smc_dynamic_permuted,
-    sync_smc_dynamic_permuted |>
-      mutate(
-        map(mantel, tidy_mantel) |>
-          list_rbind(),
-        .keep = "unused"
-      ),
+    extract_stats_mantel(sync_smc_dynamic_permuted),
     sync_smc_dynamic_permuted
-  ),
-  tar_target(
-    stats_sync_smc_dynamic,
-    sync_smc_dynamic |>
-      mutate(
-        map(mantel, tidy_mantel) |>
-          list_rbind(),
-        .keep = "unused"
-      )
   ),
   tar_target(
     clusters_stats_sync_smc_dynamic,
