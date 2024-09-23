@@ -358,16 +358,12 @@ list(
     whole_erps |>
       pivot_wider(names_from = subj_id, values_from = y_avg) |>
       reframe(
-        pick(!time_id) |>
-          slider::slide(
-            \(x) as.dist(cor(x, use = "pairwise")),
-            .before = 25,
-            .after = 25,
-            .step = 5,
-            .complete = TRUE
-          ) |>
-          enframe(name = "time_id", value = "neu_sync") |>
-          filter(!map_lgl(neu_sync, is.null)),
+        calc_slide_window(
+          pick(!time_id),
+          calc_pattern,
+          "neu_sync",
+          fisher_z = FALSE
+        ),
         .by = cca_id
       )
   ),
