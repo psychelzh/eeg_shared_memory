@@ -10,7 +10,7 @@ calc_group_pattern <- function(data) {
       names_sort = TRUE
     ) |>
     summarise(
-      pattern = list(as.dist(cor(pick(matches("\\d+")), use = "pairwise"))),
+      pattern = list(.calc_pattern(pick(matches("\\d+")))),
       .by = cca_id
     )
 }
@@ -40,7 +40,7 @@ calc_indiv_pattern <- function(data) {
       names_sort = TRUE
     ) |>
     summarise(
-      pattern = list(as.dist(cor(pick(matches("^\\d+$")), use = "pairwise"))),
+      pattern = list(.calc_pattern(pick(matches("^\\d+$")))),
       .by = c(subj_id, cca_id)
     )
 }
@@ -58,10 +58,11 @@ calc_indiv_pattern_dynamic <- function(data) {
     )
 }
 
+# helper functions
 .calc_pattern_dynamic <- function(data) {
   data |>
     slider::slide(
-      \(x) as.dist(cor(x, use = "pairwise")),
+      .calc_pattern,
       .before = 25,
       .after = 25,
       .step = 5,
@@ -69,4 +70,8 @@ calc_indiv_pattern_dynamic <- function(data) {
     ) |>
     enframe(name = "time_id", value = "pattern") |>
     filter(!map_lgl(pattern, is.null))
+}
+
+.calc_pattern <- function(x) {
+  atanh(as.dist(cor(x, use = "pairwise")))
 }

@@ -1,12 +1,9 @@
-calc_iss <- function(patterns, pattern_semantics) {
-  patterns |>
+calc_iss <- function(patterns_indiv, pattern_semantics) {
+  patterns_indiv |>
     mutate(
-      iss = map_dbl(
-        pattern,
-        \(pattern) {
-          cor(atanh(pattern), pattern_semantics, use = "pairwise")
-        }
-      ),
+      iss = pattern |>
+        map_dbl(\(x) cor(x, pattern_semantics, use = "pairwise")) |>
+        atanh(),
       .keep = "unused"
     )
 }

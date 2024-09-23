@@ -235,7 +235,7 @@ list(
     stats_iss_mem_whole,
     data_iss_whole |>
       left_join(mem_perf, by = "subj_id") |>
-      summarise(broom::tidy(cor.test(atanh(iss), dprime)), .by = cca_id)
+      summarise(broom::tidy(cor.test(iss, dprime)), .by = cca_id)
   ),
   tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
   tar_target(
