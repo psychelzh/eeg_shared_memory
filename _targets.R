@@ -301,53 +301,24 @@ list(
   ),
   tar_target(
     cca_y_halves,
-    arrow::open_dataset(file_cca_y) |>
+    arrow::read_parquet(file_cca_y) |>
       mutate(half = if_else(trial_id <= 75, "first", "second")) |>
-      filter(!is.nan(y)) |>
       summarise(
-        y_avg = mean(y),
+        y_avg = mean(y, na.rm = TRUE),
         .by = c(subj_id, cca_id, time_id, half)
-      ) |>
-      collect()
+      )
   ),
   tar_target(
-    sync_inter_subjs,
+    sync_within_halves,
     cca_y_halves |>
       filter(time_id >= index_onset) |>
-      pivot_wider(names_from = subj_id, values_from = y_avg) |>
-      reframe(
-        cor(pick(matches("^\\d+$")), use = "pairwise") |>
-          as_tibble(rownames = "subj_id_row") |>
-          pivot_longer(cols = -subj_id_row, names_to = "subj_id_col", values_to = "r") |>
-          mutate(across(starts_with("subj_id"), as.integer)) |>
-          filter(subj_id_row < subj_id_col),
-        .by = c(cca_id, half)
-      )
+      calc_sync_within_halves()
   ),
   tar_target(
     sync_inter_halves,
     cca_y_halves |>
       filter(time_id >= index_onset) |>
-      pivot_wider(names_from = half, values_from = y_avg) |>
-      reframe(
-        {
-          first <- pick(subj_id, time_id, first) |>
-            pivot_wider(names_from = subj_id, values_from = first) |>
-            column_to_rownames("time_id")
-          second <- pick(subj_id, time_id, second) |>
-            pivot_wider(names_from = subj_id, values_from = second) |>
-            column_to_rownames("time_id")
-          cor(first, second, use = "pairwise") |>
-            as_tibble(rownames = "subj_id_first") |>
-            pivot_longer(
-              cols = -subj_id_first,
-              names_to = "subj_id_second",
-              values_to = "r"
-            ) |>
-            mutate(across(starts_with("subj_id"), as.integer))
-        },
-        .by = cca_id
-      )
+      calc_sync_between_halves()
   ),
   tar_target(
     whole_erps,
@@ -368,28 +339,14 @@ list(
     sync_whole,
     whole_erps |>
       filter(time_id >= index_onset) |>
-      pivot_wider(names_from = subj_id, values_from = y_avg) |>
-      summarise(
-        neu_sync = list(cor(pick(matches("^\\d+$")), use = "pairwise")),
-        .by = cca_id
-      )
+      calc_sync_whole()
   ),
   tar_target(sync_smc_whole, calc_mantel(sync_whole, smc)),
   tar_target(
-    sync_dynamic,
-    whole_erps |>
-      pivot_wider(names_from = subj_id, values_from = y_avg) |>
-      reframe(
-        calc_slide_window(
-          pick(!time_id),
-          calc_pattern,
-          "neu_sync",
-          # skip fisher z transformation to do mantel test
-          fisher_z = FALSE
-        ),
-        .by = cca_id
-      )
+    stats_sync_smc_whole,
+    extract_stats_mantel(sync_smc_whole)
   ),
+  tar_target(sync_dynamic, calc_sync_dynamic(whole_erps)),
   tar_target(sync_smc_dynamic, calc_mantel(sync_dynamic, smc)),
   tar_target(
     stats_sync_smc_dynamic,
