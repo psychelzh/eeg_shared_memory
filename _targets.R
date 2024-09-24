@@ -363,7 +363,7 @@ list(
     read = readRDS(!!.x)$mat[[4]]
   ),
   tar_target(
-    sync_whole_trials,
+    sync_whole,
     whole_erps |>
       filter(time_id >= index_onset) |>
       pivot_wider(names_from = subj_id, values_from = y_avg) |>
@@ -372,7 +372,7 @@ list(
         .by = cca_id
       )
   ),
-  tar_target(sync_smc, calc_mantel(sync_whole_trials, smc)),
+  tar_target(sync_smc_whole, calc_mantel(sync_whole, smc)),
   tar_target(
     sync_dynamic,
     whole_erps |>
@@ -382,6 +382,7 @@ list(
           pick(!time_id),
           calc_pattern,
           "neu_sync",
+          # skip fisher z transformation to do mantel test
           fisher_z = FALSE
         ),
         .by = cca_id
