@@ -315,10 +315,10 @@ list(
       pivot_wider(names_from = subj_id, values_from = y_avg) |>
       reframe(
         cor(pick(matches("^\\d+$")), use = "pairwise") |>
-          as_tibble(rownames = "row") |>
-          pivot_longer(cols = -row, names_to = "col", values_to = "r") |>
-          mutate(across(c(row, col), as.integer)) |>
-          filter(row < col),
+          as_tibble(rownames = "subj_id_row") |>
+          pivot_longer(cols = -subj_id_row, names_to = "subj_id_col", values_to = "r") |>
+          mutate(across(starts_with("subj_id"), as.integer)) |>
+          filter(subj_id_row < subj_id_col),
         .by = c(cca_id, half)
       )
   ),
@@ -336,9 +336,13 @@ list(
             pivot_wider(names_from = subj_id, values_from = second) |>
             column_to_rownames("time_id")
           cor(first, second, use = "pairwise") |>
-            as_tibble(rownames = "first") |>
-            pivot_longer(cols = -first, names_to = "second", values_to = "r") |>
-            mutate(across(c(first, second), as.integer))
+            as_tibble(rownames = "subj_id_first") |>
+            pivot_longer(
+              cols = -subj_id_first,
+              names_to = "subj_id_second",
+              values_to = "r"
+            ) |>
+            mutate(across(starts_with("subj_id"), as.integer))
         },
         .by = cca_id
       )
