@@ -173,6 +173,8 @@ list(
     arrow::read_parquet(file_cca_y) |>
       calc_group_pattern_dynamic()
   ),
+  tar_target(data_gss_whole, calc_mantel(patterns_group_whole, pattern_semantics)),
+  tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
   tar_target(data_gss_dynamic, calc_mantel(patterns_group_dynamic, pattern_semantics)),
   tar_target(stats_gss_dynamic, extract_stats_mantel(data_gss_dynamic)),
   tarchetypes::tar_rep(
