@@ -2,10 +2,18 @@ library(targets)
 
 tar_option_set(
   packages = c("tidyverse"),
-  controller = crew::crew_controller_local(
-    name = "local",
-    workers = 12
-  ),
+  controller = if (Sys.info()["nodename"] %in% c("shadow", "hippocampus")) {
+    crew.cluster::crew_controller_sge(
+      name = "sge",
+      workers = 25,
+      seconds_idle = 30
+    )
+  } else {
+    crew::crew_controller_local(
+      name = "local",
+      workers = 12
+    )
+  },
   garbage_collection = TRUE,
   memory = "transient",
   retrieval = "worker",
