@@ -1196,9 +1196,9 @@
     },
     "filearray": {
       "Package": "filearray",
-      "Version": "0.1.7.9000",
+      "Version": "0.1.8",
       "Source": "Repository",
-      "Repository": "https://rave-ieeg.r-universe.dev",
+      "Repository": "CRAN",
       "Requirements": [
         "BH",
         "Rcpp",
@@ -1207,7 +1207,7 @@
         "methods",
         "uuid"
       ],
-      "Hash": "b21844cfe516ef1f951469bf084e2958"
+      "Hash": "72c9d20f9fd97a6e4896dd530aef3b3b"
     },
     "fontawesome": {
       "Package": "fontawesome",
@@ -2851,9 +2851,11 @@
     },
     "raveio": {
       "Package": "raveio",
-      "Version": "0.9.0.63",
+      "Version": "0.9.0.71",
       "Source": "Repository",
       "Repository": "https://rave-ieeg.r-universe.dev",
+      "RemoteUrl": "https://github.com/beauchamplab/raveio",
+      "RemoteSha": "4f056820cc27cf278c79c7520c4043d1e4557dd0",
       "Requirements": [
         "R.matlab",
         "R6",
@@ -2877,13 +2879,15 @@
         "utils",
         "yaml"
       ],
-      "Hash": "ac146f57fbd56641ed9e2064020b57fe"
+      "Hash": "40f2851b5e03c5a30fc4be348878a417"
     },
     "ravetools": {
       "Package": "ravetools",
-      "Version": "0.1.7.9002",
+      "Version": "0.1.8",
       "Source": "Repository",
       "Repository": "https://rave-ieeg.r-universe.dev",
+      "RemoteUrl": "https://github.com/dipterix/ravetools",
+      "RemoteSha": "eb45eac5d5d9f6d6ae0c7fff34e2cc7b890eb7f5",
       "Requirements": [
         "R",
         "R6",
@@ -2899,7 +2903,7 @@
         "stats",
         "waveslim"
       ],
-      "Hash": "e1f208716d2478955c2ac04b51e5a185"
+      "Hash": "25144d4575d2bcede47f7b71dc6fcffe"
     },
     "rcmdcheck": {
       "Package": "rcmdcheck",
@@ -3577,9 +3581,11 @@
     },
     "threeBrain": {
       "Package": "threeBrain",
-      "Version": "1.1.1.9011",
+      "Version": "1.1.1.9019",
       "Source": "Repository",
       "Repository": "https://rave-ieeg.r-universe.dev",
+      "RemoteUrl": "https://github.com/dipterix/threeBrain",
+      "RemoteSha": "28fe8ae65274a349099913d307d94ad33fc73ff3",
       "Requirements": [
         "R6",
         "digest",
@@ -3599,7 +3605,7 @@
         "utils",
         "xml2"
       ],
-      "Hash": "98520e1339db36e2d66b1d5b6d9f5ad2"
+      "Hash": "342320be11c1be0278aff765efac6232"
     },
     "tibble": {
       "Package": "tibble",
