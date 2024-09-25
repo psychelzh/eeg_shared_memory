@@ -3,7 +3,7 @@ calc_mantel <- function(data, ydis, col_xdis = last_col()) {
     mutate(
       mantel = map(
         pick({{ col_xdis }})[[1]],
-        \(xdis) vegan::mantel(xdis, ydis)
+        \(xdis) vegan::mantel(xdis, ydis, permutations = 9999)
       ),
       .keep = "unused"
     )
