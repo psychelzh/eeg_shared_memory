@@ -12,6 +12,7 @@ Depends:
 Imports:
     arrow,
     crew,
+    crew.cluster,
     devtools,
     emmeans,
     ggh4x,
