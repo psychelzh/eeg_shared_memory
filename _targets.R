@@ -68,20 +68,24 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
 )
 
 list(
-  tar_target(
-    file_cca_y,
-    "data/CorCAExtra/cca_y_subjs206.parquet",
-    format = "file"
+  # behavioral data ----
+  tarchetypes::tar_file_read(
+    subjs,
+    "data/subj_206.txt",
+    read = scan(!!.x)
   ),
-  tar_target(subj_id_loop, seq_len(num_subj)),
-  tar_target(
-    patterns_indiv_dynamic,
-    arrow::open_dataset(file_cca_y) |>
-      filter(subj_id == subj_id_loop) |>
-      collect() |>
-      calc_indiv_pattern_dynamic(),
-    pattern = map(subj_id_loop)
+  tarchetypes::tar_file_read(
+    mem_perf,
+    "data/behav/retrieval.tsv",
+    read = calc_mem_perf(read_tsv(!!.x, show_col_types = FALSE), subjs)
   ),
+  tarchetypes::tar_file_read(
+    smc,
+    "data/behav/simil.rds", # use pre-calculated
+    read = readRDS(!!.x)$mat[[4]]
+  ),
+
+  # stimuli patterns ----
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
   tar_target(
     mapping_word_trial,
@@ -115,28 +119,21 @@ list(
       as.dist(x[order, order])
     }
   ),
-  tar_target(data_iss_dynamic, calc_iss(patterns_indiv_dynamic, pattern_semantics)),
-  tar_target(stats_iss_dynamic, calc_iss_stats(data_iss_dynamic)),
-  tarchetypes::tar_rep(
-    data_iss_dynamic_permuted,
-    calc_iss(
-      patterns_indiv_dynamic,
-      seriation::permute(pattern_semantics, sample.int(150L))
-    ),
-    reps = 10,
-    batches = 100,
-    iteration = "list"
-  ),
-  tarchetypes::tar_rep2(
-    stats_iss_dynamic_permuted,
-    calc_iss_stats(data_iss_dynamic_permuted, alternative = "greater"),
-    data_iss_dynamic_permuted
-  ),
   tar_target(
-    clusters_stats_iss,
-    stats_iss_dynamic |>
-      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(stats_iss_dynamic_permuted)
+    file_cca_y,
+    "data/CorCAExtra/cca_y_subjs206.parquet",
+    format = "file"
+  ),
+  tar_target(subj_id_loop, seq_len(num_subj)),
+
+  # individualized patterns ----
+  tar_target(
+    patterns_indiv_dynamic,
+    arrow::open_dataset(file_cca_y) |>
+      filter(subj_id == subj_id_loop) |>
+      collect() |>
+      calc_indiv_pattern_dynamic(),
+    pattern = map(subj_id_loop)
   ),
   tar_target(
     patterns_indiv_whole,
@@ -145,9 +142,8 @@ list(
       collect() |>
       calc_indiv_pattern()
   ),
-  tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
-  tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
-  tar_target(iss_comparison, compare_iss(data_iss_whole)),
+
+  # group averaged patterns ----
   targets_patterns_group_whole_resampled,
   tarchetypes::tar_combine(
     patterns_group_stability,
@@ -170,39 +166,19 @@ list(
       )
   ),
   tar_target(
+    patterns_group_dynamic,
+    arrow::read_parquet(file_cca_y) |>
+      calc_group_pattern_dynamic()
+  ),
+  tar_target(
     patterns_group_whole,
     arrow::open_dataset(file_cca_y) |>
       filter(time_id >= index_onset) |>
       collect() |>
       calc_group_pattern()
   ),
-  tar_target(
-    patterns_group_dynamic,
-    arrow::read_parquet(file_cca_y) |>
-      calc_group_pattern_dynamic()
-  ),
-  tar_target(data_gss_whole, calc_mantel(patterns_group_whole, pattern_semantics)),
-  tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
-  tar_target(data_gss_dynamic, calc_mantel(patterns_group_dynamic, pattern_semantics)),
-  tar_target(stats_gss_dynamic, extract_stats_mantel(data_gss_dynamic)),
-  tarchetypes::tar_rep(
-    data_gss_dynamic_permuted,
-    calc_mantel(
-      patterns_group_dynamic,
-      seriation::permute(pattern_semantics, sample.int(150L))
-    ),
-    reps = 10,
-    batches = 100
-  ),
-  tarchetypes::tar_rep2(
-    stats_gss_dynamic_permuted,
-    extract_stats_mantel(data_gss_dynamic_permuted),
-    data_gss_dynamic_permuted
-  ),
-  tar_target(
-    clusters_stats_gss_dynamic,
-    calc_clusters_stats(stats_gss_dynamic, stats_gss_dynamic_permuted)
-  ),
+
+  # individual to group averaged pattern similarity ----
   tar_target(
     # leave one out
     patterns_group_whole_loo,
@@ -240,26 +216,60 @@ list(
     data_igs_dynamic,
     calc_igs(patterns_indiv_dynamic, patterns_group_dynamic_loo)
   ),
-  tarchetypes::tar_file_read(
-    subjs,
-    "data/subj_206.txt",
-    read = scan(!!.x)
+
+  # group averaged patterns and semantic pattern ----
+  tar_target(data_gss_whole, calc_mantel(patterns_group_whole, pattern_semantics)),
+  tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
+  tar_target(data_gss_dynamic, calc_mantel(patterns_group_dynamic, pattern_semantics)),
+  tar_target(stats_gss_dynamic, extract_stats_mantel(data_gss_dynamic)),
+  tarchetypes::tar_rep(
+    data_gss_dynamic_permuted,
+    calc_mantel(
+      patterns_group_dynamic,
+      seriation::permute(pattern_semantics, sample.int(150L))
+    ),
+    reps = 10,
+    batches = 100
   ),
-  tarchetypes::tar_file_read(
-    mem_perf,
-    "data/behav/retrieval.tsv",
-    read = read_tsv(!!.x, show_col_types = FALSE) |>
-      mutate(acc = xor(old_new == 1, resp >= 3)) |>
-      preproc.iquizoo:::calc_sdt(
-        type_signal = 1,
-        by = "subj",
-        name_acc = "acc",
-        name_type = "old_new"
-      ) |>
-      mutate(subj_id = match(subj, subjs)) |>
-      filter(!is.na(subj_id)) |>
-      select(subj_id, dprime)
+  tarchetypes::tar_rep2(
+    stats_gss_dynamic_permuted,
+    extract_stats_mantel(data_gss_dynamic_permuted),
+    data_gss_dynamic_permuted
   ),
+  tar_target(
+    clusters_stats_gss_dynamic,
+    calc_clusters_stats(stats_gss_dynamic, stats_gss_dynamic_permuted)
+  ),
+
+  # individual patterns and semantic pattern similarity (ISS) ----
+  tar_target(data_iss_dynamic, calc_iss(patterns_indiv_dynamic, pattern_semantics)),
+  tar_target(stats_iss_dynamic, calc_iss_stats(data_iss_dynamic)),
+  tarchetypes::tar_rep(
+    data_iss_dynamic_permuted,
+    calc_iss(
+      patterns_indiv_dynamic,
+      seriation::permute(pattern_semantics, sample.int(150L))
+    ),
+    reps = 10,
+    batches = 100,
+    iteration = "list"
+  ),
+  tarchetypes::tar_rep2(
+    stats_iss_dynamic_permuted,
+    calc_iss_stats(data_iss_dynamic_permuted, alternative = "greater"),
+    data_iss_dynamic_permuted
+  ),
+  tar_target(
+    clusters_stats_iss,
+    stats_iss_dynamic |>
+      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
+      calc_clusters_stats(stats_iss_dynamic_permuted)
+  ),
+  tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
+  tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
+  tar_target(iss_comparison, compare_iss(data_iss_whole)),
+
+  # ISS predicts memory ----
   tar_target(
     stats_iss_mem_whole,
     data_iss_whole |>
@@ -298,6 +308,8 @@ list(
       mutate(p.value = convert_p2_p1(statistic, p.value)) |>
       calc_clusters_stats(stats_iss_mem_dynamic_permuted)
   ),
+
+  # shared and individualized patterns ----
   tar_target(
     cca_y_halves_trials,
     arrow::open_dataset(file_cca_y) |>
@@ -328,6 +340,8 @@ list(
       filter(time_id >= index_onset) |>
       calc_sync_between_halves()
   ),
+
+  # inter-subject synchronization predicts memory ----
   tar_target(
     whole_erps,
     # `na.rm` not supported in `open_dataset()`
@@ -337,11 +351,6 @@ list(
         y_avg = mean(y, na.rm = TRUE),
         .by = c(subj_id, cca_id, time_id)
       )
-  ),
-  tarchetypes::tar_file_read(
-    smc,
-    "data/behav/simil.rds",
-    read = readRDS(!!.x)$mat[[4]]
   ),
   tar_target(
     sync_whole,
