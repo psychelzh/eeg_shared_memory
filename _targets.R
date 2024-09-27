@@ -314,7 +314,12 @@ list(
   tarchetypes::tar_rep(
     data_isps_whole_permuted,
     patterns_indiv_whole |>
-      mutate(pattern = map(pattern, seriation::permute, sample.int(150L))) |>
+      mutate(
+        pattern = map(
+          pattern,
+          \(x) seriation::permute(x, sample.int(150L))
+        )
+      ) |>
       calc_isps(),
     reps = 10,
     batches = 100
@@ -323,7 +328,12 @@ list(
   tarchetypes::tar_rep(
     data_isps_dynamic_permuted,
     patterns_indiv_dynamic |>
-      mutate(pattern = map(pattern, seriation::permute, sample.int(150L))) |>
+      mutate(
+        pattern = map(
+          pattern,
+          \(x) seriation::permute(x, sample.int(150L))
+        )
+      ) |>
       calc_isps(),
     reps = 10,
     batches = 100
