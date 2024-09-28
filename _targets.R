@@ -194,15 +194,6 @@ list(
     calc_igs(patterns_indiv_whole, patterns_group_whole_loo)
   ),
   tar_target(
-    data_igs_partial_whole,
-    calc_igs(
-      patterns_indiv_whole |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
-      patterns_group_whole_loo |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics))
-    )
-  ),
-  tar_target(
     # leave one out
     patterns_group_dynamic_loo,
     arrow::open_dataset(file_cca_y) |>
@@ -282,6 +273,18 @@ list(
       !!.y
     )
   ),
+
+  # regress semantic from group averaged ----
+  tar_target(
+    data_igs_partial_whole,
+    calc_igs(
+      patterns_indiv_whole |>
+        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      patterns_group_whole_loo |>
+        mutate(pattern = map(pattern, get_resid, pattern_semantics))
+    )
+  ),
+  tar_target(igs_comparison, compare_igs(data_igs_whole, data_igs_partial_whole)),
 
   # intersubject pattern similarity ----
   tar_target(data_isps_whole, calc_isps(patterns_indiv_whole)),
