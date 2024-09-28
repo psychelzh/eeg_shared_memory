@@ -227,9 +227,10 @@ list(
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
     ),
-    clusters_stats_expr = !!.x |>
-      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(!!.y)
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      !!.y
+    )
   ),
 
   # group averaged patterns and semantic pattern ----
@@ -256,9 +257,10 @@ list(
     ),
     stats_expr = calc_iss_stats(!!.x),
     stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
-    clusters_stats_expr = !!.x |>
-      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(!!.y)
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      !!.y
+    )
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
@@ -275,9 +277,10 @@ list(
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
     ),
-    clusters_stats_expr = !!.x |>
-      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(!!.y)
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      !!.y
+    )
   ),
 
   # intersubject pattern similarity ----

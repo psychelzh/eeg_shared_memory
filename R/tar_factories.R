@@ -32,7 +32,7 @@ tar_cluster_permutation <- function(name, stats_expr, stats_perm_expr,
     )
   } else {
     clusters_stats_expr <- targets::tar_tidy_eval(
-      as.expression(substitute(stats_perm_expr)),
+      as.expression(substitute(clusters_stats_expr)),
       envir = list(
         .x = rlang::sym(stats_name),
         .y = rlang::sym(stats_name_permuted)
