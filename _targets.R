@@ -220,50 +220,30 @@ list(
   # group averaged patterns and semantic pattern ----
   tar_target(data_gss_whole, calc_mantel(patterns_group_whole, pattern_semantics)),
   tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
-  tar_target(data_gss_dynamic, calc_mantel(patterns_group_dynamic, pattern_semantics)),
-  tar_target(stats_gss_dynamic, extract_stats_mantel(data_gss_dynamic)),
-  tarchetypes::tar_rep(
-    data_gss_dynamic_permuted,
-    calc_mantel(
+  tar_cluster_permutation(
+    "gss_dynamic",
+    data_expr = calc_mantel(patterns_group_dynamic, pattern_semantics),
+    data_perm_expr = calc_mantel(
       patterns_group_dynamic,
       seriation::permute(pattern_semantics, sample.int(150L))
     ),
-    reps = 10,
-    batches = 100
-  ),
-  tarchetypes::tar_rep2(
-    stats_gss_dynamic_permuted,
-    extract_stats_mantel(data_gss_dynamic_permuted),
-    data_gss_dynamic_permuted
-  ),
-  tar_target(
-    clusters_stats_gss_dynamic,
-    calc_clusters_stats(stats_gss_dynamic, stats_gss_dynamic_permuted)
+    stats_expr = extract_stats_mantel(!!.x),
+    stats_perm_expr = extract_stats_mantel(!!.x)
   ),
 
   # individual patterns and semantic pattern similarity (ISS) ----
-  tar_target(data_iss_dynamic, calc_iss(patterns_indiv_dynamic, pattern_semantics)),
-  tar_target(stats_iss_dynamic, calc_iss_stats(data_iss_dynamic)),
-  tarchetypes::tar_rep(
-    data_iss_dynamic_permuted,
-    calc_iss(
+  tar_cluster_permutation(
+    "iss_dynamic",
+    data_expr = calc_iss(patterns_indiv_dynamic, pattern_semantics),
+    data_perm_expr = calc_iss(
       patterns_indiv_dynamic,
       seriation::permute(pattern_semantics, sample.int(150L))
     ),
-    reps = 10,
-    batches = 100,
-    iteration = "list"
-  ),
-  tarchetypes::tar_rep2(
-    stats_iss_dynamic_permuted,
-    calc_iss_stats(data_iss_dynamic_permuted, alternative = "greater"),
-    data_iss_dynamic_permuted
-  ),
-  tar_target(
-    clusters_stats_iss,
-    stats_iss_dynamic |>
+    stats_expr = calc_iss_stats(!!.x),
+    stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
+    clusters_stats_expr = !!.x |>
       mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(stats_iss_dynamic_permuted)
+      calc_clusters_stats(!!.y)
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
@@ -277,17 +257,14 @@ list(
       summarise(broom::tidy(cor.test(iss, dprime)), .by = cca_id)
   ),
   tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
-  tar_target(
-    stats_iss_mem_dynamic,
+  tar_cluster_permutation(
+    "iss_mem_dynamic",
     data_iss_dynamic |>
       left_join(mem_perf, by = "subj_id") |>
       summarise(
         broom::tidy(cor.test(iss, dprime, use = "pairwise")),
         .by = c(cca_id, time_id)
-      )
-  ),
-  tarchetypes::tar_rep(
-    stats_iss_mem_dynamic_permuted,
+      ),
     data_iss_dynamic |>
       left_join(
         mem_perf |>
@@ -298,15 +275,7 @@ list(
         cor.test(iss, dprime, alternative = "greater", use = "pairwise") |>
           broom::tidy(),
         .by = c(cca_id, time_id)
-      ),
-    reps = 10,
-    batches = 100
-  ),
-  tar_target(
-    clusters_stats_iss_mem,
-    stats_iss_mem_dynamic |>
-      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
-      calc_clusters_stats(stats_iss_mem_dynamic_permuted)
+      )
   ),
 
   # intersubject pattern similarity ----
@@ -394,28 +363,17 @@ list(
     extract_stats_mantel(sync_smc_whole)
   ),
   tar_target(sync_dynamic, calc_sync_dynamic(whole_erps)),
-  tar_target(sync_smc_dynamic, calc_mantel(sync_dynamic, smc)),
-  tar_target(
-    stats_sync_smc_dynamic,
-    extract_stats_mantel(sync_smc_dynamic)
-  ),
-  tarchetypes::tar_rep(
-    sync_smc_dynamic_permuted,
-    calc_mantel(
+  # the verbose names are for the compatibility with history relics
+  tar_cluster_permutation(
+    data_expr = calc_mantel(sync_dynamic, smc),
+    data_perm_expr = calc_mantel(
       sync_dynamic,
       seriation::permute(smc, sample.int(206L))
     ),
-    reps = 10,
-    batches = 100
-  ),
-  tarchetypes::tar_rep2(
-    stats_sync_smc_dynamic_permuted,
-    extract_stats_mantel(sync_smc_dynamic_permuted),
-    sync_smc_dynamic_permuted
-  ),
-  tar_target(
-    clusters_stats_sync_smc_dynamic,
-    stats_sync_smc_dynamic |>
-      calc_clusters_stats(stats_sync_smc_dynamic_permuted)
+    data_name = "sync_smc_dynamic",
+    stats_expr = extract_stats_mantel(!!.x),
+    stats_perm_expr = extract_stats_mantel(!!.x),
+    stats_name = "stats_sync_smc_dynamic",
+    clusters_stats_name = "clusters_stats_sync_smc_dynamic"
   )
 )
