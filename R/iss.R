@@ -36,6 +36,10 @@ compare_iss <- function(data_iss) {
     mutate(across(c("start", "end"), parse_number))
 }
 
+calc_iss_mem <- function(data_iss, mem_perf, ...) {
+  correlate_mem_perf(data_iss, mem_perf, iss, ...)
+}
+
 compare_iss_mem <- function(stats_iss_mem) {
   expand_grid(start = 1:3, end = 1:3) |>
     filter(start > end) |>

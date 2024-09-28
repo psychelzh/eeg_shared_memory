@@ -217,6 +217,21 @@ list(
     calc_igs(patterns_indiv_dynamic, patterns_group_dynamic_loo)
   ),
 
+  # IGS predicts memory ----
+  tar_target(stats_igs_mem_whole, calc_igs_mem(data_igs_whole, mem_perf)),
+  tar_cluster_permutation(
+    "igs_mem_dynamic",
+    calc_igs_mem(data_igs_dynamic, mem_perf),
+    calc_igs_mem(
+      data_igs_dynamic,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = !!.x |>
+      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
+      calc_clusters_stats(!!.y)
+  ),
+
   # group averaged patterns and semantic pattern ----
   tar_target(data_gss_whole, calc_mantel(patterns_group_whole, pattern_semantics)),
   tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
@@ -250,32 +265,19 @@ list(
   tar_target(iss_comparison, compare_iss(data_iss_whole)),
 
   # ISS predicts memory ----
-  tar_target(
-    stats_iss_mem_whole,
-    data_iss_whole |>
-      left_join(mem_perf, by = "subj_id") |>
-      summarise(broom::tidy(cor.test(iss, dprime)), .by = cca_id)
-  ),
+  tar_target(stats_iss_mem_whole, calc_iss_mem(data_iss_whole, mem_perf)),
   tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
   tar_cluster_permutation(
     "iss_mem_dynamic",
-    data_iss_dynamic |>
-      left_join(mem_perf, by = "subj_id") |>
-      summarise(
-        broom::tidy(cor.test(iss, dprime, use = "pairwise")),
-        .by = c(cca_id, time_id)
-      ),
-    data_iss_dynamic |>
-      left_join(
-        mem_perf |>
-          mutate(subj_id = sample(subj_id)),
-        by = "subj_id"
-      ) |>
-      summarise(
-        cor.test(iss, dprime, alternative = "greater", use = "pairwise") |>
-          broom::tidy(),
-        .by = c(cca_id, time_id)
-      )
+    calc_iss_mem(data_iss_dynamic, mem_perf),
+    calc_iss_mem(
+      data_iss_dynamic,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = !!.x |>
+      mutate(p.value = convert_p2_p1(statistic, p.value)) |>
+      calc_clusters_stats(!!.y)
   ),
 
   # intersubject pattern similarity ----

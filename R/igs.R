@@ -10,3 +10,7 @@ calc_igs <- function(patterns_indiv, patterns_group) {
       .keep = "unused"
     )
 }
+
+calc_igs_mem <- function(data_igs, mem_perf, ...) {
+  correlate_mem_perf(data_igs, mem_perf, igs, ...)
+}
