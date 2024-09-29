@@ -237,6 +237,9 @@ list(
     stats_expr = extract_stats_mantel(!!.x),
     stats_perm_expr = extract_stats_mantel(!!.x)
   ),
+  # gcs: group averaged and character similarity
+  tar_target(data_gcs_whole, calc_mantel(patterns_group_whole, pattern_shapes)),
+  tar_target(stats_gcs_whole, extract_stats_mantel(data_gcs_whole)),
 
   # individual patterns and semantic pattern similarity (ISS) ----
   tar_cluster_permutation(
