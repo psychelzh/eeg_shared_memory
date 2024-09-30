@@ -287,7 +287,12 @@ list(
         mutate(pattern = map(pattern, get_resid, pattern_semantics))
     )
   ),
-  tar_target(igs_comparison, compare_igs(data_igs_whole, data_igs_partial_whole)),
+  tar_target(igs_comp_partial, compare_igs(data_igs_whole, data_igs_partial_whole)),
+  tar_target(lm_mem_igs_partial, fit_mem_pred(mem_perf, data_igs_partial_whole)),
+  tar_target(
+    lm_mem_iss_igs_partial,
+    fit_mem_pred(mem_perf, data_igs_partial_whole, data_iss_whole)
+  ),
 
   # intersubject pattern similarity ----
   tar_target(data_isps_whole, calc_isps(patterns_indiv_whole)),

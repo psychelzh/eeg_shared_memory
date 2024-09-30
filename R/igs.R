@@ -26,3 +26,16 @@ compare_igs <- function(igs, igs_partial) {
 calc_igs_mem <- function(data_igs, mem_perf, ...) {
   correlate_mem_perf(data_igs, mem_perf, igs, ...)
 }
+
+fit_mem_pred <- function(mem_perf, ...) {
+  list(...) |>
+    lapply(\(dat) rename(dat, x = last_col())) |>
+    bind_rows(.id = "src") |>
+    pivot_wider(
+      names_from = c(cca_id, src),
+      values_from = x
+    ) |>
+    left_join(mem_perf, by = "subj_id") |>
+    select(-subj_id) |>
+    lm(dprime ~ ., data = _)
+}
