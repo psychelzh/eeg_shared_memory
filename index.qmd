@@ -10,501 +10,616 @@ format:
 execute:
   warning: false
 bibliography: references.bib
+editor_options:
+  chunk_output_type: console
 ---
 
 ```{r}
 #| label: setup
 
-devtools::load_all()
+library(tidyverse)
 library(patchwork)
+```
 
-base_family <- "Gill Sans MT"
+```{r}
+#| label: funs-and-constants
 
-# visualize scatter
-vis_scatter <- function(data, use, ylab, ..., facet = NULL) {
-  labels_used <- labels_index_name[use]
+colors_components <- c("#16607a", "#0b9d86", "#cc734d")
+size_label <- 5
+
+index_time <- function(time_id, onset = 51, sampling_rate = 256) {
+  (time_id - onset) / sampling_rate * 1000
+}
+
+fit_curve <- function(x, y) {
+  nls(
+    y ~ eta1 * (1 - exp(theta - eta2 * x)),
+    start = list(eta1 = 1, eta2 = 0.01, theta = 0)
+  )
+}
+
+format_cor_md <- function(r, p, p_name = "*p*", sep = ", ") {
+  paste0(
+    sprintf("*r* = %s", signif(r, 2)),
+    sep,
+    p_name,
+    if_else(
+      p <= 0.001,
+      " < 0.001",
+      sprintf("= %.3f", p)
+    )
+  )
+}
+
+visualize_scatter <- function(data, mem_perf, lab_stat, col_stat,
+                              show_legend = FALSE) {
   data |>
-    filter(index_name %in% use) |>
-    ggplot(aes(mean_fisher_z, score)) +
-    geom_point() +
-    stat_smooth(method = "lm", formula = y ~ x) +
+    left_join(mem_perf, by = "subj_id") |>
+    ggplot(aes(.data[[col_stat]], dprime)) +
+    geom_point(aes(color = factor(cca_id)), show.legend = show_legend) +
+    geom_smooth(
+      aes(color = factor(cca_id)),
+      method = "lm",
+      formula = y ~ x,
+      show.legend = show_legend
+    ) +
     ggpmisc::stat_correlation(
-      ggpmisc::use_label(c("r", "p.value")),
+      ggpmisc::use_label(c("R", "p.value")),
       small.r = TRUE,
       small.p = TRUE
     ) +
-    scale_x_continuous(
-      name = "Average Individual-to-Group Similarity",
-      breaks = scales::breaks_pretty(n = 4)
-    ) +
-    scale_y_continuous(name = ylab) +
-    facet +
-    ggpubr::theme_pubr(base_family = base_family) +
-    theme(axis.line = element_line(linewidth = 1))
+    facet_grid(cols = vars(cca_id), scales = "free") +
+    scale_x_continuous(name = lab_stat) +
+    scale_y_continuous(name = "d'") +
+    scale_color_components() +
+    theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
 }
 
-# visualize significant clusters
-vis_cluster <- function(stats, clusters_p, ...,
-                        subset = NULL,
-                        thresh_p = 0.05,
-                        col_stats = estimate,
-                        col_p = p_perm,
-                        facet = NULL) {
-  if (!missing(subset)) {
-    stats <- filter(stats, {{ subset }})
-    clusters_p <- filter(clusters_p, {{ subset }})
-  }
-  clusters_p <- filter(clusters_p, {{ col_p }} < thresh_p)
-  max_statistic <- max(abs(range(pull(stats, {{ col_stats }}))))
-  ggplot() +
-    geom_raster(
-      data = stats,
-      mapping = aes(window_id, region_id, fill = {{ col_stats }})
+visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
+                             show_legend = FALSE) {
+  patterns_flat <- patterns_x |>
+    mutate(
+      pattern = map(
+        pattern,
+        \(pat) tibble(
+          "{name_x}" := unclass(pat),
+          "{name_y}" := unclass(patterns_y)
+        )
+      )
+    ) |>
+    unnest(pattern)
+  patterns_flat |>
+    ggplot(aes(.data[[name_x]], .data[[name_y]])) +
+    geom_hex(
+      aes(fill = factor(cca_id), alpha = after_stat(count)),
+      show.legend = FALSE
     ) +
+    geom_smooth(
+      aes(color = factor(cca_id)),
+      method = "lm",
+      formula = y ~ x,
+      show.legend = show_legend
+    ) +
+    ggtext::geom_richtext(
+      aes(x = min(patterns_flat[[name_x]]), y = Inf, label = label),
+      stats |>
+        mutate(
+          label = format_cor_md(
+            statistic, p.value,
+            "*p*<sub>Mantel</sub>"
+          )
+        ),
+      fill = NA, label.color = NA, # remove background and outline
+      label.padding = grid::unit(rep(0, 4), "pt"), # remove padding
+      hjust = 0, vjust = 1, # bottom-left corner
+      inherit.aes = FALSE
+    ) +
+    facet_grid(cols = vars(cca_id), scales = "free") +
+    scale_x_continuous(name = name_x) +
+    scale_y_continuous(name = name_y) +
+    scale_color_components(aesthetics = c("color", "fill")) +
+    theme(
+      strip.text = element_blank(),
+      axis.line = element_line(linewidth = 1)
+    )
+}
+
+visualize_cluster <- function(stats, clusters_stats, lab_stat,
+                              col_stat = "estimate",
+                              col_cis = c("conf.low", "conf.high"),
+                              limits = NULL,
+                              show_legend = FALSE) {
+  clusters_stats <- clusters_stats |>
+    mutate(cca_id = factor(cca_id)) |>
+    rstatix::adjust_pvalue("p_perm") |>
+    rstatix::add_significance(
+      "p_perm.adj",
+      cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+      symbols = c("***", "**", "*", "")
+    ) |>
+    filter(p_perm < 0.05)
+  show_cis <- !is.null(col_cis) && all(has_name(stats, col_cis))
+  limits_rect <- if (show_cis) {
+    range(c(stats[[col_cis[1]]], stats[[col_cis[2]]]))
+  } else {
+    range(stats[[col_stat]])
+  }
+  stats |>
+    mutate(
+      cca_id = factor(cca_id),
+      time = index_time(time_id)
+    ) |>
+    ggplot(aes(time, .data[[col_stat]])) +
+    geom_line(
+      aes(color = cca_id),
+      linewidth = 1,
+      show.legend = show_legend
+    ) +
+    {
+      if (show_cis) {
+        geom_ribbon(
+          aes(
+            fill = cca_id,
+            ymin = .data[[col_cis[1]]],
+            ymax = .data[[col_cis[2]]]
+          ),
+          alpha = 0.2,
+          show.legend = show_legend
+        )
+      }
+    } +
     geom_rect(
-      data = clusters_p,
+      data = clusters_stats,
       mapping = aes(
-        xmin = start - 0.5,
-        xmax = end + 0.5,
-        ymin = region_id - 0.5,
-        ymax = region_id + 0.5
+        xmin = index_time(start),
+        xmax = index_time(end),
+        ymin = limits_rect[1],
+        ymax = limits_rect[2]
       ),
-      color = "black",
-      fill = NA,
-      na.rm = TRUE
+      inherit.aes = FALSE,
+      alpha = 0.1
     ) +
     geom_text(
-      data = clusters_p,
+      data = clusters_stats,
       mapping = aes(
-        (start + end) / 2,
-        region_id,
-        label = rstatix::p_format(
-          {{ col_p }},
-          accuracy = 0.001
-        ) |>
-          rstatix::p_mark_significant()
+        x = index_time((start + end) / 2),
+        y = limits_rect[2],
+        label = p_perm.adj.signif
       ),
-      color = "blue",
-      na.rm = TRUE
+      size = size_label,
+      inherit.aes = FALSE
     ) +
-    colorspace::scale_fill_continuous_divergingx(
-      name = "Pearson's Correlation",
-      palette = "RdBu",
-      rev = TRUE
-    ) +
-    scale_x_continuous(
-      name = "Encoding Time (s)",
-      labels = \(x) x * 0.02,
-      expand = expansion()
-    ) +
-    scale_y_continuous(
-      name = "Region",
-      breaks = scales::breaks_width(1),
-      expand = expansion()
-    ) +
-    facet +
-    ggpubr::theme_pubr(base_family = base_family) +
+    facet_grid(cols = vars(cca_id)) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "grey") +
+    geom_vline(xintercept = 0, linetype = "dotted", color = "grey") +
+    scale_x_continuous(name = "Encoding Time (ms)") +
+    scale_y_continuous(name = lab_stat, limits = limits) +
+    scale_color_components(aesthetics = c("color", "fill")) +
     theme(
+      strip.text = element_blank(),
       strip.background = element_blank(),
-      panel.spacing = unit(1, "lines"),
-      axis.line = element_blank()
+      axis.line = element_line(linewidth = 1)
     )
 }
+
+scale_color_components <- function(...) {
+  scale_color_manual(
+    name = "CCA Comp.",
+    values = colors_components,
+    labels = \(x) paste0("C", x),
+    ...
+  )
+}
+theme_set(ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12))
 ```
 
-# Inter-subject representation similarity
+# Group averaged representation
 
-## Abstract vs Concrete
+This is supplementary figure showing the stability.
 
 ```{r}
-#| label: fig-inter-abs-con
-#| fig-cap: Verify if intersubject similarity of concrete is larger than that of abstract.
-#| fig-subcap:
-#|   - Without time window
-#|   - With time window [^window]
+#| label: group-averaged-stability
 
-targets::tar_read(rsa_inter_avg_by_category) |>
-  summarise(
-    mean_se(mean_fisher_z),
-    .by = c(region_id, word_category)
-  ) |>
-  ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
-  geom_col(
-    aes(fill = word_category),
-    position = position_dodge(width = 0.8),
-    width = 0.7
-  ) +
-  geom_errorbar(
-    aes(group = word_category),
-    position = position_dodge(width = 0.8),
-    linewidth = 1,
-    width = 0.2
-  ) +
-  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
-  scale_y_continuous(name = "Intersubject Correlation") +
-  scale_fill_grey(name = NULL, labels = str_to_title) +
-  ggpubr::theme_pubr(base_size = 24, base_family = base_family) +
-  theme(axis.line = element_line(linewidth = 1))
-ggsave("publish/concr-vs-abstr.png", width = 10, height = 6)
+targets::tar_load(patterns_group_stability)
+size_subjs <- seq(20, 200, by = 20)
+predictions <- patterns_group_stability |>
+  reframe(
+    fit_curve(size, r) |>
+      predict(newdata = data.frame(x = size_subjs)) |>
+      as_tibble_col("r") |>
+      add_column(size = size_subjs, .before = 1L),
+    .by = cca_id
+  )
+p_stability <- patterns_group_stability |>
+  ggplot(aes(size, r, color = factor(cca_id))) +
+  ggdist::stat_dotsinterval() +
+  geom_point(aes(size, r), predictions, size = 1) +
+  geom_line(aes(size, r), predictions, linetype = "longdash") +
+  scale_x_continuous(name = "# Participants", breaks = scales::breaks_width(40)) +
+  scale_y_continuous(name = "Group Representation Stability") +
+  scale_color_components() +
+  facet_grid(cols = vars(cca_id), scales = "free") +
+  theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
+
+p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
+  ggplot(aes(size, gss, color = factor(cca_id))) +
+  ggdist::stat_dotsinterval() +
+  scale_x_continuous(name = "# Participants", breaks = scales::breaks_width(40)) +
+  scale_y_continuous(name = expression(italic(r)[neu - sem])) +
+  scale_color_components() +
+  facet_grid(cols = vars(cca_id), scales = "free") +
+  theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
 ```
 
-[^window]: Step size: 20 ms; Window length: 100 ms. The same below.
-
-## Subsequent memory effect
+This is Figure 2 now.
 
 ```{r}
-#| label: fig-inter-mem-eff
-#| fig-cap: Average inter-subject representation similarity among different memory conditions
-#| fig-subcap:
-#|   - Whole trial time series
-#|   - With time window
+#| column: page
+#| fig-width: 12
+#| fig-height: 5
 
-p_upper <- targets::tar_read(rsa_inter_avg_by_resp) |>
-  summarise(
-    mean_se(mean_fisher_z),
-    .by = c(region_id, response_type_shared)
+# IGS predicts memory ----
+targets::tar_load(c(data_igs_whole, mem_perf))
+p_igs_mem <- visualize_scatter(
+  targets::tar_read(data_igs_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "IGS",
+  col_stat = "igs",
+  show_legend = TRUE
+)
+
+p_igs_mem_dynamic <- visualize_cluster(
+  targets::tar_read(stats_igs_mem_dynamic),
+  targets::tar_read(clusters_stats_igs_mem_dynamic),
+  expression(italic(r)[IGS - "d'"])
+)
+
+# semantics related to group pattern (not shape) ----
+p_gss_whole <- visualize_mantel(
+  targets::tar_read(patterns_group_whole),
+  targets::tar_read(pattern_semantics),
+  targets::tar_read(stats_gss_whole),
+  "Group Averaged Neural Representation",
+  "Semantic Resprentation"
+)
+
+p_gss_dynamic <- visualize_cluster(
+  targets::tar_read(stats_gss_dynamic),
+  targets::tar_read(clusters_stats_gss_dynamic),
+  "GSS",
+  "statistic"
+)
+
+(p_igs_mem | p_igs_mem_dynamic) /
+  (p_gss_whole | p_gss_dynamic) +
+  plot_layout(guides = "collect") &
+  # plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+ggsave("figures/igs_memory_gss_semantics.png", width = 12, height = 5, dpi = 600)
+```
+
+```{r}
+p_group_shapes <- visualize_mantel(
+  targets::tar_read(patterns_group_whole),
+  targets::tar_read(pattern_shapes),
+  targets::tar_read(stats_gcs_whole),
+  "Group Averaged Neural Representation",
+  "Shape Similarity"
+)
+```
+
+# Semantic representation
+
+Semantic information is important but non-semantic information is also important.
+
+This will be Figure 3.
+
+```{r}
+#| label: mean-iss-trending
+
+stats_iss_whole <- targets::tar_read(stats_iss_whole) |>
+  rstatix::adjust_pvalue() |>
+  rstatix::add_significance(
+    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+    symbols = c("***", "**", "*", "")
   ) |>
-  ggplot(aes(region_id, y, ymax = ymax, ymin = ymin)) +
-  geom_col(
-    aes(fill = response_type_shared),
-    position = position_dodge(width = 0.9),
-    width = 0.9
+  add_column(y = 0.13, .after = 1L)
+iss_comparison <- targets::tar_read(iss_comparison) |>
+  filter(adj.p.value < 0.05) |>
+  mutate(
+    across(c(start, end), \(x) factor(x, levels = 1:3)),
+    y_position = 0.14 * (1 + 0.12 * seq_len(n()))
+  ) |>
+  rstatix::add_significance(
+    "adj.p.value",
+    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+    symbols = c("***", "**", "*", "")
+  )
+
+p_iss_dist <- targets::tar_read(data_iss_whole) |>
+  mutate(cca_id = factor(cca_id)) |>
+  ggplot(aes(cca_id, iss)) +
+  ggdist::stat_dotsinterval(
+    aes(slab_color = cca_id, slab_fill = cca_id),
+    slab_alpha = 0.4,
+    side = "both"
   ) +
-  geom_errorbar(
-    aes(group = response_type_shared),
-    position = position_dodge(width = 0.9),
-    linewidth = 1,
-    width = 0.2
-  ) +
-  scale_x_continuous(name = "Region", breaks = scales::breaks_width(1)) +
-  scale_y_continuous(name = "Intersubject Correlation") +
-  scale_fill_brewer(name = NULL, palette = "Greens", direction = -1) +
-  ggpubr::theme_pubr(base_size = 24, base_family = base_family) +
-  theme(axis.line = element_line(linewidth = 1))
-ggsave("publish/sme_bars.png", p_upper, width = 8, height = 6)
-stats <- targets::tar_read(stats_rsa_inter_by_resp) |>
-  rstatix::add_significance(p.col = "p.value.adj") |>
-  mutate(p.value.adj.signif = str_remove(p.value.adj.signif, "ns")) |>
-  complete(x, y, nesting(region_id))
-p_lower <- stats |>
-  ggplot(aes(x, y)) +
-  geom_raster(aes(fill = p.value.adj)) +
-  geom_text(aes(label = p.value.adj.signif), size = 2) +
   geom_text(
-    data = stats |>
-      filter(x == y) |>
-      mutate(label = as.character(x)),
-    mapping = aes(x, y, label = label),
-    size = 2.5,
-    hjust = 0.35
+    aes(cca_id, y, label = p.value.adj.signif),
+    stats_iss_whole,
+    size = size_label,
+    vjust = 0,
+    inherit.aes = FALSE
   ) +
-  facet_grid(cols = vars(region_id)) +
-  scale_fill_gradient(
-    na.value = "#EDF8E9",
-    low = "grey66", high = "grey92",
+  ggsignif::geom_signif(
+    aes(
+      xmin = start, xmax = end,
+      annotations = adj.p.value.signif,
+      y_position = y_position
+    ),
+    iss_comparison,
+    size = 0.8,
+    textsize = size_label,
+    vjust = 0.5,
+    inherit.aes = FALSE,
+    manual = TRUE
+  ) +
+  scale_x_discrete(name = NULL, labels = \(x) paste0("C", x)) +
+  scale_y_continuous(name = "ISS") +
+  scale_color_components(
+    aesthetics = c("slab_color", "slab_fill"),
     guide = "none"
   ) +
-  coord_fixed() +
-  theme_void(base_size = 8, base_family = base_family) +
-  theme(strip.text = element_blank())
-ggsave("publish/sme_pairwise.png", p_lower, width = 8, height = 2)
-p_upper / p_lower + plot_layout(heights = c(2, 1))
-ggsave("publish/sme.png", width = 8, height = 5)
+  theme(axis.line = element_line(linewidth = 1))
+
+p_iss_dynamic <- visualize_cluster(
+  targets::tar_read(stats_iss_dynamic),
+  targets::tar_read(clusters_stats_iss_dynamic),
+  lab_stat = "ISS",
+  col_stat = "estimate",
+  show_legend = TRUE
+)
+
+p_iss_mem_scatter <- visualize_scatter(
+  targets::tar_read(data_iss_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "ISS",
+  col_stat = "iss"
+)
+
+p_iss_mem_dynamic <- visualize_cluster(
+  targets::tar_read(stats_iss_mem_dynamic),
+  targets::tar_read(clusters_stats_iss_mem_dynamic),
+  lab_stat = expression(italic(r)[ISS - "d'"]),
+  col_stat = "estimate"
+)
+
+# (p_iss_dist | p_iss_dynamic) / (p_iss_mem_scatter | p_iss_mem_dynamic) +
+#   plot_layout(guides = "collect") &
+#   theme(legend.position = "bottom")
+# ggsave("figures/iss_memory.png", width = 12, height = 5, dpi = 600)
 ```
 
-# Predict Memory ability
-
-The indicator calculation is based on [@manns2003].
-
 ```{r}
-data_perf <- arrow::read_parquet(targets::tar_read(file_rs_group_trial)) |>
-  summarise(
-    mean_fisher_z = mean(fisher_z, na.rm = TRUE),
-    .by = c(region_id, subj_id)
+targets::tar_load(igs_comparison)
+mult <- 1
+stats <- igs_comparison$stats |>
+  mutate(
+    ymax = estimate + mult * std.error,
+    ymin = estimate - mult * std.error
+  )
+htests <- igs_comparison$htest |>
+  separate_wider_delim(
+    contrast,
+    " - ",
+    names = c("start", "end")
   ) |>
-  inner_join(
-    targets::tar_read(mem_perf),
-    by = "subj_id",
-    relationship = "many-to-many"
-  )
-targets::tar_load(stats_pred_perf_rps)
-```
-
-## Separate recollection and familiarity
-
-```{r}
-#| label: fig-predict-performance-sep
-#| column: page
-#| fig-width: 12
-#| fig-height: 6
-#| fig-cap: Predict memory performance from individual-to-group synchronization
-#| fig-subcap:
-#|   - Average all trial-level synchronization
-#|   - Time-windowed Cluster Results
-
-index_names <- c("remember", "knowadj")
-vis_scatter(
-  data_perf,
-  index_names,
-  ylab = "d'",
-  facet = facet_grid(
-    rows = vars(index_name),
-    cols = vars(region_id),
-    labeller = labeller(index_name = labels_index_name),
-    scales = "free"
-  )
-)
-ggsave("publish/scatter_fr.png", width = 12, height = 6)
-vis_cluster(
-  targets::tar_read(stats_pred_perf),
-  targets::tar_read(clusters_p_pred_perf),
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_fr.png", width = 8, height = 4)
-
-vis_cluster(
-  stats_pred_perf_rps$stats_real,
-  stats_pred_perf_rps$clusters_p,
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  col_stats = statistic,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_fr_rps.png", width = 8, height = 4)
-```
-
-## Averaged Scores
-
-```{r}
-#| label: fig-predict-performance-avg
-#| column: page
-#| fig-width: 12
-#| fig-height: 6
-#| fig-cap: Predict memory performance from individual-to-group synchronization
-
-index_names <- c("old")
-vis_scatter(
-  data_perf,
-  index_names,
-  ylab = labels_index_name[index_names],
-  facet = facet_grid(
-    cols = vars(region_id),
-    scales = "free"
-  )
-)
-ggsave("publish/scatter_old.png", width = 12, height = 4)
-vis_cluster(
-  targets::tar_read(stats_pred_perf),
-  targets::tar_read(clusters_p_pred_perf),
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_old.png", width = 6, height = 4)
-vis_cluster(
-  stats_pred_perf_rps$stats_real,
-  stats_pred_perf_rps$clusters_p,
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  col_stats = statistic,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_old_rps.png", width = 6, height = 4)
-
-index_names <- c("avg_rk")
-vis_scatter(
-  data_perf,
-  index_names,
-  ylab = labels_index_name[index_names],
-  facet = facet_grid(
-    cols = vars(region_id),
-    scales = "free"
-  )
-)
-ggsave("publish/scatter_avg_fr.png", width = 12, height = 4)
-vis_cluster(
-  targets::tar_read(stats_pred_perf),
-  targets::tar_read(clusters_p_pred_perf),
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_avg_fr.png", width = 6, height = 4)
-vis_cluster(
-  stats_pred_perf_rps$stats_real,
-  stats_pred_perf_rps$clusters_p,
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  col_stats = statistic,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_avg_fr_rps.png", width = 6, height = 4)
-
-index_names <- c("avg_score")
-vis_scatter(
-  data_perf,
-  index_names,
-  ylab = labels_index_name[index_names],
-  facet = facet_grid(
-    cols = vars(region_id),
-    scales = "free"
-  )
-)
-ggsave("publish/scatter_avg_score.png", width = 12, height = 4)
-vis_cluster(
-  targets::tar_read(stats_pred_perf),
-  targets::tar_read(clusters_p_pred_perf),
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_avg_score.png", width = 6, height = 4)
-vis_cluster(
-  stats_pred_perf_rps$stats_real,
-  stats_pred_perf_rps$clusters_p,
-  subset = index_name %in% index_names,
-  thresh_p = 0.1,
-  col_stats = statistic,
-  facet = facet_grid(
-    cols = vars(index_name),
-    labeller = labeller(
-      index_name = labels_index_name
-    )
-  )
-)
-ggsave("publish/cluster_avg_score_rps.png", width = 6, height = 4)
-```
-
-# Predict Memory Content
-
-```{r}
-#| label: fig-predict-content
-#| column: page
-#| fig-width: 12
-#| fig-height: 6
-#| fig-cap: Direct Mantel test without controlling memory ability similarity
-#| fig-subcap:
-#|   - Without Time Window
-#|   - With Time Window
-
-stats <- targets::tar_read(stats_pred_content) |>
-  filter(mantel == "mantel", method == "gower", include == "all")
-stats |>
-  unnest(perm) |>
-  ggplot(aes(perm)) +
-  geom_histogram() +
-  geom_vline(
-    data = stats,
-    mapping = aes(xintercept = statistic),
-    color = "darkgreen"
-  ) +
-  ggtext::geom_richtext(
-    data = stats |>
-      rstatix::add_significance(p.col = "signif") |>
-      mutate(
-        label = sprintf(
-          "*r* = %.2f, *p* = %.3f%s",
-          statistic,
-          signif,
-          str_remove(signif.signif, "ns")
-        )
-      ),
-    mapping = aes(
-      Inf, Inf,
-      label = label
+  rstatix::add_significance(
+    "p.value",
+    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+    symbols = c("***", "**", "*", "")
+  ) |>
+  mutate(y_position = max(stats$ymax)) |>
+  filter(p.value < 0.05)
+p_compare_igs_partial <- stats |>
+  ggplot(aes(type, estimate, ymax = ymax, ymin = ymin, color = cca_id)) +
+  geom_point(size = size_label) +
+  geom_errorbar(width = 0.1, linewidth = 1) +
+  geom_line(aes(group = cca_id), linewidth = 1) +
+  ggsignif::geom_signif(
+    aes(
+      xmin = start, xmax = end,
+      annotations = p.value.signif,
+      y_position = y_position
     ),
-    fill = NA, label.color = NA,
-    hjust = 1, vjust = 1.5
+    htests,
+    size = 0.8,
+    textsize = size_label,
+    vjust = 0.5,
+    inherit.aes = FALSE,
+    manual = TRUE
   ) +
-  facet_grid(cols = vars(region_id), scales = "free_x") +
-  scale_x_continuous(name = "Pearson's Correlation") +
-  scale_y_continuous(name = "Count") +
-  theme_classic(base_size = 18, base_family = base_family)
-ggsave("publish/pred_content_dist.png", width = 12, height = 4)
+  facet_grid(cols = vars(cca_id), scales = "free") +
+  scale_x_discrete(name = NULL, labels = c("IGS", "IGS|S")) +
+  scale_y_continuous(name = expression(italic(r))) +
+  scale_color_components(guide = "none") +
+  theme(
+    strip.text = element_blank(),
+    strip.background = element_blank(),
+    axis.line = element_line(linewidth = 1)
+  )
 
-targets::tar_load(clusters_p_pred_content)
-targets::tar_load(stats_pred_content_real)
-
-vis_cluster(
-  stats_pred_content_real |>
-    filter(mantel_type == "mantel", method == "gower", include == "all"),
-  clusters_p_pred_content |>
-    filter(mantel_type == "mantel", method == "gower", include == "all"),
-  thresh_p = 0.1,
-  col_stats = statistic.r
+p_igs_partial_scatter <- visualize_scatter(
+  targets::tar_read(data_igs_partial_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "IGS|S",
+  col_stat = "igs"
 )
-ggsave("publish/pred_content_dist_window.png", width = 6, height = 4)
 
-stats_real_rps <- read_csv(
-  targets::tar_read(file_pred_content_rps_real_gower),
-  show_col_types = FALSE
+targets::tar_load(c(lm_mem_igs_partial, lm_mem_iss_igs_partial))
+preds <- bind_rows(
+  `IGS|S` = lm_mem_igs_partial$pred,
+  `ISS + IGS|S` = lm_mem_iss_igs_partial$pred,
+  .id = "model"
 ) |>
-  filter(mantel_type == "mantel", method == "gower", include == "all") |>
-  rename(region_id = region, window_id = time)
-clusters_p_rps <- targets::tar_read(clusters_p_pred_content_rps_gower) |>
-  filter(mantel_type == "mantel", method == "gower", include == "all") |>
-  rename(region_id = region)
-vis_cluster(
-  stats_real_rps,
-  clusters_p_rps,
-  thresh_p = 0.1,
-  col_stats = statistic_r
+  mutate(model = factor(model, c("ISS + IGS|S", "IGS|S")))
+model_eval <- tibble(
+  x = min(preds$obs),
+  y = max(preds$pred) * (1 + c(0.1, 0.02)),
+  model = factor(c("ISS + IGS|S", "IGS|S")),
+  r_squared = c(
+    caret::getTrainPerf(lm_mem_iss_igs_partial)$TrainRsquared,
+    caret::getTrainPerf(lm_mem_igs_partial)$TrainRsquared
+  ) |>
+    signif(2)
 )
-ggsave("publish/pred_content_dist_rps.png", width = 6, height = 4)
-
-stats_real_rps <- read_csv(
-  targets::tar_read(file_pred_content_rps_real_manhattan),
-  show_col_types = FALSE
-) |>
-  filter(mantel_type == "mantel", memory_precision == "precise") |>
-  rename(region_id = region, window_id = time)
-clusters_p_rps <- targets::tar_read(clusters_p_pred_content_rps_manhattan) |>
-  filter(mantel_type == "mantel", memory_precision == "precise") |>
-  rename(region_id = region)
-vis_cluster(
-  stats_real_rps,
-  clusters_p_rps,
-  thresh_p = 0.1,
-  col_stats = statistic_r
-)
-ggsave("publish/pred_content_dist_rps_manhattan.png", width = 6, height = 4)
+p_compare_predictions <- preds |>
+  ggplot(aes(obs, pred, color = model)) +
+  geom_point(shape = 16) +
+  geom_smooth(method = "lm") +
+  ggtext::geom_richtext(
+    aes(
+      x, y,
+      color = model,
+      label = paste0(
+        "*R*<sup>2</sup><sub>",
+        model, "</sub> = ",
+        r_squared
+      )
+    ),
+    model_eval,
+    size = 3,
+    fill = NA, label.color = NA, # remove background and outline
+    label.padding = grid::unit(rep(0, 4), "pt"), # remove padding
+    hjust = 0, vjust = 0.5, # bottom-left corner
+    inherit.aes = FALSE,
+    show.legend = FALSE
+  ) +
+  # facet_grid(cols = vars(model)) +
+  scale_x_continuous(name = "Observed") +
+  scale_y_continuous(name = "Predicted") +
+  scale_color_grey(start = 0.1, end = 0.6, name = "Model", guide = "none") +
+  theme(strip.background = element_blank(), axis.line = element_line(linewidth = 1))
 ```
 
-# References
+```{r}
+#| column: page
+#| fig-width: 12
+#| fig-height: 8
+
+layout <- "
+AAABBB
+CCCDDD
+EEFFFG
+"
+
+p_iss_dist + p_iss_dynamic + p_iss_mem_scatter + p_iss_mem_dynamic +
+  p_compare_igs_partial + p_igs_partial_scatter + p_compare_predictions +
+  plot_layout(design = layout, guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+ggsave("figures/semantics_memory.png", width = 12, height = 8, dpi = 600)
+```
+
+```{r}
+#| label: prepare-diagram-parts
+#| eval: false
+
+set.seed(1)
+
+# representational patterns ----
+vis_pat <- function(pat) {
+  corrplot::corrplot(
+    pat,
+    method = "color",
+    outline = TRUE,
+    col = corrplot::COL1("Greys"),
+    tl.pos = "n",
+    cl.pos = "n"
+  )
+}
+x_indiv <- pracma::squareform(rnorm(15, 0.5, 0.25))
+x_group <- pracma::squareform(rnorm(15, 0.5, 0.25))
+x_sem <- pracma::squareform(rnorm(15, 0.5, 0.25))
+diag(x_indiv) <- diag(x_group) <- diag(x_sem) <- 1
+png("figures/diagrams/indiv_matrix.png", width = 400, height = 400)
+vis_pat(x_indiv)
+dev.off()
+png("figures/diagrams/group_matrix.png", width = 400, height = 400)
+vis_pat(x_group)
+dev.off()
+png("figures/diagrams/sem_matrix.png", width = 400, height = 400)
+vis_pat(x_sem)
+dev.off()
+
+# word2vec embeddings ----
+embedding <- as_tibble(split(rnorm(14, 0.5, 0.2), rep(1:2, each = 7))) |>
+  mutate(id = seq_len(n()), label = "")
+embedding[6, 1:2] <- NA
+embedding$label[6] <- "…"
+
+embedding |>
+  ggplot(aes(id, 1, fill = `1`)) +
+  geom_tile() +
+  geom_text(aes(label = label), size = 12, vjust = 0.2) +
+  scale_fill_gradient(low = "grey80", high = "grey20", na.value = "white", guide = "none") +
+  coord_fixed() +
+  theme_void()
+ggplot2::ggsave("figures/diagrams/embedding_1.png", width = 8, height = 2, dpi = 300)
+
+embedding |>
+  ggplot(aes(id, 1, fill = `2`)) +
+  geom_tile() +
+  geom_text(aes(label = label), size = 12, vjust = 0.2) +
+  scale_fill_gradient(low = "grey80", high = "grey20", na.value = "white", guide = "none") +
+  coord_fixed() +
+  theme_void()
+ggplot2::ggsave("figures/diagrams/embedding_2.png", width = 8, height = 2, dpi = 300)
+
+# neural activity ----
+targets::tar_load(file_cca_y)
+data_trials <- arrow::open_dataset(file_cca_y) |>
+  filter(subj_id == 1, cca_id == 1, trial_id %in% 1:6) |>
+  collect()
+data_trials |>
+  nest(.by = trial_id) |>
+  mutate(
+    walk2(
+      data, trial_id,
+      ~ {
+        ggplot(.x, aes(time_id, y)) +
+          geom_line(linewidth = 3, color = "grey") +
+          scale_x_continuous(name = "Time (ms)") +
+          scale_y_continuous(name = "Neural Activity") +
+          theme_void()
+        ggsave(
+          paste0("figures/diagrams/trial_", .y, ".png"),
+          width = 8, height = 2, dpi = 300
+        )
+      }
+    )
+  )
+
+data_group <- arrow::open_dataset(file_cca_y) |>
+  filter(trial_id %in% 1:2, cca_id == 1) |>
+  collect() |>
+  summarise(y = mean(y, na.rm = TRUE), .by = c(trial_id, time_id))
+data_group |>
+  nest(.by = trial_id) |>
+  mutate(
+    walk2(
+      data, trial_id,
+      ~ {
+        ggplot(.x, aes(time_id, y)) +
+          geom_line(linewidth = 3, color = "black") +
+          scale_x_continuous(name = "Time (ms)") +
+          scale_y_continuous(name = "Neural Activity") +
+          theme_void()
+        ggsave(
+          paste0("figures/diagrams/group_avg_trial_", .y, ".png"),
+          width = 8, height = 2, dpi = 300
+        )
+      }
+    )
+  )
+```
