@@ -294,7 +294,7 @@ list(
     fit_mem_pred(mem_perf, data_igs_partial_whole, data_iss_whole)
   ),
 
-  # intersubject pattern similarity ----
+  # intersubject pattern similarity (ISPS) ----
   tar_target(data_isps_whole, calc_isps(patterns_indiv_whole)),
   tarchetypes::tar_rep(
     data_isps_whole_permuted,
@@ -322,6 +322,20 @@ list(
       calc_isps(),
     reps = 10,
     batches = 100
+  ),
+
+  # ISPS and shared memory content (SMC) ----
+  tar_target(data_isps_smc_whole, calc_mantel(data_isps_whole, smc)),
+  tar_target(stats_isps_smc_whole, extract_stats_mantel(data_isps_smc_whole)),
+  tar_cluster_permutation(
+    "isps_smc_dynamic",
+    data_expr = calc_mantel(data_isps_dynamic, smc),
+    data_perm_expr = calc_mantel(
+      data_isps_dynamic,
+      seriation::permute(smc, sample.int(206L))
+    ),
+    stats_expr = extract_stats_mantel(!!.x),
+    stats_perm_expr = extract_stats_mantel(!!.x)
   ),
 
   # shared and individualized patterns ----
