@@ -353,7 +353,7 @@ list(
       )
   ),
   tar_target(
-    cluster_stats_isps_dynamic,
+    clusters_stats_isps_dynamic,
     calc_clusters_stats(
       stats_isps_dynamic,
       stats_isps_dynamic_permuted,
