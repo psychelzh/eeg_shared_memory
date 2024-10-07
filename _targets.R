@@ -309,7 +309,18 @@ list(
     reps = 10,
     batches = 100
   ),
+  tarchetypes::tar_rep2(
+    summary_isps_whole_permuted,
+    summarise_isps(data_isps_whole_permuted),
+    data_isps_whole_permuted
+  ),
+  tar_target(
+    stats_isps_whole,
+    summarise_isps(data_isps_whole, se = TRUE) |>
+      calc_stats_isps(summary_isps_whole_permuted)
+  ),
   tar_target(data_isps_dynamic, calc_isps(patterns_indiv_dynamic)),
+  tar_target(summary_isps_dynamic, summarise_isps(data_isps_dynamic, se = TRUE)),
   tarchetypes::tar_rep(
     data_isps_dynamic_permuted,
     patterns_indiv_dynamic |>
@@ -322,6 +333,11 @@ list(
       calc_isps(),
     reps = 10,
     batches = 100
+  ),
+  tarchetypes::tar_rep2(
+    summary_isps_dynamic_permuted,
+    summarise_isps(data_isps_dynamic_permuted),
+    data_isps_dynamic_permuted
   ),
 
   # ISPS and shared memory content (SMC) ----
