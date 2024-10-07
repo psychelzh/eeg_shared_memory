@@ -339,6 +339,28 @@ list(
     summarise_isps(data_isps_dynamic_permuted),
     data_isps_dynamic_permuted
   ),
+  tar_target(
+    stats_isps_dynamic,
+    calc_stats_isps(summary_isps_dynamic, summary_isps_dynamic_permuted)
+  ),
+  tar_target(
+    stats_isps_dynamic_permuted,
+    summary_isps_dynamic_permuted |>
+      mutate(
+        # TODO: find better method for p value calculations in future
+        p_perm = percent_rank(desc(isps_mean)),
+        .by = c(cca_id, time_id)
+      )
+  ),
+  tar_target(
+    cluster_stats_isps_dynamic,
+    calc_clusters_stats(
+      stats_isps_dynamic,
+      stats_isps_dynamic_permuted,
+      col_statistic = isps_mean,
+      col_p_value = p_perm
+    )
+  ),
 
   # ISPS and shared memory content (SMC) ----
   tar_target(data_isps_smc_whole, calc_mantel(data_isps_whole, smc)),
