@@ -79,12 +79,13 @@ visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
   patterns_flat <- patterns_x |>
     mutate(
       pattern = map(
-        pattern,
+        pick(last_col())[[1]],
         \(pat) tibble(
           "{name_x}" := unclass(pat),
           "{name_y}" := unclass(patterns_y)
         )
-      )
+      ),
+      .keep = "unused"
     ) |>
     unnest(pattern)
   patterns_flat |>
@@ -123,20 +124,62 @@ visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
     )
 }
 
-visualize_cluster <- function(stats, clusters_stats, lab_stat,
+visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
+  data |> 
+    mutate(
+      cca_id = factor(cca_id),
+      null = map(mantel, "perm"),
+      .keep = "unused"
+    ) |> 
+    unchop(null) |> 
+    ggplot(aes(null)) +
+    geom_histogram(aes(fill = cca_id), show.legend = show_legend) +
+    geomtextpath::geom_textvline(
+      aes(xintercept = statistic, label = label),
+      stats |> 
+        rstatix::add_significance(
+          "p.value",
+          cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+          symbols = c("***", "**", "*", "")
+        ) |> 
+        mutate(
+          cca_id = factor(cca_id),
+          label = str_glue(
+            "{label} == {signif(statistic, 2)}*'{p.value.signif}'"
+          )
+        ),
+      parse = TRUE,
+      vjust = -0.1
+    ) +
+    facet_grid(cols = vars(cca_id)) +
+    scale_x_continuous(name = "Null Distribution of Mantel Test") +
+    scale_y_continuous(name = "Count", expand = expansion(mult = c(0, 0.05))) +
+    scale_color_components(aesthetics = "fill") +
+    theme(
+      axis.line = element_line(linewidth = 1),
+      strip.text = element_blank(),
+      strip.background = element_blank()
+    )
+}
+
+visualize_dynamic <- function(stats, 
+                              clusters_stats = NULL, 
                               col_stat = "estimate",
+                              lab_stat = "Estimate",
                               col_cis = c("conf.low", "conf.high"),
                               limits = NULL,
                               show_legend = FALSE) {
-  clusters_stats <- clusters_stats |>
-    mutate(cca_id = factor(cca_id)) |>
-    rstatix::adjust_pvalue("p_perm") |>
-    rstatix::add_significance(
-      "p_perm.adj",
-      cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-      symbols = c("***", "**", "*", "")
-    ) |>
-    filter(p_perm < 0.05)
+  if (!is.null(clusters_stats)) {
+    clusters_stats <- clusters_stats |>
+      mutate(cca_id = factor(cca_id)) |>
+      rstatix::adjust_pvalue("p_perm") |>
+      rstatix::add_significance(
+        "p_perm.adj",
+        cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+        symbols = c("***", "**", "*", "")
+      ) |>
+      filter(p_perm < 0.05)
+  }
   show_cis <- !is.null(col_cis) && all(has_name(stats, col_cis))
   limits_rect <- if (show_cis) {
     range(c(stats[[col_cis[1]]], stats[[col_cis[2]]]))
@@ -154,6 +197,7 @@ visualize_cluster <- function(stats, clusters_stats, lab_stat,
       linewidth = 1,
       show.legend = show_legend
     ) +
+    # TODO: Convert these as functions
     {
       if (show_cis) {
         geom_ribbon(
@@ -166,28 +210,34 @@ visualize_cluster <- function(stats, clusters_stats, lab_stat,
           show.legend = show_legend
         )
       }
+    } + 
+    {
+      if (!is.null(clusters_stats)) {
+        list(
+          geom_rect(
+            data = clusters_stats,
+            mapping = aes(
+              xmin = index_time(start),
+              xmax = index_time(end),
+              ymin = limits_rect[1],
+              ymax = limits_rect[2]
+            ),
+            inherit.aes = FALSE,
+            alpha = 0.1
+          ),
+          geom_text(
+            data = clusters_stats,
+            mapping = aes(
+              x = index_time((start + end) / 2),
+              y = limits_rect[2],
+              label = p_perm.adj.signif
+            ),
+            size = size_label,
+            inherit.aes = FALSE
+          )
+        )
+      }
     } +
-    geom_rect(
-      data = clusters_stats,
-      mapping = aes(
-        xmin = index_time(start),
-        xmax = index_time(end),
-        ymin = limits_rect[1],
-        ymax = limits_rect[2]
-      ),
-      inherit.aes = FALSE,
-      alpha = 0.1
-    ) +
-    geom_text(
-      data = clusters_stats,
-      mapping = aes(
-        x = index_time((start + end) / 2),
-        y = limits_rect[2],
-        label = p_perm.adj.signif
-      ),
-      size = size_label,
-      inherit.aes = FALSE
-    ) +
     facet_grid(cols = vars(cca_id)) +
     geom_hline(yintercept = 0, linetype = "dotted", color = "grey") +
     geom_vline(xintercept = 0, linetype = "dotted", color = "grey") +
@@ -267,10 +317,10 @@ p_igs_mem <- visualize_scatter(
   show_legend = TRUE
 )
 
-p_igs_mem_dynamic <- visualize_cluster(
+p_igs_mem_dynamic <- visualize_dynamic(
   targets::tar_read(stats_igs_mem_dynamic),
   targets::tar_read(clusters_stats_igs_mem_dynamic),
-  expression(italic(r)[IGS - "d'"])
+  lab_stat = expression(italic(r)[IGS - "d'"])
 )
 
 # semantics related to group pattern (not shape) ----
@@ -282,11 +332,11 @@ p_gss_whole <- visualize_mantel(
   "Semantic Resprentation"
 )
 
-p_gss_dynamic <- visualize_cluster(
+p_gss_dynamic <- visualize_dynamic(
   targets::tar_read(stats_gss_dynamic),
   targets::tar_read(clusters_stats_gss_dynamic),
-  "GSS",
-  "statistic"
+  col_stat = "statistic",
+  lab_stat = "GSS"
 )
 
 (p_igs_mem | p_igs_mem_dynamic) /
@@ -371,11 +421,11 @@ p_iss_dist <- targets::tar_read(data_iss_whole) |>
   ) +
   theme(axis.line = element_line(linewidth = 1))
 
-p_iss_dynamic <- visualize_cluster(
+p_iss_dynamic <- visualize_dynamic(
   targets::tar_read(stats_iss_dynamic),
   targets::tar_read(clusters_stats_iss_dynamic),
-  lab_stat = "ISS",
   col_stat = "estimate",
+  lab_stat = "ISS",
   show_legend = TRUE
 )
 
@@ -386,11 +436,11 @@ p_iss_mem_scatter <- visualize_scatter(
   col_stat = "iss"
 )
 
-p_iss_mem_dynamic <- visualize_cluster(
+p_iss_mem_dynamic <- visualize_dynamic(
   targets::tar_read(stats_iss_mem_dynamic),
   targets::tar_read(clusters_stats_iss_mem_dynamic),
-  lab_stat = expression(italic(r)[ISS - "d'"]),
-  col_stat = "estimate"
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)[ISS - "d'"])
 )
 
 # (p_iss_dist | p_iss_dynamic) / (p_iss_mem_scatter | p_iss_mem_dynamic) +
@@ -518,6 +568,206 @@ p_iss_dist + p_iss_dynamic + p_iss_mem_scatter + p_iss_mem_dynamic +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
 ggsave("figures/semantics_memory.png", width = 12, height = 8, dpi = 600)
+```
+
+# Predicting Shared Memory Content (SMC)
+
+## Inter-Subject Pattern Similarity (ISPS)
+
+```{r}
+#| label: isps-and-smc
+
+p_isps_dist <- targets::tar_read(data_isps_whole) |>
+  mutate(cca_id = factor(cca_id)) |>
+  unnest(isps) |>
+  ggplot(aes(cca_id, isps)) +
+  ggdist::stat_slabinterval(
+    aes(slab_color = cca_id, slab_fill = cca_id),
+    slab_alpha = 0.4,
+    side = "both"
+  ) +
+  scale_x_discrete(name = NULL, labels = \(x) paste0("C", x)) +
+  scale_y_continuous(name = "ISPS") +
+  scale_color_components(
+    aesthetics = c("slab_color", "slab_fill"),
+    guide = "none"
+  ) +
+  theme(axis.line = element_line(linewidth = 1))
+
+p_isps_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_isps_dynamic) |> 
+    mutate(
+      ymax = isps_mean + isps_se,
+      ymin = isps_mean - isps_se
+    ),
+  col_stat = "isps_mean",
+  lab_stat = "ISPS",
+  col_cis = c("ymin", "ymax")
+)
+
+# the cluster based permutation test is not useful (maybe we need TFCE)
+# p_isps_clusters <- visualize_dynamic(
+#   targets::tar_read(stats_isps_dynamic) |> 
+#     mutate(
+#       ymax = isps_mean + isps_se,
+#       ymin = isps_mean - isps_se
+#     ),
+#   targets::tar_read(clusters_stats_isps_dynamic),
+#   col_stat = "isps_mean",
+#   lab_stat = "ISPS",
+#   col_cis = c("ymin", "ymax")
+# )
+
+p_isps_smc <- visualize_mantel_dist(
+  targets::tar_read(data_isps_smc_whole),
+  targets::tar_read(stats_isps_smc_whole),
+  "italic(r)[ISPS - SMC]"
+)
+
+p_isps_smc_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_isps_smc_dynamic),
+  targets::tar_read(clusters_stats_isps_smc_dynamic),
+  col_stat = "statistic",
+  lab_stat = expression(italic(r)[ISPS - SMC])
+)
+
+p_isps_dist + p_isps_dynamic + p_isps_smc + p_isps_smc_dynamic +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+ggsave("figures/isps_smc.png", width = 12, height = 5, dpi = 600)
+```
+
+## Neural Synchronization
+
+```{r}
+targets::tar_load(sync_inter_intra)
+
+summary_sync <- sync_inter_intra |>
+  summarise(
+    broom::tidy(t.test(sync)),
+    .by = c(cca_id, type)
+  ) |>
+  rstatix::adjust_pvalue() |>
+  rstatix::add_significance(
+    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+    symbols = c("***", "**", "*", "")
+  )
+compare_sync_p <- sync_inter_intra |>
+  pivot_wider(
+    id_cols = c(subj_id, cca_id),
+    names_from = type,
+    values_from = sync
+  ) |>
+  summarise(
+    broom::tidy(t.test(intra, inter_ahead, paired = TRUE)),
+    .by = cca_id
+  ) |>
+  rstatix::adjust_pvalue() |>
+  rstatix::add_significance(
+    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+    symbols = c("***", "**", "*", "")
+  ) |>
+  mutate(
+    start = "intra", end = "inter_ahead",
+    y_position = max(summary_sync$conf.high) * 1.1
+  )
+p_sync_compare <- summary_sync |>
+  ggplot(aes(type, estimate)) +
+  geom_col(
+    aes(color = cca_id, fill = cca_id, alpha = type),
+    width = 0.75
+  ) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  geom_text(
+    aes(y = conf.high, label = p.value.adj.signif),
+    vjust = 0,
+    size = size_label
+  ) +
+  ggsignif::geom_signif(
+    data = compare_sync_p,
+    aes(
+      xmin = start,
+      xmax = end,
+      annotations = p.value.adj.signif,
+      y_position = y_position
+    ),
+    textsize = size_label,
+    inherit.aes = FALSE,
+    manual = TRUE
+  ) +
+  facet_grid(cols = vars(cca_id)) +
+  scale_x_discrete(name = NULL, labels = c("Intra", "Inter")) +
+  scale_y_continuous(
+    name = "Neural Sync",
+    expand = expansion(c(0, 0.1))
+  ) +
+  scale_color_components(aesthetics = c("fill", "color")) +
+  scale_alpha_manual(
+    name = NULL,
+    values = c(1, 0),
+    guide = "none"
+  ) +
+  theme(
+    strip.text = element_blank(),
+    axis.line = element_line(linewidth = 1)
+  )
+
+p_pred_mem <- sync_inter_intra |>
+  left_join(targets::tar_read(mem_perf), by = "subj_id") |>
+  mutate(cca_id = factor(cca_id)) |> 
+  ggplot(aes(x = sync, y = dprime, alpha = type)) +
+  geom_point(aes(color = factor(cca_id), shape = type)) +
+  geom_line(
+    aes(color = factor(cca_id)),
+    stat = "smooth",
+    method = "lm",
+    formula = y ~ x
+    # linewidth = 2,
+    # fullrange = TRUE
+  ) +
+  ggpubr::stat_cor(
+    aes(label = paste(after_stat(r.label), after_stat(p.label), sep = "~`,`~")),
+    cor.coef.name = "r"
+  ) +
+  facet_grid(cols = vars(cca_id)) +
+  scale_x_continuous(name = "Neural Sync") +
+  scale_y_continuous(name = "Memory (d')") +
+  scale_alpha_manual(
+    name = NULL,
+    values = c(1, 0.5),
+    guide = "none"
+  ) +
+  scale_shape_manual(
+    name = NULL,
+    values = c(16, 1),
+    labels = c("Intra", "Inter")
+    # guide = "none"
+  ) +
+  scale_color_manual(values = colors_components, guide = "none") +
+  theme(
+    strip.text = element_blank(),
+    axis.line = element_line(linewidth = 1)
+  )
+
+p_sync_smc <- visualize_mantel_dist(
+  targets::tar_read(sync_smc_whole),
+  targets::tar_read(stats_sync_smc_whole),
+  "italic(r)[Sync - SMC]"
+)
+
+p_sync_smc_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_sync_smc_dynamic),
+  targets::tar_read(clusters_stats_sync_smc_dynamic),
+  col_stat = "statistic",
+  lab_stat = expression(italic(r)[Sync - SMC])
+)
+
+p_sync_compare + p_pred_mem + p_sync_smc + p_sync_smc_dynamic +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+ggsave("figures/sync_results.png", width = 12, height = 6, dpi = 300)
 ```
 
 ```{r}
