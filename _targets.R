@@ -402,11 +402,12 @@ list(
       calc_sync_within_halves()
   ),
   tar_target(
-    sync_inter_halves,
+    sync_between_halves,
     cca_y_halves |>
       filter(time_id >= index_onset) |>
       calc_sync_between_halves()
   ),
+  tar_target(sync_inter_intra, prepare_sync_inter_intra(sync_between_halves)),
 
   # inter-subject synchronization predicts memory ----
   tar_target(

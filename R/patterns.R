@@ -118,3 +118,30 @@ calc_sync_within_halves <- function(data) {
       .by = c(cca_id, half)
     )
 }
+
+prepare_sync_inter_intra <- function(sync_between_halves) {
+  sync_between_halves |>
+    mutate(
+      type = case_when(
+        subj_id_first == subj_id_second ~ "intra",
+        subj_id_first < subj_id_second ~ "inter_ahead",
+        TRUE ~ "inter_behind"
+      ),
+      subj_id = if_else(
+        type != "inter_behind",
+        subj_id_first,
+        subj_id_second
+      ),
+      .keep = "unused"
+    ) |>
+    summarise(
+      sync = mean(r),
+      .by = c(cca_id, subj_id, type)
+    ) |>
+    # here we use "inter_ahead" only
+    filter(type %in% c("intra", "inter_ahead")) |>
+    mutate(
+      cca_id = factor(cca_id),
+      type = factor(type, levels = c("intra", "inter_ahead"))
+    )
+}
