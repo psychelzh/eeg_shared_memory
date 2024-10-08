@@ -450,14 +450,14 @@ p_iss_mem_dynamic <- visualize_dynamic(
 ```
 
 ```{r}
-targets::tar_load(igs_comparison)
+targets::tar_load(igs_comp_partial)
 mult <- 1
-stats <- igs_comparison$stats |>
+stats <- igs_comp_partial$stats |>
   mutate(
     ymax = estimate + mult * std.error,
     ymin = estimate - mult * std.error
   )
-htests <- igs_comparison$htest |>
+htests <- igs_comp_partial$htest |>
   separate_wider_delim(
     contrast,
     " - ",
@@ -576,6 +576,9 @@ ggsave("figures/semantics_memory.png", width = 12, height = 8, dpi = 600)
 
 ```{r}
 #| label: isps-and-smc
+#| column: page
+#| fig-width: 12
+#| fig-height: 5
 
 p_isps_dist <- targets::tar_read(data_isps_whole) |>
   mutate(cca_id = factor(cca_id)) |>
@@ -641,8 +644,12 @@ ggsave("figures/isps_smc.png", width = 12, height = 5, dpi = 600)
 ## Neural Synchronization
 
 ```{r}
-targets::tar_load(sync_inter_intra)
+#| label: sync-and-mem
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
 
+targets::tar_load(sync_inter_intra)
 summary_sync <- sync_inter_intra |>
   summarise(
     broom::tidy(t.test(sync)),
