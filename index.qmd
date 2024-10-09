@@ -145,14 +145,14 @@ visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
         mutate(
           cca_id = factor(cca_id),
           label = str_glue(
-            "{label} == {signif(statistic, 2)}*'{p.value.signif}'"
+            "italic(r)[Obs] == {signif(statistic, 2)}*'{p.value.signif}'"
           )
         ),
       parse = TRUE,
       vjust = -0.1
     ) +
     facet_grid(cols = vars(cca_id)) +
-    scale_x_continuous(name = "Null Distribution of Mantel Test") +
+    scale_x_continuous(name = label) +
     scale_y_continuous(name = "Count", expand = expansion(mult = c(0, 0.05))) +
     scale_color_components(aesthetics = "fill") +
     theme(
@@ -624,7 +624,8 @@ p_isps_dynamic <- visualize_dynamic(
 p_isps_smc <- visualize_mantel_dist(
   targets::tar_read(data_isps_smc_whole),
   targets::tar_read(stats_isps_smc_whole),
-  "italic(r)[ISPS - SMC]"
+  expression(italic(r)[ISPS - SMC]),
+  show_legend = TRUE
 )
 
 p_isps_smc_dynamic <- visualize_dynamic(
@@ -760,7 +761,7 @@ p_pred_mem <- sync_inter_intra |>
 p_sync_smc <- visualize_mantel_dist(
   targets::tar_read(sync_smc_whole),
   targets::tar_read(stats_sync_smc_whole),
-  "italic(r)[Sync - SMC]"
+  expression(italic(r)[Sync - SMC])
 )
 
 p_sync_smc_dynamic <- visualize_dynamic(
