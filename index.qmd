@@ -37,35 +37,73 @@ fit_curve <- function(x, y) {
   )
 }
 
-format_cor_md <- function(r, p, p_name = "*p*", sep = ", ") {
-  paste0(
-    sprintf("*r* = %s", signif(r, 2)),
-    sep,
-    p_name,
-    if_else(
-      p <= 0.001,
-      " < 0.001",
-      sprintf("= %.3f", p)
+prepare_corr_plotmath <- function(stats, 
+                                  col_r = "estimate",
+                                  col_p = "p.value",
+                                  name_r = "italic(r)",
+                                  name_p = "italic(p)[Holm]") {
+  stats |>
+    rstatix::adjust_pvalue(col_p, "p_adj") |> 
+    rstatix::add_significance(
+      "p_adj", "p_adj_sig",
+      cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+      symbols = c("***", "**", "*", "")
+    ) |> 
+    mutate(
+      label = format_r_plotmath(
+        .data[[col_r]], p_adj, 
+        p.sig = p_adj_sig,
+        name_r = name_r,
+        name_p = name_p
+      )
     )
+}
+
+format_r_plotmath <- function(r, p, 
+                              p.sig = "", 
+                              name_r = "italic(r)", 
+                              name_p = "italic(p)[Holm]") {
+  paste0(
+    str_glue("{name_r}*' = '*{round(r, 2)}"),
+    if (is.null(name_p)) {
+      str_glue("^'{p.sig}'")
+    } else {
+      paste0(
+        "*', '*",
+        if_else(
+          p < 0.001,
+          str_glue("{name_p} < 0.001^'{p.sig}'"),
+          str_glue("{name_p}*' = '*{round(p, 3)}^'{p.sig}'")
+        )
+      )
+    }
   )
 }
 
 visualize_scatter <- function(data, mem_perf, lab_stat, col_stat,
                               show_legend = FALSE) {
-  data |>
-    left_join(mem_perf, by = "subj_id") |>
+  data_joind <- data |>
+    left_join(mem_perf, by = "subj_id") |> 
+    mutate(cca_id = factor(cca_id))
+  stats <- data_joind |> 
+    reframe(
+      cor.test(.data[[col_stat]], .data$dprime) |>
+        broom::tidy(),
+      .by = cca_id
+    ) |> 
+    prepare_corr_plotmath()
+  data_joind |> 
     ggplot(aes(.data[[col_stat]], dprime)) +
-    geom_point(aes(color = factor(cca_id)), show.legend = show_legend) +
+    geom_point(aes(color = cca_id), show.legend = show_legend) +
     geom_smooth(
-      aes(color = factor(cca_id)),
+      aes(color = cca_id),
       method = "lm",
       formula = y ~ x,
       show.legend = show_legend
     ) +
-    ggpmisc::stat_correlation(
-      ggpmisc::use_label(c("R", "p.value")),
-      small.r = TRUE,
-      small.p = TRUE
+    geom_text(
+      aes(x = min(data_joind[[col_stat]]), y = Inf, label = label),
+      stats, hjust = 0, vjust = 1, parse = TRUE
     ) +
     facet_grid(cols = vars(cca_id), scales = "free") +
     scale_x_continuous(name = lab_stat) +
@@ -100,19 +138,13 @@ visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
       formula = y ~ x,
       show.legend = show_legend
     ) +
-    ggtext::geom_richtext(
+    geom_text(
       aes(x = min(patterns_flat[[name_x]]), y = Inf, label = label),
-      stats |>
-        mutate(
-          label = format_cor_md(
-            statistic, p.value,
-            "*p*<sub>Mantel</sub>"
-          )
-        ),
-      fill = NA, label.color = NA, # remove background and outline
-      label.padding = grid::unit(rep(0, 4), "pt"), # remove padding
-      hjust = 0, vjust = 1, # bottom-left corner
-      inherit.aes = FALSE
+      prepare_corr_plotmath(
+        stats, "statistic", 
+        name_p = "italic(p)[Holm]^{Mantel}"
+      ),
+      hjust = 0, vjust = 1, parse = TRUE
     ) +
     facet_grid(cols = vars(cca_id), scales = "free") +
     scale_x_continuous(name = name_x) +
@@ -137,16 +169,11 @@ visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
     geomtextpath::geom_textvline(
       aes(xintercept = statistic, label = label),
       stats |> 
-        rstatix::add_significance(
-          "p.value",
-          cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-          symbols = c("***", "**", "*", "")
-        ) |> 
-        mutate(
-          cca_id = factor(cca_id),
-          label = str_glue(
-            "italic(r)[Obs] == {signif(statistic, 2)}*'{p.value.signif}'"
-          )
+        mutate(cca_id = factor(cca_id)) |> 
+        prepare_corr_plotmath(
+          "statistic", 
+          name_r = "italic(r)[Obs]",
+          name_p = NULL
         ),
       parse = TRUE,
       vjust = -0.1
@@ -304,11 +331,10 @@ This is Figure 2 now.
 
 ```{r}
 #| column: page
-#| fig-width: 12
+#| fig-width: 13
 #| fig-height: 5
 
 # IGS predicts memory ----
-targets::tar_load(c(data_igs_whole, mem_perf))
 p_igs_mem <- visualize_scatter(
   targets::tar_read(data_igs_whole),
   targets::tar_read(mem_perf),
@@ -344,7 +370,7 @@ p_gss_dynamic <- visualize_dynamic(
   plot_layout(guides = "collect") &
   # plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
-ggsave("figures/igs_memory_gss_semantics.png", width = 12, height = 5, dpi = 600)
+ggsave("figures/igs_memory_gss_semantics.png", width = 13, height = 5, dpi = 600)
 ```
 
 ```{r}
@@ -553,7 +579,7 @@ p_compare_predictions <- preds |>
 
 ```{r}
 #| column: page
-#| fig-width: 12
+#| fig-width: 13
 #| fig-height: 8
 
 layout <- "
@@ -567,7 +593,7 @@ p_iss_dist + p_iss_dynamic + p_iss_mem_scatter + p_iss_mem_dynamic +
   plot_layout(design = layout, guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
-ggsave("figures/semantics_memory.png", width = 12, height = 8, dpi = 600)
+ggsave("figures/semantics_memory.png", width = 13, height = 8, dpi = 600)
 ```
 
 # Predicting Shared Memory Content (SMC)
@@ -577,7 +603,7 @@ ggsave("figures/semantics_memory.png", width = 12, height = 8, dpi = 600)
 ```{r}
 #| label: isps-and-smc
 #| column: page
-#| fig-width: 12
+#| fig-width: 13
 #| fig-height: 5
 
 p_isps_dist <- targets::tar_read(data_isps_whole) |>
@@ -639,7 +665,7 @@ p_isps_dist + p_isps_dynamic + p_isps_smc + p_isps_smc_dynamic +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
-ggsave("figures/isps_smc.png", width = 12, height = 5, dpi = 600)
+ggsave("figures/isps_smc.png", width = 13, height = 5, dpi = 600)
 ```
 
 ## Neural Synchronization
@@ -647,8 +673,8 @@ ggsave("figures/isps_smc.png", width = 12, height = 5, dpi = 600)
 ```{r}
 #| label: sync-and-mem
 #| column: page
-#| fig-width: 12
-#| fig-height: 6
+#| fig-width: 13
+#| fig-height: 6.5
 
 targets::tar_load(sync_inter_intra)
 summary_sync <- sync_inter_intra |>
@@ -721,22 +747,40 @@ p_sync_compare <- summary_sync |>
     axis.line = element_line(linewidth = 1)
   )
 
-p_pred_mem <- sync_inter_intra |>
-  left_join(targets::tar_read(mem_perf), by = "subj_id") |>
-  mutate(cca_id = factor(cca_id)) |> 
+sync_mem <- sync_inter_intra |>
+  left_join(targets::tar_read(mem_perf), by = "subj_id") |> 
+  mutate(cca_id = factor(cca_id))
+stats_sync_mem <- sync_mem |>
+  summarise(
+    broom::tidy(cor.test(sync, dprime)),
+    .by = c(cca_id, type)
+  ) |>
+  rstatix::adjust_pvalue() |>
+  rstatix::add_significance(
+    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+    symbols = c("***", "**", "*", "")
+  ) |> 
+  prepare_corr_plotmath() |> 
+  mutate(
+    x = min(sync_mem$sync),
+    y = max(sync_mem$dprime) * 1.2 * (1 - 0.1 * as.integer(type))
+  )
+
+p_pred_mem <- sync_mem |>
   ggplot(aes(x = sync, y = dprime, alpha = type)) +
-  geom_point(aes(color = factor(cca_id), shape = type)) +
+  geom_point(aes(color = cca_id, shape = type)) +
   geom_line(
-    aes(color = factor(cca_id)),
+    aes(color = cca_id),
     stat = "smooth",
     method = "lm",
     formula = y ~ x
     # linewidth = 2,
     # fullrange = TRUE
   ) +
-  ggpubr::stat_cor(
-    aes(label = paste(after_stat(r.label), after_stat(p.label), sep = "~`,`~")),
-    cor.coef.name = "r"
+  geom_text(
+    aes(x, y, label = label),
+    stats_sync_mem,
+    hjust = 0, vjust = 1, parse = TRUE,
   ) +
   facet_grid(cols = vars(cca_id)) +
   scale_x_continuous(name = "Neural Sync") +
@@ -775,7 +819,7 @@ p_sync_compare + p_pred_mem + p_sync_smc + p_sync_smc_dynamic +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
-ggsave("figures/sync_results.png", width = 12, height = 6, dpi = 300)
+ggsave("figures/sync_results.png", width = 13, height = 6.5, dpi = 300)
 ```
 
 ```{r}
