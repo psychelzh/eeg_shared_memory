@@ -321,14 +321,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-120"><a href="#cb2-120" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(</span>
 <span id="cb2-121"><a href="#cb2-121" aria-hidden="true" tabindex="-1"></a>          <span class="at">cca_id =</span> <span class="fu">factor</span>(cca_id),</span>
 <span id="cb2-122"><a href="#cb2-122" aria-hidden="true" tabindex="-1"></a>          <span class="at">label =</span> <span class="fu">str_glue</span>(</span>
-<span id="cb2-123"><a href="#cb2-123" aria-hidden="true" tabindex="-1"></a>            <span class="st">"{label} == {signif(statistic, 2)}*'{p.value.signif}'"</span></span>
+<span id="cb2-123"><a href="#cb2-123" aria-hidden="true" tabindex="-1"></a>            <span class="st">"italic(r)[Obs] == {signif(statistic, 2)}*'{p.value.signif}'"</span></span>
 <span id="cb2-124"><a href="#cb2-124" aria-hidden="true" tabindex="-1"></a>          )</span>
 <span id="cb2-125"><a href="#cb2-125" aria-hidden="true" tabindex="-1"></a>        ),</span>
 <span id="cb2-126"><a href="#cb2-126" aria-hidden="true" tabindex="-1"></a>      <span class="at">parse =</span> <span class="cn">TRUE</span>,</span>
 <span id="cb2-127"><a href="#cb2-127" aria-hidden="true" tabindex="-1"></a>      <span class="at">vjust =</span> <span class="sc">-</span><span class="fl">0.1</span></span>
 <span id="cb2-128"><a href="#cb2-128" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
 <span id="cb2-129"><a href="#cb2-129" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_grid</span>(<span class="at">cols =</span> <span class="fu">vars</span>(cca_id)) <span class="sc">+</span></span>
-<span id="cb2-130"><a href="#cb2-130" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">name =</span> <span class="st">"Null Distribution of Mantel Test"</span>) <span class="sc">+</span></span>
+<span id="cb2-130"><a href="#cb2-130" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">name =</span> label) <span class="sc">+</span></span>
 <span id="cb2-131"><a href="#cb2-131" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_continuous</span>(<span class="at">name =</span> <span class="st">"Count"</span>, <span class="at">expand =</span> <span class="fu">expansion</span>(<span class="at">mult =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.05</span>))) <span class="sc">+</span></span>
 <span id="cb2-132"><a href="#cb2-132" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_color_components</span>(<span class="at">aesthetics =</span> <span class="st">"fill"</span>) <span class="sc">+</span></span>
 <span id="cb2-133"><a href="#cb2-133" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(</span>
@@ -815,19 +815,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a>p_isps_smc <span class="ot">&lt;-</span> <span class="fu">visualize_mantel_dist</span>(</span>
 <span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(data_isps_smc_whole),</span>
 <span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(stats_isps_smc_whole),</span>
-<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>  <span class="st">"italic(r)[ISPS - SMC]"</span></span>
-<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a>p_isps_smc_dynamic <span class="ot">&lt;-</span> <span class="fu">visualize_dynamic</span>(</span>
-<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(stats_isps_smc_dynamic),</span>
-<span id="cb11-50"><a href="#cb11-50" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(clusters_stats_isps_smc_dynamic),</span>
-<span id="cb11-51"><a href="#cb11-51" aria-hidden="true" tabindex="-1"></a>  <span class="at">col_stat =</span> <span class="st">"statistic"</span>,</span>
-<span id="cb11-52"><a href="#cb11-52" aria-hidden="true" tabindex="-1"></a>  <span class="at">lab_stat =</span> <span class="fu">expression</span>(<span class="fu">italic</span>(r)[ISPS <span class="sc">-</span> SMC])</span>
-<span id="cb11-53"><a href="#cb11-53" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-54"><a href="#cb11-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-55"><a href="#cb11-55" aria-hidden="true" tabindex="-1"></a>p_isps_dist <span class="sc">+</span> p_isps_dynamic <span class="sc">+</span> p_isps_smc <span class="sc">+</span> p_isps_smc_dynamic <span class="sc">+</span></span>
-<span id="cb11-56"><a href="#cb11-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">guides =</span> <span class="st">"collect"</span>) <span class="sc">&amp;</span></span>
-<span id="cb11-57"><a href="#cb11-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expression</span>(<span class="fu">italic</span>(r)[ISPS <span class="sc">-</span> SMC]),</span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>  <span class="at">show_legend =</span> <span class="cn">TRUE</span></span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>p_isps_smc_dynamic <span class="ot">&lt;-</span> <span class="fu">visualize_dynamic</span>(</span>
+<span id="cb11-50"><a href="#cb11-50" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(stats_isps_smc_dynamic),</span>
+<span id="cb11-51"><a href="#cb11-51" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(clusters_stats_isps_smc_dynamic),</span>
+<span id="cb11-52"><a href="#cb11-52" aria-hidden="true" tabindex="-1"></a>  <span class="at">col_stat =</span> <span class="st">"statistic"</span>,</span>
+<span id="cb11-53"><a href="#cb11-53" aria-hidden="true" tabindex="-1"></a>  <span class="at">lab_stat =</span> <span class="fu">expression</span>(<span class="fu">italic</span>(r)[ISPS <span class="sc">-</span> SMC])</span>
+<span id="cb11-54"><a href="#cb11-54" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-55"><a href="#cb11-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-56"><a href="#cb11-56" aria-hidden="true" tabindex="-1"></a>p_isps_dist <span class="sc">+</span> p_isps_dynamic <span class="sc">+</span> p_isps_smc <span class="sc">+</span> p_isps_smc_dynamic <span class="sc">+</span></span>
+<span id="cb11-57"><a href="#cb11-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">guides =</span> <span class="st">"collect"</span>) <span class="sc">&amp;</span></span>
+<span id="cb11-58"><a href="#cb11-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display page-columns page-full">
 <div class="page-columns page-full">
@@ -958,7 +959,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb13-109"><a href="#cb13-109" aria-hidden="true" tabindex="-1"></a>p_sync_smc <span class="ot">&lt;-</span> <span class="fu">visualize_mantel_dist</span>(</span>
 <span id="cb13-110"><a href="#cb13-110" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(sync_smc_whole),</span>
 <span id="cb13-111"><a href="#cb13-111" aria-hidden="true" tabindex="-1"></a>  targets<span class="sc">::</span><span class="fu">tar_read</span>(stats_sync_smc_whole),</span>
-<span id="cb13-112"><a href="#cb13-112" aria-hidden="true" tabindex="-1"></a>  <span class="st">"italic(r)[Sync - SMC]"</span></span>
+<span id="cb13-112"><a href="#cb13-112" aria-hidden="true" tabindex="-1"></a>  <span class="fu">expression</span>(<span class="fu">italic</span>(r)[Sync <span class="sc">-</span> SMC])</span>
 <span id="cb13-113"><a href="#cb13-113" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb13-114"><a href="#cb13-114" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-115"><a href="#cb13-115" aria-hidden="true" tabindex="-1"></a>p_sync_smc_dynamic <span class="ot">&lt;-</span> <span class="fu">visualize_dynamic</span>(</span>
