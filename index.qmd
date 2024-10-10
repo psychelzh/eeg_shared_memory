@@ -615,6 +615,13 @@ p_isps_dist <- targets::tar_read(data_isps_whole) |>
     slab_alpha = 0.4,
     side = "both"
   ) +
+  geom_hline(
+    aes(yintercept = isps_baseline),
+    targets::tar_read(summary_isps_whole_permuted) |> 
+      summarise(isps_baseline = mean(isps_mean), .by = cca_id) |> 
+      mutate(cca_id = factor(cca_id)),
+    linetype = "dotted"
+  ) +
   scale_x_discrete(name = NULL, labels = \(x) paste0("C", x)) +
   scale_y_continuous(name = "ISPS") +
   scale_color_components(
