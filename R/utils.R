@@ -38,3 +38,7 @@ calc_slide_window <- function(data, ...) {
 calc_pattern <- function(x) {
   atanh(as.dist(cor(x, use = "pairwise")))
 }
+
+permute_dist <- function(dist) {
+  seriation::permute(dist, sample.int(attr(dist, "Size")))
+}

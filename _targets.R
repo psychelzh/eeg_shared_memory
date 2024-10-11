@@ -84,6 +84,7 @@ list(
     "data/behav/simil.rds", # use pre-calculated
     read = readRDS(!!.x)$mat[[4]]
   ),
+  tar_target(simil_mem, calc_simil_mem(mem_perf)),
 
   # stimuli patterns ----
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
@@ -371,6 +372,26 @@ list(
     data_perm_expr = calc_mantel(
       data_isps_dynamic,
       seriation::permute(smc, sample.int(206L))
+    ),
+    stats_expr = extract_stats_mantel(!!.x),
+    stats_perm_expr = extract_stats_mantel(!!.x)
+  ),
+  # control for memory ability
+  tar_target(
+    data_isps_smc_partial_whole,
+    calc_mantel_partial(data_isps_whole, smc, simil_mem)
+  ),
+  tar_target(
+    stats_isps_smc_partial_whole,
+    extract_stats_mantel(data_isps_smc_partial_whole)
+  ),
+  tar_cluster_permutation(
+    "isps_smc_partial_dynamic",
+    data_expr = calc_mantel_partial(data_isps_dynamic, smc, simil_mem),
+    data_perm_expr = calc_mantel_partial(
+      data_isps_dynamic,
+      permute_dist(smc),
+      simil_mem
     ),
     stats_expr = extract_stats_mantel(!!.x),
     stats_perm_expr = extract_stats_mantel(!!.x)

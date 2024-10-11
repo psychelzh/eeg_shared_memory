@@ -11,3 +11,9 @@ calc_mem_perf <- function(data, subjs) {
     filter(!is.na(subj_id)) |>
     select(subj_id, dprime)
 }
+
+calc_simil_mem <- function(mem_perf) {
+  mem_perf |>
+    column_to_rownames("subj_id") |>
+    proxy::simil(method = "Euclidean")
+}
