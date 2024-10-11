@@ -60,6 +60,19 @@ calc_indiv_pattern_dynamic <- function(data) {
     )
 }
 
+regress_patterns <- function(patterns_y, patterns_x, by = NULL) {
+  if (is.null(by)) {
+    by <- intersect(names(patterns_y), names(patterns_x)) |>
+      setdiff("pattern")
+  }
+  patterns_x |>
+    left_join(patterns_y, by = by) |>
+    mutate(
+      pattern = map2(pattern.y, pattern.x, regress_pattern),
+      .keep = "unused"
+    )
+}
+
 # intra/inter subject synchronizations ----
 calc_sync_whole <- function(data) {
   data |>

@@ -68,3 +68,44 @@ tar_cluster_permutation <- function(name, stats_expr, stats_perm_expr,
     targets::tar_target_raw(clusters_stats_name, clusters_stats_expr)
   )
 }
+
+tar_mantel <- function(name, data_whole, data_dynamic, ydis, zdis = NULL) {
+  tar_whole <- function(name, data_expr) {
+    name_data <- paste0("data_", name, "_whole")
+    name_stats <- paste0("stats_", name, "_whole")
+    list(
+      tar_target_raw(name_data, substitute(data_expr)),
+      tar_target_raw(
+        name_stats,
+        bquote(extract_stats_mantel(.(as.symbol(name_data))))
+      )
+    )
+  }
+  if (is.null(substitute(zdis))) {
+    data_whole_expr <- substitute(calc_mantel(data_whole, ydis))
+    data_dynamic_expr <- substitute(calc_mantel(data_dynamic, ydis))
+    data_dynamic_perm_expr <- substitute(
+      calc_mantel(data_dynamic, permute_dist(ydis))
+    )
+  } else {
+    data_whole_expr <- substitute(calc_mantel_partial(data_whole, ydis, zdis))
+    data_dynamic_expr <- substitute(calc_mantel_partial(data_dynamic, ydis, zdis))
+    data_dynamic_perm_expr <- substitute(
+      calc_mantel_partial(data_dynamic, permute_dist(ydis), zdis)
+    )
+  }
+  eval(
+    bquote(
+      list(
+        tar_whole(name, .(data_whole_expr)),
+        tar_cluster_permutation(
+          paste0(name, "_dynamic"),
+          data_expr = .(data_dynamic_expr),
+          data_perm_expr = .(data_dynamic_perm_expr),
+          stats_expr = extract_stats_mantel(!!.x),
+          stats_perm_expr = extract_stats_mantel(!!.x)
+        )
+      )
+    )
+  )
+}

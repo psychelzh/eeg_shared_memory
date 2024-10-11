@@ -42,3 +42,9 @@ calc_pattern <- function(x) {
 permute_dist <- function(dist) {
   seriation::permute(dist, sample.int(attr(dist, "Size")))
 }
+
+regress_pattern <- function(y, x) {
+  lm(as.vector(y) ~ as.vector(x), na.action = na.exclude) |>
+    resid() |>
+    vctrs::vec_restore(y)
+}

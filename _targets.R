@@ -377,24 +377,29 @@ list(
     stats_perm_expr = extract_stats_mantel(!!.x)
   ),
   # control for memory ability
+  tar_mantel(
+    "isps_smc_partial_ability",
+    data_isps_whole,
+    data_isps_dynamic,
+    smc,
+    simil_mem
+  ),
+  # control for group-averaged representation
   tar_target(
-    data_isps_smc_partial_whole,
-    calc_mantel_partial(data_isps_whole, smc, simil_mem)
+    data_isps_partial_group_whole,
+    regress_patterns(patterns_indiv_whole, patterns_group_whole) |>
+      calc_isps()
   ),
   tar_target(
-    stats_isps_smc_partial_whole,
-    extract_stats_mantel(data_isps_smc_partial_whole)
+    data_isps_partial_group_dynamic,
+    regress_patterns(patterns_indiv_dynamic, patterns_group_dynamic) |>
+      calc_isps()
   ),
-  tar_cluster_permutation(
-    "isps_smc_partial_dynamic",
-    data_expr = calc_mantel_partial(data_isps_dynamic, smc, simil_mem),
-    data_perm_expr = calc_mantel_partial(
-      data_isps_dynamic,
-      permute_dist(smc),
-      simil_mem
-    ),
-    stats_expr = extract_stats_mantel(!!.x),
-    stats_perm_expr = extract_stats_mantel(!!.x)
+  tar_mantel(
+    "isps_smc_partial_group",
+    data_isps_partial_group_whole,
+    data_isps_partial_group_dynamic,
+    smc
   ),
 
   # shared and individualized patterns ----
