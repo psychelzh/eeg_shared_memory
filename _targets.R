@@ -401,6 +401,39 @@ list(
     data_isps_partial_group_dynamic,
     smc
   ),
+  tar_mantel(
+    "isps_smc_partial_group_ability",
+    data_isps_partial_group_whole,
+    data_isps_partial_group_dynamic,
+    smc,
+    simil_mem
+  ),
+  # control for semantic representation
+  tar_target(
+    data_isps_partial_semantic_whole,
+    patterns_indiv_whole |>
+      mutate(pattern = map(pattern, regress_pattern, pattern_semantics)) |>
+      calc_isps()
+  ),
+  tar_target(
+    data_isps_partial_semantic_dynamic,
+    patterns_indiv_dynamic |>
+      mutate(pattern = map(pattern, regress_pattern, pattern_semantics)) |>
+      calc_isps()
+  ),
+  tar_mantel(
+    "isps_smc_partial_semantic",
+    data_isps_partial_semantic_whole,
+    data_isps_partial_semantic_dynamic,
+    smc
+  ),
+  tar_mantel(
+    "isps_smc_partial_semantic_ability",
+    data_isps_partial_semantic_whole,
+    data_isps_partial_semantic_dynamic,
+    smc,
+    simil_mem
+  ),
 
   # shared and individualized patterns ----
   tar_target(
