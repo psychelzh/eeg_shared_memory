@@ -503,5 +503,42 @@ list(
     stats_perm_expr = extract_stats_mantel(!!.x),
     stats_name = "stats_sync_smc_dynamic",
     clusters_stats_name = "clusters_stats_sync_smc_dynamic"
+  ),
+
+  # WIP: compare ISPS and synchronization in predicting SMC ----
+  tar_target(
+    mantel_isps_sync,
+    data_isps_whole |>
+      inner_join(sync_whole, by = "cca_id") |>
+      mutate(
+        mantel = map2(
+          isps, pattern,
+          vegan::mantel,
+          permutations = 9999
+        ),
+        .keep = "unused"
+      )
+  ),
+  tar_target(stats_mantel_isps_sync, extract_stats_mantel(mantel_isps_sync)),
+  tar_target(
+    fit_smc_isps_sync,
+    data_isps_whole |>
+      inner_join(sync_whole, by = "cca_id") |>
+      mutate(
+        fit = map2(
+          isps, pattern,
+          \(isps, sync) lm(smc ~ isps + sync)
+        ),
+        .keep = "unused"
+      )
+  ),
+  tar_target(
+    stats_smc_isps_sync,
+    fit_smc_isps_sync |>
+      reframe(
+        map(fit, broom::tidy) |>
+          list_rbind(),
+        .by = cca_id
+      )
   )
 )
