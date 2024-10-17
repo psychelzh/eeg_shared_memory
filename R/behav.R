@@ -17,3 +17,9 @@ calc_simil_mem <- function(mem_perf) {
     column_to_rownames("subj_id") |>
     proxy::simil(method = "Euclidean")
 }
+
+calc_memorability <- function(data) {
+  data |>
+    mutate(acc = xor(old_new == 1, resp >= 3)) |>
+    summarise(pc = mean(acc == 1), .by = trial_id)
+}
