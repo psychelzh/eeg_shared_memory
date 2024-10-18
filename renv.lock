@@ -2662,9 +2662,11 @@
     },
     "preproc.iquizoo": {
       "Package": "preproc.iquizoo",
-      "Version": "2.8.1",
+      "Version": "2.8.2",
       "Source": "Repository",
       "Repository": "https://psychelzh.r-universe.dev",
+      "RemoteUrl": "https://github.com/psychelzh/preproc.iquizoo",
+      "RemoteSha": "8f8791424e88137c1dff6ce982c68a49531ee5a1",
       "Requirements": [
         "R",
         "dplyr",
@@ -2677,7 +2679,7 @@
         "utils",
         "vctrs"
       ],
-      "Hash": "91931ddcbf8dbae37cb78d04d617b940"
+      "Hash": "eca75398e80e9a3e8c2404d7382882e8"
     },
     "prettyunits": {
       "Package": "prettyunits",
