@@ -1,8 +1,12 @@
-calc_mem_perf <- function(data, subjs) {
-  data |>
+clean_events <- function(file, subjs) {
+  read_tsv(file, show_col_types = FALSE) |>
     mutate(subj_id = match(subj, subjs)) |>
-    filter(!is.na(subj_id)) |>
-    mutate(acc = resp != 0 & xor(old_new == 1, resp >= 3)) |>
+    filter(resp != 0, !is.na(subj_id)) |>
+    mutate(acc = resp != 0 & xor(old_new == 1, resp >= 3))
+}
+
+calc_mem_perf <- function(data) {
+  data |>
     preproc.iquizoo:::calc_sdt(
       type_signal = 1,
       by = "subj_id",
@@ -20,6 +24,5 @@ calc_simil_mem <- function(mem_perf) {
 
 calc_memorability <- function(data) {
   data |>
-    mutate(acc = xor(old_new == 1, resp >= 3)) |>
     summarise(pc = mean(acc == 1), .by = trial_id)
 }

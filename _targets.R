@@ -74,27 +74,22 @@ list(
     "data/subj_206.txt",
     read = scan(!!.x)
   ),
-  tar_target(file_events_retrieval, "data/behav/retrieval.tsv", format = "file"),
-  tar_target(
-    mem_perf,
-    read_tsv(file_events_retrieval, show_col_types = FALSE) |>
-      calc_mem_perf(subjs)
+  tarchetypes::tar_file_read(
+    events_retrieval,
+    "data/behav/retrieval.tsv",
+    read = clean_events(!!.x, subjs)
   ),
+  tar_target(mem_perf, calc_mem_perf(events_retrieval)),
   tarchetypes::tar_file_read(
     smc,
     "data/behav/simil.rds", # use pre-calculated
     read = readRDS(!!.x)$mat[[4]]
   ),
   tar_target(simil_mem, calc_simil_mem(mem_perf)),
-  tar_target(
-    memorability,
-    read_tsv(file_events_retrieval, show_col_types = FALSE) |>
-      calc_memorability()
-  ),
+  tar_target(memorability, calc_memorability(events_retrieval)),
   tar_target(
     memorability_content,
-    read_tsv(file_events_retrieval, show_col_types = FALSE) |>
-      filter(resp > 0) |>
+    events_retrieval |>
       left_join(memorability, by = "trial_id") |>
       summarise(
         r = psych::polyserial(pick(pc), pick(resp))[, 1],
