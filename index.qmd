@@ -37,21 +37,21 @@ fit_curve <- function(x, y) {
   )
 }
 
-prepare_corr_plotmath <- function(stats, 
+prepare_corr_plotmath <- function(stats,
                                   col_r = "estimate",
                                   col_p = "p.value",
                                   name_r = "italic(r)",
                                   name_p = "italic(p)[Holm]") {
   stats |>
-    rstatix::adjust_pvalue(col_p, "p_adj") |> 
+    rstatix::adjust_pvalue(col_p, "p_adj") |>
     rstatix::add_significance(
       "p_adj", "p_adj_sig",
       cutpoints = c(0, 0.001, 0.01, 0.05, 1),
       symbols = c("***", "**", "*", "")
-    ) |> 
+    ) |>
     mutate(
       label = format_r_plotmath(
-        .data[[col_r]], p_adj, 
+        .data[[col_r]], p_adj,
         p.sig = p_adj_sig,
         name_r = name_r,
         name_p = name_p
@@ -59,9 +59,9 @@ prepare_corr_plotmath <- function(stats,
     )
 }
 
-format_r_plotmath <- function(r, p, 
-                              p.sig = "", 
-                              name_r = "italic(r)", 
+format_r_plotmath <- function(r, p,
+                              p.sig = "",
+                              name_r = "italic(r)",
                               name_p = "italic(p)[Holm]") {
   paste0(
     str_glue("{name_r}*' = '*{round(r, 2)}"),
@@ -83,16 +83,16 @@ format_r_plotmath <- function(r, p,
 visualize_scatter <- function(data, mem_perf, lab_stat, col_stat,
                               show_legend = FALSE) {
   data_joind <- data |>
-    left_join(mem_perf, by = "subj_id") |> 
+    left_join(mem_perf, by = "subj_id") |>
     mutate(cca_id = factor(cca_id))
-  stats <- data_joind |> 
+  stats <- data_joind |>
     reframe(
       cor.test(.data[[col_stat]], .data$dprime) |>
         broom::tidy(),
       .by = cca_id
-    ) |> 
+    ) |>
     prepare_corr_plotmath()
-  data_joind |> 
+  data_joind |>
     ggplot(aes(.data[[col_stat]], dprime)) +
     geom_point(aes(color = cca_id), show.legend = show_legend) +
     geom_smooth(
@@ -103,7 +103,10 @@ visualize_scatter <- function(data, mem_perf, lab_stat, col_stat,
     ) +
     geom_text(
       aes(x = min(data_joind[[col_stat]]), y = Inf, label = label),
-      stats, hjust = 0, vjust = 1, parse = TRUE
+      stats,
+      hjust = 0,
+      vjust = 1,
+      parse = TRUE
     ) +
     facet_grid(cols = vars(cca_id), scales = "free") +
     scale_x_continuous(name = lab_stat) +
@@ -141,7 +144,7 @@ visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
     geom_text(
       aes(x = min(patterns_flat[[name_x]]), y = Inf, label = label),
       prepare_corr_plotmath(
-        stats, "statistic", 
+        stats, "statistic",
         name_p = "italic(p)[Holm]^{Mantel}"
       ),
       hjust = 0, vjust = 1, parse = TRUE
@@ -157,21 +160,21 @@ visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
 }
 
 visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
-  data |> 
+  data |>
     mutate(
       cca_id = factor(cca_id),
       null = map(mantel, "perm"),
       .keep = "unused"
-    ) |> 
-    unchop(null) |> 
+    ) |>
+    unchop(null) |>
     ggplot(aes(null)) +
     geom_histogram(aes(fill = cca_id), show.legend = show_legend) +
     geomtextpath::geom_textvline(
       aes(xintercept = statistic, label = label),
-      stats |> 
-        mutate(cca_id = factor(cca_id)) |> 
+      stats |>
+        mutate(cca_id = factor(cca_id)) |>
         prepare_corr_plotmath(
-          "statistic", 
+          "statistic",
           name_r = "italic(r)[Obs]",
           name_p = NULL
         ),
@@ -189,8 +192,8 @@ visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
     )
 }
 
-visualize_dynamic <- function(stats, 
-                              clusters_stats = NULL, 
+visualize_dynamic <- function(stats,
+                              clusters_stats = NULL,
                               col_stat = "estimate",
                               lab_stat = "Estimate",
                               col_cis = c("conf.low", "conf.high"),
@@ -237,7 +240,7 @@ visualize_dynamic <- function(stats,
           show.legend = show_legend
         )
       }
-    } + 
+    } +
     {
       if (!is.null(clusters_stats)) {
         list(
@@ -289,6 +292,54 @@ scale_color_components <- function(...) {
 theme_set(ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12))
 ```
 
+# Behavioral Results
+
+```{r}
+#| label: behav
+#| fig-width: 6
+#| fig-height: 5
+
+p_perf <- targets::tar_read(mem_perf) |>
+  ggplot(aes(dprime)) +
+  geom_histogram(fill = "grey") +
+  scale_x_continuous(name = "d' (Overall)") +
+  scale_y_continuous(name = "Count") +
+  theme(axis.line = element_line(linewidth = 1))
+
+p_smc <- targets::tar_read(smc) |>
+  enframe() |>
+  ggplot(aes(value)) +
+  geom_histogram(fill = "grey") +
+  scale_x_continuous(name = "SMC") +
+  scale_y_continuous(name = "Count") +
+  theme(axis.line = element_line(linewidth = 1))
+
+p_memorability <- targets::tar_read(memorability) |>
+  ggplot(aes(pc)) +
+  geom_histogram(fill = "grey") +
+  scale_x_continuous(name = "Memorability") +
+  scale_y_continuous(name = "Count") +
+  theme(axis.line = element_line(linewidth = 1))
+
+p_memorability_content <- targets::tar_read(memorability_content) |>
+  ggplot(aes(r)) +
+  geom_histogram(fill = "grey") +
+  geom_vline(
+    xintercept = mean(targets::tar_read(memorability_content)$r),
+    linetype = "dotted"
+  ) +
+  geom_vline(xintercept = sqrt(0.5), linetype = "dotted", color = "red") +
+  scale_x_continuous(
+    name = "Individual-to-Group\nMemory Content Similarity"
+  ) +
+  scale_y_continuous(name = "Count", expand = expansion(c(0, 0))) +
+  theme(axis.line = element_line(linewidth = 1))
+
+p_perf + p_smc + p_memorability + p_memorability_content
+
+ggsave("figures/behavioral.png", width = 6, height = 5, dpi = 600)
+```
+
 # Group averaged representation
 
 This is supplementary figure showing the stability.
@@ -330,6 +381,7 @@ p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
 This is Figure 2 now.
 
 ```{r}
+#| label: igs-mem-gss
 #| column: page
 #| fig-width: 13
 #| fig-height: 5
@@ -390,8 +442,6 @@ Semantic information is important but non-semantic information is also important
 This will be Figure 3.
 
 ```{r}
-#| label: mean-iss-trending
-
 stats_iss_whole <- targets::tar_read(stats_iss_whole) |>
   rstatix::adjust_pvalue() |>
   rstatix::add_significance(
@@ -578,6 +628,7 @@ p_compare_predictions <- preds |>
 ```
 
 ```{r}
+#| label: sem-and-mem
 #| column: page
 #| fig-width: 13
 #| fig-height: 8
@@ -617,8 +668,8 @@ p_isps_dist <- targets::tar_read(data_isps_whole) |>
   ) +
   geom_hline(
     aes(yintercept = isps_baseline),
-    targets::tar_read(summary_isps_whole_permuted) |> 
-      summarise(isps_baseline = mean(isps_mean), .by = cca_id) |> 
+    targets::tar_read(summary_isps_whole_permuted) |>
+      summarise(isps_baseline = mean(isps_mean), .by = cca_id) |>
       mutate(cca_id = factor(cca_id)),
     linetype = "dotted"
   ) +
@@ -630,29 +681,29 @@ p_isps_dist <- targets::tar_read(data_isps_whole) |>
   ) +
   theme(axis.line = element_line(linewidth = 1))
 
-p_isps_dynamic <- visualize_dynamic(
-  targets::tar_read(stats_isps_dynamic) |> 
-    mutate(
-      ymax = isps_mean + isps_se,
-      ymin = isps_mean - isps_se
-    ),
-  col_stat = "isps_mean",
-  lab_stat = "ISPS",
-  col_cis = c("ymin", "ymax")
-)
-
-# the cluster based permutation test is not useful (maybe we need TFCE)
-# p_isps_clusters <- visualize_dynamic(
-#   targets::tar_read(stats_isps_dynamic) |> 
+# p_isps_dynamic <- visualize_dynamic(
+#   targets::tar_read(stats_isps_dynamic) |>
 #     mutate(
 #       ymax = isps_mean + isps_se,
 #       ymin = isps_mean - isps_se
 #     ),
-#   targets::tar_read(clusters_stats_isps_dynamic),
 #   col_stat = "isps_mean",
 #   lab_stat = "ISPS",
 #   col_cis = c("ymin", "ymax")
 # )
+
+# the cluster based permutation test is not useful (maybe we need TFCE)
+p_isps_clusters <- visualize_dynamic(
+  targets::tar_read(stats_isps_dynamic) |>
+    mutate(
+      ymax = isps_mean + isps_se,
+      ymin = isps_mean - isps_se
+    ),
+  targets::tar_read(clusters_stats_isps_dynamic),
+  col_stat = "isps_mean",
+  lab_stat = "ISPS",
+  col_cis = c("ymin", "ymax")
+)
 
 p_isps_smc <- visualize_mantel_dist(
   targets::tar_read(data_isps_smc_whole),
@@ -668,7 +719,7 @@ p_isps_smc_dynamic <- visualize_dynamic(
   lab_stat = expression(italic(r)[ISPS - SMC])
 )
 
-p_isps_dist + p_isps_dynamic + p_isps_smc + p_isps_smc_dynamic +
+p_isps_dist + p_isps_clusters + p_isps_smc + p_isps_smc_dynamic +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
@@ -755,7 +806,7 @@ p_sync_compare <- summary_sync |>
   )
 
 sync_mem <- sync_inter_intra |>
-  left_join(targets::tar_read(mem_perf), by = "subj_id") |> 
+  left_join(targets::tar_read(mem_perf), by = "subj_id") |>
   mutate(cca_id = factor(cca_id))
 stats_sync_mem <- sync_mem |>
   summarise(
@@ -766,8 +817,8 @@ stats_sync_mem <- sync_mem |>
   rstatix::add_significance(
     cutpoints = c(0, 0.001, 0.01, 0.05, 1),
     symbols = c("***", "**", "*", "")
-  ) |> 
-  prepare_corr_plotmath() |> 
+  ) |>
+  prepare_corr_plotmath() |>
   mutate(
     x = min(sync_mem$sync),
     y = max(sync_mem$dprime) * 1.2 * (1 - 0.1 * as.integer(type))
