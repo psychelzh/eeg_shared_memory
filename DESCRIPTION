@@ -11,6 +11,7 @@ Depends:
     tidyverse
 Imports:
     arrow,
+    caret,
     crew,
     crew.cluster,
     devtools,
