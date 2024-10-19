@@ -102,7 +102,7 @@ list(
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
   tar_target(
     mapping_word_trial,
-    raveio::read_mat(file_seq)$SM[, 1:2] |>
+    R.matlab::readMat(file_seq)$SM[, 1:2] |>
       as_tibble(.name_repair = ~ c("trial_id", "word_id"))
   ),
   tar_target(file_w2v, "data/stimuli/words_w2v.txt", format = "file"),
