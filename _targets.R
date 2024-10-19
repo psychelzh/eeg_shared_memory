@@ -80,6 +80,7 @@ list(
     read = clean_events(!!.x, subjs)
   ),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
+  tar_target(mem_perf_precise, calc_mem_perf_precise(events_retrieval)),
   tarchetypes::tar_file_read(
     smc,
     "data/behav/simil.rds", # use pre-calculated
