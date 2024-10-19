@@ -1979,7 +1979,7 @@
     },
     "lme4": {
       "Package": "lme4",
-      "Version": "1.1-35.4",
+      "Version": "1.1-35.5",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -2001,7 +2001,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "a6f5390caceaa1b23b68f57d663b2061"
+      "Hash": "16a08fc75007da0d08e0c0388c7c33e6"
     },
     "lmerTest": {
       "Package": "lmerTest",
@@ -2545,6 +2545,7 @@
       "Version": "2.8.2",
       "Source": "Repository",
       "Repository": "https://psychelzh.r-universe.dev",
+      "RemoteType": "repository",
       "RemoteUrl": "https://github.com/psychelzh/preproc.iquizoo",
       "RemoteSha": "8f8791424e88137c1dff6ce982c68a49531ee5a1",
       "Requirements": [
@@ -2559,7 +2560,7 @@
         "utils",
         "vctrs"
       ],
-      "Hash": "eca75398e80e9a3e8c2404d7382882e8"
+      "Hash": "0d7767ce38aede7d7bd8354505fbc7a9"
     },
     "prettyunits": {
       "Package": "prettyunits",
