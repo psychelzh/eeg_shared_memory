@@ -417,10 +417,7 @@ list(
   tar_cluster_permutation(
     "isps_smc_dynamic",
     data_expr = calc_mantel(data_isps_dynamic, smc),
-    data_perm_expr = calc_mantel(
-      data_isps_dynamic,
-      permute_dist(smc)
-    ),
+    data_perm_expr = calc_mantel(data_isps_dynamic, permute_dist(smc)),
     stats_expr = extract_stats_mantel(!!.x),
     stats_perm_expr = extract_stats_mantel(!!.x)
   ),
@@ -541,16 +538,11 @@ list(
   tar_target(sync_dynamic, calc_sync_dynamic(whole_erps)),
   # the verbose names are for the compatibility with history relics
   tar_cluster_permutation(
+    "sync_smc_dynamic",
     data_expr = calc_mantel(sync_dynamic, smc),
-    data_perm_expr = calc_mantel(
-      sync_dynamic,
-      permute_dist(smc)
-    ),
-    data_name = "sync_smc_dynamic",
+    data_perm_expr = calc_mantel(sync_dynamic, permute_dist(smc)),
     stats_expr = extract_stats_mantel(!!.x),
-    stats_perm_expr = extract_stats_mantel(!!.x),
-    stats_name = "stats_sync_smc_dynamic",
-    clusters_stats_name = "clusters_stats_sync_smc_dynamic"
+    stats_perm_expr = extract_stats_mantel(!!.x)
   ),
 
   # WIP: compare ISPS and synchronization in predicting SMC ----
