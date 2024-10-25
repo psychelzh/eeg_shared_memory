@@ -250,9 +250,19 @@ list(
     stats_expr = extract_stats_mantel(!!.x),
     stats_perm_expr = extract_stats_mantel(!!.x)
   ),
-  # gcs: group averaged and character similarity
-  tar_target(data_gcs_whole, calc_mantel(patterns_group_whole, pattern_shapes)),
-  tar_target(stats_gcs_whole, extract_stats_mantel(data_gcs_whole)),
+  # gfs: group averaged and word shape (form)
+  tar_target(data_gfs_whole, calc_mantel(patterns_group_whole, pattern_shapes)),
+  tar_target(stats_gfs_whole, extract_stats_mantel(data_gcs_whole)),
+  tar_cluster_permutation(
+    "gfs_dynamic",
+    data_expr = calc_mantel(patterns_group_dynamic, pattern_shapes),
+    data_perm_expr = calc_mantel(
+      patterns_group_dynamic,
+      permute_dist(pattern_shapes)
+    ),
+    stats_expr = extract_stats_mantel(!!.x),
+    stats_perm_expr = extract_stats_mantel(!!.x)
+  ),
 
   # individual patterns and semantic pattern similarity (ISS) ----
   tar_cluster_permutation(
@@ -281,6 +291,42 @@ list(
     calc_iss_mem(data_iss_dynamic, mem_perf),
     calc_iss_mem(
       data_iss_dynamic,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      !!.y
+    )
+  ),
+
+  # individual patterns and word shape (form) similarity (IFS) ----
+  tar_cluster_permutation(
+    "ifs_dynamic",
+    data_expr = calc_iss(patterns_indiv_dynamic, pattern_shapes),
+    data_perm_expr = calc_iss(
+      patterns_indiv_dynamic,
+      permute_dist(pattern_shapes)
+    ),
+    stats_expr = calc_iss_stats(!!.x),
+    stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      !!.y
+    )
+  ),
+  tar_target(data_ifs_whole, calc_iss(patterns_indiv_whole, pattern_shapes)),
+  tar_target(stats_ifs_whole, calc_iss_stats(data_ifs_whole, .by = cca_id)),
+  tar_target(ifs_comparison, compare_iss(stats_ifs_whole)),
+
+  # IFS predicts memory ----
+  tar_target(stats_ifs_mem_whole, calc_iss_mem(data_ifs_whole, mem_perf)),
+  tar_target(comparison_ifs_mem, compare_iss_mem(stats_ifs_mem_whole)),
+  tar_cluster_permutation(
+    "ifs_mem_dynamic",
+    calc_iss_mem(data_ifs_dynamic, mem_perf),
+    calc_iss_mem(
+      data_ifs_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
     ),
