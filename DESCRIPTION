@@ -27,6 +27,7 @@ Imports:
     qs,
     R.matlab,
     rcompanion,
+    seriation,
     slider,
     tarchetypes,
     targets,

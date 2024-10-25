@@ -310,6 +310,21 @@
       ],
       "Hash": "5b250ad4c5863ee4a68e280fcb0a3600"
     },
+    "TSP": {
+      "Package": "TSP",
+      "Version": "1.2-4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "foreach",
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Hash": "7fba3f587b0f3cb3232d03d540dbf772"
+    },
     "abind": {
       "Package": "abind",
       "Version": "1.4-5",
@@ -500,6 +515,16 @@
         "sass"
       ],
       "Hash": "8644cc53f43828f19133548195d7e59e"
+    },
+    "ca": {
+      "Package": "ca",
+      "Version": "0.71.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "392f13bb4dfd3c07259ecdeba6aa71f9"
     },
     "cachem": {
       "Package": "cachem",
@@ -1269,6 +1294,17 @@
         "withr"
       ],
       "Hash": "fc0b272e5847c58cd5da9b20eedbd026"
+    },
+    "gclus": {
+      "Package": "gclus",
+      "Version": "1.3.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "cluster"
+      ],
+      "Hash": "8f905e7f70ac42e5b0e39d6ba360dd44"
     },
     "generics": {
       "Package": "generics",
@@ -2717,6 +2753,13 @@
       ],
       "Hash": "1cba04a4e9414bdefc9dcaa99649a8dc"
     },
+    "qap": {
+      "Package": "qap",
+      "Version": "0.1-2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "21c4fc168ebf32add2db6a358ce4714c"
+    },
     "qs": {
       "Package": "qs",
       "Version": "0.26.3",
@@ -2880,6 +2923,17 @@
         "withr"
       ],
       "Hash": "fc6672e55fcd1b5c461a3529ff6b1b08"
+    },
+    "registry": {
+      "Package": "registry",
+      "Version": "0.5-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "utils"
+      ],
+      "Hash": "1c9935f4f14c6c096c9c9072ddee59f1"
     },
     "rematch": {
       "Package": "rematch",
@@ -3183,6 +3237,29 @@
         "stringr"
       ],
       "Hash": "3838071b66e0c566d55cc26bd6e27bf4"
+    },
+    "seriation": {
+      "Package": "seriation",
+      "Version": "1.5.6",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R",
+        "TSP",
+        "ca",
+        "cluster",
+        "colorspace",
+        "foreach",
+        "gclus",
+        "grDevices",
+        "grid",
+        "qap",
+        "registry",
+        "stats",
+        "vegan"
+      ],
+      "Hash": "78671284f60a1c08b90c2754f024046d"
     },
     "sessioninfo": {
       "Package": "sessioninfo",
@@ -3861,6 +3938,8 @@
       "Version": "0.0.10",
       "Source": "Repository",
       "Repository": "https://psychelzh.r-universe.dev",
+      "RemoteUrl": "https://github.com/psychelzh/zutils",
+      "RemoteSha": "436966e7b43eeb9ef0f58c37c7e05d73832ee06d",
       "Requirements": [
         "dplyr",
         "rlang",
