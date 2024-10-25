@@ -245,7 +245,7 @@ list(
     data_expr = calc_mantel(patterns_group_dynamic, pattern_semantics),
     data_perm_expr = calc_mantel(
       patterns_group_dynamic,
-      seriation::permute(pattern_semantics, sample.int(150L))
+      permute_dist(pattern_semantics)
     ),
     stats_expr = extract_stats_mantel(!!.x),
     stats_perm_expr = extract_stats_mantel(!!.x)
@@ -260,7 +260,7 @@ list(
     data_expr = calc_iss(patterns_indiv_dynamic, pattern_semantics),
     data_perm_expr = calc_iss(
       patterns_indiv_dynamic,
-      seriation::permute(pattern_semantics, sample.int(150L))
+      permute_dist(pattern_semantics)
     ),
     stats_expr = calc_iss_stats(!!.x),
     stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
@@ -312,12 +312,7 @@ list(
   tarchetypes::tar_rep(
     data_isps_whole_permuted,
     patterns_indiv_whole |>
-      mutate(
-        pattern = map(
-          pattern,
-          \(x) seriation::permute(x, sample.int(150L))
-        )
-      ) |>
+      mutate(pattern = map(pattern, permute_dist)) |>
       calc_isps(),
     reps = 10,
     batches = 100
@@ -337,12 +332,7 @@ list(
   tarchetypes::tar_rep(
     data_isps_dynamic_permuted,
     patterns_indiv_dynamic |>
-      mutate(
-        pattern = map(
-          pattern,
-          \(x) seriation::permute(x, sample.int(150L))
-        )
-      ) |>
+      mutate(pattern = map(pattern, permute_dist)) |>
       calc_isps(),
     reps = 10,
     batches = 100
@@ -383,7 +373,7 @@ list(
     data_expr = calc_mantel(data_isps_dynamic, smc),
     data_perm_expr = calc_mantel(
       data_isps_dynamic,
-      seriation::permute(smc, sample.int(206L))
+      permute_dist(smc)
     ),
     stats_expr = extract_stats_mantel(!!.x),
     stats_perm_expr = extract_stats_mantel(!!.x)
@@ -508,7 +498,7 @@ list(
     data_expr = calc_mantel(sync_dynamic, smc),
     data_perm_expr = calc_mantel(
       sync_dynamic,
-      seriation::permute(smc, sample.int(206L))
+      permute_dist(smc)
     ),
     data_name = "sync_smc_dynamic",
     stats_expr = extract_stats_mantel(!!.x),
