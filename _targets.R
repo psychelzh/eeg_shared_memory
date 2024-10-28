@@ -252,7 +252,7 @@ list(
   ),
   # gfs: group averaged and word shape (form)
   tar_target(data_gfs_whole, calc_mantel(patterns_group_whole, pattern_shapes)),
-  tar_target(stats_gfs_whole, extract_stats_mantel(data_gcs_whole)),
+  tar_target(stats_gfs_whole, extract_stats_mantel(data_gfs_whole)),
   tar_cluster_permutation(
     "gfs_dynamic",
     data_expr = calc_mantel(patterns_group_dynamic, pattern_shapes),
@@ -317,7 +317,7 @@ list(
   ),
   tar_target(data_ifs_whole, calc_iss(patterns_indiv_whole, pattern_shapes)),
   tar_target(stats_ifs_whole, calc_iss_stats(data_ifs_whole, .by = cca_id)),
-  tar_target(ifs_comparison, compare_iss(stats_ifs_whole)),
+  tar_target(ifs_comparison, compare_iss(data_ifs_whole)),
 
   # IFS predicts memory ----
   tar_target(stats_ifs_mem_whole, calc_iss_mem(data_ifs_whole, mem_perf)),
