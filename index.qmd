@@ -813,6 +813,9 @@ ggsave("figures/isps_smc.png", width = 13, height = 5, dpi = 600)
 
 ```{r}
 #| label: isps-smc-control
+#| column: page
+#| fig-width: 13
+#| fig-height: 7
 
 p_isps_smc_partial_memory <- visualize_mantel_dist(
   targets::tar_read(data_isps_smc_partial_ability_whole),
