@@ -340,12 +340,56 @@ p_perf + p_smc + p_memorability + p_memorability_content
 ggsave("figures/behavioral.png", width = 6, height = 5, dpi = 600)
 ```
 
+```{r}
+#| label: behav-corr
+#| fig-width: 6
+#| fig-height: 6
+
+targets::tar_read(mem_perf) |>
+  left_join(
+    targets::tar_read(mem_perf_precise),
+    by = "subj_id"
+  ) |>
+  select(!subj_id) |>
+  rename(
+    Overall = dprime,
+    Recollection = dprime_rem,
+    Familiarity = dprime_know
+  ) |>
+  GGally::ggpairs(
+    diag = list(continuous = "barDiag"),
+    lower = list(
+      continuous = function(data, mapping, ...) {
+        ggplot(data, mapping) +
+          geom_point(color = "grey") +
+          geom_smooth(method = "lm", color = "black") +
+          ggpmisc::stat_correlation(
+            ggpmisc::use_label(c("r", "p.value")),
+            small.r = TRUE,
+            small.p = TRUE
+          )
+      }
+    ),
+    upper = "blank",
+    switch = "both"
+  ) +
+  theme(
+    axis.line = element_line(linewidth = 1),
+    strip.text = element_text(size = 16),
+    strip.background = element_blank(),
+    strip.placement = "outside"
+  )
+ggsave("figures/behavioral_correlation.png", width = 6, height = 6, dpi = 600)
+```
+
 # Group averaged representation
 
 This is supplementary figure showing the stability.
 
 ```{r}
 #| label: group-averaged-stability
+#| fig-width: 6
+#| fig-height: 4
 
 targets::tar_load(patterns_group_stability)
 size_subjs <- seq(20, 200, by = 20)
@@ -363,7 +407,7 @@ p_stability <- patterns_group_stability |>
   geom_point(aes(size, r), predictions, size = 1) +
   geom_line(aes(size, r), predictions, linetype = "longdash") +
   scale_x_continuous(name = "# Participants", breaks = scales::breaks_width(40)) +
-  scale_y_continuous(name = "Group Representation Stability") +
+  scale_y_continuous(name = "Stability") +
   scale_color_components() +
   facet_grid(cols = vars(cca_id), scales = "free") +
   theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
@@ -372,10 +416,19 @@ p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
   ggplot(aes(size, gss, color = factor(cca_id))) +
   ggdist::stat_dotsinterval() +
   scale_x_continuous(name = "# Participants", breaks = scales::breaks_width(40)) +
-  scale_y_continuous(name = expression(italic(r)[neu - sem])) +
-  scale_color_components() +
+  scale_y_continuous(name = "GSS") +
+  scale_color_components(guide = "none") +
   facet_grid(cols = vars(cca_id), scales = "free") +
-  theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
+  theme(
+    axis.line = element_line(linewidth = 1),
+    strip.text = element_blank()
+  )
+
+p_stability / p_trend_gss +
+  plot_layout(guides = "collect", axes = "collect") &
+  theme(legend.position = "bottom")
+
+ggsave("figures/group_representation_stability.png", width = 6, height = 4, dpi = 600)
 ```
 
 This is Figure 2 now.
@@ -423,16 +476,6 @@ p_gss_dynamic <- visualize_dynamic(
   # plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
 ggsave("figures/igs_memory_gss_semantics.png", width = 13, height = 5, dpi = 600)
-```
-
-```{r}
-p_group_shapes <- visualize_mantel(
-  targets::tar_read(patterns_group_whole),
-  targets::tar_read(pattern_shapes),
-  targets::tar_read(stats_gcs_whole),
-  "Group Averaged Neural Representation",
-  "Shape Similarity"
-)
 ```
 
 # Semantic representation
@@ -518,11 +561,6 @@ p_iss_mem_dynamic <- visualize_dynamic(
   col_stat = "estimate",
   lab_stat = expression(italic(r)[ISS - "d'"])
 )
-
-# (p_iss_dist | p_iss_dynamic) / (p_iss_mem_scatter | p_iss_mem_dynamic) +
-#   plot_layout(guides = "collect") &
-#   theme(legend.position = "bottom")
-# ggsave("figures/iss_memory.png", width = 12, height = 5, dpi = 600)
 ```
 
 ```{r}
@@ -647,6 +685,53 @@ p_iss_dist + p_iss_dynamic + p_iss_mem_scatter + p_iss_mem_dynamic +
 ggsave("figures/semantics_memory.png", width = 13, height = 8, dpi = 600)
 ```
 
+# Control analysis: word shape similarity pattern
+
+```{r}
+#| label: word-shape-pattern
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
+
+p_gfs_whole <- visualize_mantel(
+  targets::tar_read(patterns_group_whole),
+  targets::tar_read(pattern_shapes),
+  targets::tar_read(stats_gfs_whole),
+  "Group Averaged Neural Representation",
+  "Word Shape Similarity"
+)
+
+p_gfs_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_gfs_dynamic),
+  targets::tar_read(clusters_stats_gfs_dynamic),
+  col_stat = "statistic",
+  lab_stat = "GWS",
+  show_legend = TRUE
+)
+
+p_ifs_mem_whole <- visualize_scatter(
+  targets::tar_read(data_ifs_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "IWS",
+  col_stat = "iss"
+)
+
+p_ifs_mem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_ifs_mem_dynamic),
+  targets::tar_read(clusters_stats_less_ifs_mem_dynamic),
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)[IWS - "d'"])
+)
+
+(p_gfs_whole | p_gfs_dynamic) /
+  (p_ifs_mem_whole | p_ifs_mem_dynamic) +
+  plot_layout(guides = "collect") &
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+
+ggsave("figures/word_shape_pattern.png", width = 12, height = 6, dpi = 600)
+```
+
 # Predicting Shared Memory Content (SMC)
 
 ## Inter-Subject Pattern Similarity (ISPS)
@@ -724,6 +809,59 @@ p_isps_dist + p_isps_clusters + p_isps_smc + p_isps_smc_dynamic +
   theme(legend.position = "bottom")
 
 ggsave("figures/isps_smc.png", width = 13, height = 5, dpi = 600)
+```
+
+```{r}
+#| label: isps-smc-control
+
+p_isps_smc_partial_memory <- visualize_mantel_dist(
+  targets::tar_read(data_isps_smc_partial_ability_whole),
+  targets::tar_read(stats_isps_smc_partial_ability_whole),
+  expression(italic(r)["ISPS|Mem" - SMC]),
+  show_legend = TRUE
+)
+
+p_isps_smc_partial_memory_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_isps_smc_partial_ability_dynamic),
+  targets::tar_read(clusters_stats_isps_smc_partial_ability_dynamic),
+  col_stat = "statistic",
+  lab_stat = expression(italic(r)["ISPS|Mem" - SMC])
+)
+
+p_isps_smc_partial_group_memory <- visualize_mantel_dist(
+  targets::tar_read(data_isps_smc_partial_group_ability_whole),
+  targets::tar_read(stats_isps_smc_partial_group_ability_whole),
+  expression(italic(r)["ISPS|(GRSM, Mem)" - SMC])
+)
+
+p_isps_smc_partial_group_memory_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_isps_smc_partial_group_ability_dynamic),
+  targets::tar_read(clusters_stats_isps_smc_partial_group_ability_dynamic),
+  col_stat = "statistic",
+  lab_stat = expression(italic(r)["ISPS|(GRSM, Mem)" - SMC])
+)
+
+p_isps_smc_partial_semantic_memory <- visualize_mantel_dist(
+  targets::tar_read(data_isps_smc_partial_semantic_ability_whole),
+  targets::tar_read(stats_isps_smc_partial_semantic_ability_whole),
+  expression(italic(r)["ISPS|(Sem, Mem)" - SMC])
+)
+
+p_isps_smc_partial_semantic_memory_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_isps_smc_partial_semantic_ability_dynamic),
+  targets::tar_read(clusters_stats_isps_smc_partial_semantic_ability_dynamic),
+  col_stat = "statistic",
+  lab_stat = expression(italic(r)["ISPS|(Sem, Mem)" - SMC])
+)
+
+(p_isps_smc_partial_memory | p_isps_smc_partial_memory_dynamic) /
+  (p_isps_smc_partial_group_memory | p_isps_smc_partial_group_memory_dynamic) /
+  (p_isps_smc_partial_semantic_memory | p_isps_smc_partial_semantic_memory_dynamic) +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+
+ggsave("figures/isps_smc_control.png", width = 13, height = 7, dpi = 600)
 ```
 
 ## Neural Synchronization
