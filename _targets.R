@@ -232,7 +232,7 @@ list(
       alternative = "greater"
     ),
     clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
     )
   ),
@@ -275,7 +275,7 @@ list(
     stats_expr = calc_iss_stats(!!.x),
     stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
     clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
     )
   ),
@@ -295,7 +295,7 @@ list(
       alternative = "greater"
     ),
     clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
     )
   ),
@@ -311,7 +311,7 @@ list(
     stats_expr = calc_iss_stats(!!.x),
     stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
     clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
     )
   ),
@@ -327,12 +327,31 @@ list(
     calc_iss_mem(data_ifs_dynamic, mem_perf),
     calc_iss_mem(
       data_ifs_dynamic,
-      mutate(mem_perf, subj_id = sample(subj_id)),
-      alternative = "greater"
+      mutate(mem_perf, subj_id = sample(subj_id))
     ),
     clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(statistic, p.value)),
-      !!.y
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      mutate(!!.y, p.value = convert_p2_p1(p.value, statistic))
+    )
+  ),
+  tar_target(
+    clusters_stats_less_ifs_mem_dynamic,
+    calc_clusters_stats(
+      stats_ifs_mem_dynamic |>
+        mutate(
+          p.value = convert_p2_p1(
+            p.value, statistic,
+            alternative = "less"
+          )
+        ),
+      stats_ifs_mem_dynamic_permuted |>
+        mutate(
+          p.value = convert_p2_p1(
+            p.value, statistic,
+            alternative = "less"
+          )
+        ),
+      alternative = "less"
     )
   ),
 

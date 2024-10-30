@@ -3,7 +3,12 @@ calc_clusters_stats <- function(stats, stats_permuted,
                                 col_statistic = statistic,
                                 col_p_value = p.value,
                                 col_time_id = time_id,
-                                col_id_permuted = starts_with("tar")) {
+                                col_id_permuted = starts_with("tar"),
+                                alternative = c("greater", "less")) {
+  operator <- switch(match.arg(alternative),
+    greater = `>=`,
+    less = `<=`
+  )
   clusters <- stats |>
     reframe(
       find_cluster(
@@ -34,7 +39,7 @@ calc_clusters_stats <- function(stats, stats_permuted,
       p_perm = map2_dbl(
         cluster_mass_perm,
         cluster_mass,
-        ~ (sum(.x >= .y) + 1) / (length(.x) + 1)
+        ~ (sum(operator(.x, .y)) + 1) / (length(.x) + 1)
       )
     )
 }
