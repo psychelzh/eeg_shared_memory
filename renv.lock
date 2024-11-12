@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.4.1",
+    "Version": "4.4.2",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -1978,6 +1978,26 @@
       ],
       "Hash": "579303ca1e817d94cea694b319803380"
     },
+    "lavaan": {
+      "Package": "lavaan",
+      "Version": "0.6-19",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R",
+        "graphics",
+        "methods",
+        "mnormt",
+        "numDeriv",
+        "pbivnorm",
+        "quadprog",
+        "stats",
+        "stats4",
+        "utils"
+      ],
+      "Hash": "78573997f3acd282f34c626ffb6a906d"
+    },
     "libcoin": {
       "Package": "libcoin",
       "Version": "1.0-10",
@@ -2410,6 +2430,13 @@
       ],
       "Hash": "e23fb9ecb1258207bcb763d78d513439"
     },
+    "pbivnorm": {
+      "Package": "pbivnorm",
+      "Version": "0.6.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "643e16a7da6aac3e18cadc3e14abb94b"
+    },
     "pbkrtest": {
       "Package": "pbkrtest",
       "Version": "0.5.3",
@@ -2773,6 +2800,16 @@
         "stringfish"
       ],
       "Hash": "e372cf3f70e3c7a768ec5ea14f0f3edd"
+    },
+    "quadprog": {
+      "Package": "quadprog",
+      "Version": "1.5-8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "5f919ae5e7f83a6f91dcf2288943370d"
     },
     "quantreg": {
       "Package": "quantreg",
@@ -3938,8 +3975,6 @@
       "Version": "0.0.10",
       "Source": "Repository",
       "Repository": "https://psychelzh.r-universe.dev",
-      "RemoteUrl": "https://github.com/psychelzh/zutils",
-      "RemoteSha": "436966e7b43eeb9ef0f58c37c7e05d73832ee06d",
       "Requirements": [
         "dplyr",
         "rlang",

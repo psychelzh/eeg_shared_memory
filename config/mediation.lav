@@ -1,0 +1,9 @@
+# direct effects
+dprime ~ c * igs + b * iss
+
+# mediation
+iss ~ a * igs
+
+# defined effect
+ind := a*b
+total := c + a*b

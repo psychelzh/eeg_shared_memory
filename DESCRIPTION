@@ -19,6 +19,7 @@ Imports:
     ggh4x,
     ggpmisc,
     ggpubr,
+    lavaan,
     lmerTest,
     patchwork,
     preproc.iquizoo,

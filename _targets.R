@@ -300,6 +300,18 @@ list(
     )
   ),
 
+  # IGS --> ISS --> Mem perf
+  tar_target(
+    cor_igs_iss_whole,
+    data_iss_whole |>
+      inner_join(data_igs_whole, by = c("subj_id", "cca_id")) |>
+      summarise(broom::tidy(cor.test(iss, igs)), .by = cca_id)
+  ),
+  tar_target(
+    fit_mediation,
+    calc_mediation(data_igs_whole, data_iss_whole, mem_perf)
+  ),
+
   # individual patterns and word shape (form) similarity (IFS) ----
   tar_cluster_permutation(
     "ifs_dynamic",

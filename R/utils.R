@@ -48,3 +48,7 @@ regress_pattern <- function(y, x) {
     resid() |>
     vctrs::vec_restore(y)
 }
+
+mediate_sem <- function(data, model) {
+  lavaan::sem(read_lines("config/mediation.lav"), data)
+}
