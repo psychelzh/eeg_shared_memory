@@ -315,10 +315,14 @@ p_smc <- targets::tar_read(smc) |>
   theme(axis.line = element_line(linewidth = 1))
 
 p_memorability <- targets::tar_read(memorability) |>
-  ggplot(aes(pc)) +
-  geom_histogram(fill = "grey") +
-  scale_x_continuous(name = "Memorability") +
-  scale_y_continuous(name = "Count") +
+  filter(word_id <= 150) |>
+  mutate(
+    trial_id_new = as.integer(fct_reorder(factor(trial_id), desc(pc)))
+  ) |>
+  ggplot(aes(trial_id_new, pc)) +
+  geom_col(fill = "grey", width = 0.8) +
+  scale_x_continuous(name = "Order of Words", expand = c(0, 0)) +
+  scale_y_continuous(name = "Memorability", expand = c(0, 0)) +
   theme(axis.line = element_line(linewidth = 1))
 
 p_memorability_content <- targets::tar_read(memorability_content) |>

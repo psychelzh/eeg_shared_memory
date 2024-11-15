@@ -26,7 +26,22 @@ calc_simil_mem <- function(mem_perf) {
 
 calc_memorability <- function(data) {
   data |>
-    summarise(pc = mean(score == 1), .by = trial_id)
+    summarise(
+      pc = mean(score == 1),
+      .by = c(trial_id, word_id)
+    )
+}
+
+calc_mem_content <- function(events, memorability) {
+  events |>
+    left_join(memorability, by = c("trial_id", "word_id")) |>
+    # we should use old words only
+    filter(word_id <= 150) |>
+    mutate(resp = -resp) |>
+    summarise(
+      r = psych::polyserial(pick(pc), pick(resp))[, 1],
+      .by = subj
+    )
 }
 
 calc_mem_perf_precise <- function(data) {

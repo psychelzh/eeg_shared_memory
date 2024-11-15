@@ -88,15 +88,7 @@ list(
   ),
   tar_target(simil_mem, calc_simil_mem(mem_perf)),
   tar_target(memorability, calc_memorability(events_retrieval)),
-  tar_target(
-    memorability_content,
-    events_retrieval |>
-      left_join(memorability, by = "trial_id") |>
-      summarise(
-        r = psych::polyserial(pick(pc), pick(resp))[, 1],
-        .by = subj
-      )
-  ),
+  tar_target(memorability_content, calc_mem_content(events_retrieval, memorability)),
 
   # stimuli patterns ----
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
