@@ -4,7 +4,7 @@ fit_med <- function(model, data, ...,
 }
 
 combine_data_ccas <- function(data) {
-  df_r <- data |>
+  data_weight <- data |>
     summarise(
       across(
         c(igs, iss),
@@ -14,7 +14,7 @@ combine_data_ccas <- function(data) {
       .by = cca_id
     )
   data |>
-    left_join(df_r, by = "cca_id") |>
+    left_join(data_weight, by = "cca_id") |>
     summarise(
       igs = sum(igs * weight_igs) / sum(weight_igs),
       iss = sum(iss * weight_iss) / sum(weight_igs),
