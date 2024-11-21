@@ -292,16 +292,32 @@ list(
     )
   ),
 
-  # IGS --> ISS --> Mem perf
+  # mediation analysis ----
+  tar_target(
+    data_med,
+    data_igs_whole |>
+      inner_join(data_iss_whole, by = c("subj_id", "cca_id")) |>
+      inner_join(mem_perf, by = "subj_id")
+  ),
   tar_target(
     cor_igs_iss_whole,
-    data_iss_whole |>
-      inner_join(data_igs_whole, by = c("subj_id", "cca_id")) |>
+    data_med |>
       summarise(broom::tidy(cor.test(iss, igs)), .by = cca_id)
+  ),
+  tarchetypes::tar_file_read(
+    model_med,
+    "config/mediation.lav",
+    read = readr::read_lines(!!.x)
   ),
   tar_target(
     fit_mediation,
-    calc_mediation(data_igs_whole, data_iss_whole, mem_perf)
+    calc_mediation(
+      model_med,
+      data_med,
+      X = "iss",
+      Y = "dprime",
+      M = "igs"
+    )
   ),
 
   # individual patterns and word shape (form) similarity (IFS) ----

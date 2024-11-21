@@ -1,8 +1,8 @@
 # direct effects
-dprime ~ c * igs + b * iss
+{Y} ~ c * {X} + b * {M}
 
 # mediation
-iss ~ a * igs
+{M} ~ a * {X}
 
 # defined effect
 ind := a*b
