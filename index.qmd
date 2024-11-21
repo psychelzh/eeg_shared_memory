@@ -724,16 +724,6 @@ construct_med_data <- function(param) {
   )
 }
 
-params_med <- targets::tar_read(fit_mediation) |>
-  mutate(
-    param = map(
-      fit,
-      \(m) parameters::model_parameters(m, standardize = TRUE) |> as_tibble()
-    ),
-    med_data = map(param, construct_med_data),
-    .keep = "unused"
-  )
-
 # modified based on https://stackoverflow.com/a/64886536/5996475
 med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
                         node_text_size = 12, edge_text_size = 12, color = "black",
