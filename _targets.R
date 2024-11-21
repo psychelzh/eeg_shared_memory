@@ -309,15 +309,10 @@ list(
     "config/mediation.lav",
     read = readr::read_lines(!!.x)
   ),
+  tar_target(data_combined, combine_data_ccas(data_med)),
   tar_target(
-    fit_mediation,
-    calc_mediation(
-      model_med,
-      data_med,
-      X = "iss",
-      Y = "dprime",
-      M = "igs"
-    )
+    fit_med_combined,
+    fit_med(model_med, data_combined, X = "iss", Y = "dprime", M = "igs")
   ),
 
   # individual patterns and word shape (form) similarity (IFS) ----

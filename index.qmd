@@ -708,8 +708,8 @@ construct_med_data <- function(param) {
     pivot_wider(names_from = Label, values_from = c(value, signif))
 
   data.frame(
-    lab_x = "IGS\\n(Fidelity)",
-    lab_m = "ISS\\n(Semantic)",
+    lab_x = "ISS\\n(Semantic)",
+    lab_m = "IGS\\n(Fidelity)",
     lab_y = "Memory Performance",
     coef_xm = param_formated$value_a,
     coef_my = param_formated$value_b,
@@ -727,7 +727,7 @@ construct_med_data <- function(param) {
 params_med <- targets::tar_read(fit_mediation) |>
   mutate(
     param = map(
-      model,
+      fit,
       \(m) parameters::model_parameters(m, standardize = TRUE) |> as_tibble()
     ),
     med_data = map(param, construct_med_data),
@@ -737,7 +737,7 @@ params_med <- targets::tar_read(fit_mediation) |>
 # modified based on https://stackoverflow.com/a/64886536/5996475
 med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
                         node_text_size = 12, edge_text_size = 12, color = "black",
-                        ranksep = .2, minlen = 3, output_path = NULL) {
+                        ranksep = .2, minlen = 3) {
   # Set parameters for nodes and edges
   data$height <- height # node height
   data$width <- width # node width
@@ -783,29 +783,19 @@ med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
   )
 
   # Generate the diagram with DiagrammeR
-  grViz_diagram <- DiagrammeR::grViz(diagram_out)
-
-  # Save as PNG if output_path is specified
-  if (!is.null(output_path)) {
-    svg <- DiagrammeRsvg::export_svg(grViz_diagram) # Convert to SVG
-    rsvg::rsvg_png(charToRaw(svg), output_path) # Convert SVG to PNG and save
-  }
-
-  return(grViz_diagram)
+  DiagrammeR::grViz(diagram_out)
 }
 
-params_med |>
-  mutate(
-    plot = walk2(
-      cca_id, med_data,
-      \(cca_id, med_data) {
-        med_diagram(
-          med_data,
-          output_path = glue::glue("figures/mediation_diagram_{cca_id}.png")
-        )
-      }
-    )
-  )
+diagram <- targets::tar_read(fit_med_combined) |> 
+  parameters::model_parameters(standardize = TRUE) |>
+  as_tibble() |>
+  construct_med_data() |> 
+  med_diagram()
+diagram
+diagram |> 
+  DiagrammeRsvg::export_svg() |> 
+  charToRaw() |> 
+  rsvg::rsvg_png("figures/mediation.png")
 ```
 
 # Control analysis: word shape similarity pattern
