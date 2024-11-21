@@ -319,8 +319,8 @@ p_memorability <- targets::tar_read(memorability) |>
   mutate(
     trial_id_new = as.integer(fct_reorder(factor(trial_id), desc(pc)))
   ) |>
-  ggplot(aes(trial_id_new, pc)) +
-  geom_col(fill = "grey", width = 0.8) +
+  ggplot(aes(trial_id_new, ymin = 0, ymax = pc)) +
+  geom_linerange(color = "grey", linewidth = 0.2) +
   scale_x_continuous(name = "Order of Words", expand = c(0, 0)) +
   scale_y_continuous(name = "Memorability", expand = c(0, 0)) +
   theme(axis.line = element_line(linewidth = 1))
