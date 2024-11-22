@@ -21,6 +21,7 @@ Imports:
     ggpubr,
     lavaan,
     lmerTest,
+    parameters,
     patchwork,
     preproc.iquizoo,
     proxy,
