@@ -296,8 +296,14 @@ theme_set(ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12))
 
 ```{r}
 #| label: behav
-#| fig-width: 6
+#| fig-width: 8
 #| fig-height: 5
+
+layout <- "
+###A
+###B
+CCCD
+"
 
 p_perf <- targets::tar_read(mem_perf) |>
   ggplot(aes(dprime)) +
@@ -320,8 +326,8 @@ p_memorability <- targets::tar_read(memorability) |>
     trial_id_new = as.integer(fct_reorder(factor(trial_id), desc(pc)))
   ) |>
   ggplot(aes(trial_id_new, ymin = 0, ymax = pc)) +
-  geom_linerange(color = "grey", linewidth = 0.2) +
-  scale_x_continuous(name = "Order of Words", expand = c(0, 0)) +
+  geom_linerange(color = "grey", linewidth = 0.7) +
+  scale_x_continuous(name = "Order of Words", expand = expansion(add = 0.5)) +
   scale_y_continuous(name = "Memorability", expand = c(0, 0)) +
   theme(axis.line = element_line(linewidth = 1))
 
@@ -339,9 +345,10 @@ p_memorability_content <- targets::tar_read(memorability_content) |>
   scale_y_continuous(name = "Count", expand = expansion(c(0, 0))) +
   theme(axis.line = element_line(linewidth = 1))
 
-p_perf + p_smc + p_memorability + p_memorability_content
+p_perf + p_smc + p_memorability + p_memorability_content +
+  plot_layout(design = layout)
 
-ggsave("figures/behavioral.png", width = 6, height = 5, dpi = 600)
+ggsave("figures/behavioral.png", width = 8, height = 5, dpi = 600)
 ```
 
 ```{r}
@@ -776,15 +783,15 @@ med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
   DiagrammeR::grViz(diagram_out)
 }
 
-diagram <- targets::tar_read(fit_med_combined) |> 
+diagram <- targets::tar_read(fit_med_combined) |>
   parameters::model_parameters(standardize = TRUE) |>
   as_tibble() |>
-  construct_med_data() |> 
+  construct_med_data() |>
   med_diagram()
 diagram
-diagram |> 
-  DiagrammeRsvg::export_svg() |> 
-  charToRaw() |> 
+diagram |>
+  DiagrammeRsvg::export_svg() |>
+  charToRaw() |>
   rsvg::rsvg_png("figures/mediation.png")
 ```
 
