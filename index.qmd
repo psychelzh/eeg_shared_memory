@@ -300,9 +300,12 @@ theme_set(ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12))
 #| fig-height: 5
 
 layout <- "
-###A
-###B
-CCCD
+###AA
+###AA
+###BB
+CCCBB
+CCCDD
+CCCDD
 "
 
 p_perf <- targets::tar_read(mem_perf) |>
