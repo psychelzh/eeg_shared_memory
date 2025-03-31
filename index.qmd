@@ -25,6 +25,9 @@ library(patchwork)
 
 colors_components <- c("#16607a", "#0b9d86", "#cc734d")
 size_label <- 5
+lab_iss_med <- "ISS\\n(Semantic)"
+lab_igs_med <- "IGS\\n(Fidelity)"
+lab_mem_med <- "Memory Performance"
 
 index_time <- function(time_id, onset = 51, sampling_rate = 256) {
   (time_id - onset) / sampling_rate * 1000
@@ -755,11 +758,7 @@ ggsave("figures/semantics_memory.png", width = 13, height = 8, dpi = 600)
 ## Mediation analysis
 
 ```{r}
-construct_med_data <- function(
-    param,
-    lab_x = "ISS\\n(Semantic)",
-    lab_m = "IGS\\n(Fidelity)",
-    lab_y = "Memory Performance") {
+construct_med_data <- function(param, lab_x, lab_m, lab_y) {
   param_formated <- param |>
     rstatix::add_significance(
       cutpoints = c(0, 0.001, 0.01, 0.05, 1),
@@ -856,16 +855,35 @@ med_diagram <- function(
   DiagrammeR::grViz(diagram_out)
 }
 
-diagram <- targets::tar_read(fit_med_combined) |>
+diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
   parameters::model_parameters(standardize = TRUE) |>
   as_tibble() |>
-  construct_med_data() |>
+  construct_med_data(
+    lab_x = lab_iss_med,
+    lab_m = lab_igs_med,
+    lab_y = lab_mem_med
+  ) |>
   med_diagram()
-diagram
-diagram |>
+diagram_iss_igs
+diagram_iss_igs |>
   DiagrammeRsvg::export_svg() |>
   charToRaw() |>
-  rsvg::rsvg_png("figures/mediation.png")
+  rsvg::rsvg_png("figures/mediation_iss_igs.png", width = 1000)
+
+diagram_igs_iss <- targets::tar_read(fit_med_igs_iss_dprime) |>
+  parameters::model_parameters(standardize = TRUE) |>
+  as_tibble() |>
+  construct_med_data(
+    lab_x = lab_igs_med,
+    lab_m = lab_iss_med,
+    lab_y = lab_mem_med
+  ) |>
+  med_diagram()
+diagram_igs_iss
+diagram_igs_iss |>
+  DiagrammeRsvg::export_svg() |>
+  charToRaw() |>
+  rsvg::rsvg_png("figures/mediation_igs_iss.png", width = 1000)
 ```
 
 # Control analysis: word shape similarity pattern
