@@ -317,8 +317,12 @@ list(
   ),
   tar_target(data_combined, combine_data_ccas(data_med)),
   tar_target(
-    fit_med_combined,
+    fit_med_iss_igs_dprime,
     fit_med(model_med, data_combined, X = "iss", Y = "dprime", M = "igs")
+  ),
+  tar_target(
+    fit_med_igs_iss_dprime,
+    fit_med(model_med, data_combined, X = "igs", Y = "dprime", M = "iss")
   ),
 
   # individual patterns and word shape (form) similarity (IFS) ----
