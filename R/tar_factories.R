@@ -1,10 +1,14 @@
-tar_cluster_permutation <- function(name, stats_expr, stats_perm_expr,
-                                    data_expr = NULL,
-                                    data_perm_expr = NULL,
-                                    clusters_stats_expr = NULL,
-                                    stats_name = NULL,
-                                    data_name = NULL,
-                                    clusters_stats_name = NULL) {
+tar_cluster_permutation <- function(
+  name,
+  stats_expr,
+  stats_perm_expr,
+  data_expr = NULL,
+  data_perm_expr = NULL,
+  clusters_stats_expr = NULL,
+  stats_name = NULL,
+  data_name = NULL,
+  clusters_stats_name = NULL
+) {
   if (!missing(name)) {
     stats_name <- paste0("stats_", name)
     data_name <- paste0("data_", name)
@@ -89,7 +93,11 @@ tar_mantel <- function(name, data_whole, data_dynamic, ydis, zdis = NULL) {
     )
   } else {
     data_whole_expr <- substitute(calc_mantel_partial(data_whole, ydis, zdis))
-    data_dynamic_expr <- substitute(calc_mantel_partial(data_dynamic, ydis, zdis))
+    data_dynamic_expr <- substitute(calc_mantel_partial(
+      data_dynamic,
+      ydis,
+      zdis
+    ))
     data_dynamic_perm_expr <- substitute(
       calc_mantel_partial(data_dynamic, permute_dist(ydis), zdis)
     )

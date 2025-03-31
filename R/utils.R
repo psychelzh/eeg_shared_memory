@@ -7,8 +7,11 @@ correlate_mem_perf <- function(data, mem_perf, col, ...) {
     )
 }
 
-convert_p2_p1 <- function(p.value, statistic,
-                          alternative = c("greater", "less")) {
+convert_p2_p1 <- function(
+  p.value,
+  statistic,
+  alternative = c("greater", "less")
+) {
   alternative <- match.arg(alternative)
   ifelse(
     xor(alternative == "greater", statistic > 0),

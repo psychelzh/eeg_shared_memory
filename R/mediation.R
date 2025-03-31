@@ -1,5 +1,4 @@
-fit_med <- function(model, data, ...,
-                    X = "X", Y = "Y", M = "M") {
+fit_med <- function(model, data, ..., X = "X", Y = "Y", M = "M") {
   lavaan::sem(str_glue(str_c(model, collapse = "\n")), data)
 }
 

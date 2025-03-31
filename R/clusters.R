@@ -1,14 +1,14 @@
-calc_clusters_stats <- function(stats, stats_permuted,
-                                by = "cca_id",
-                                col_statistic = statistic,
-                                col_p_value = p.value,
-                                col_time_id = time_id,
-                                col_id_permuted = starts_with("tar"),
-                                alternative = c("greater", "less")) {
-  operator <- switch(match.arg(alternative),
-    greater = `>=`,
-    less = `<=`
-  )
+calc_clusters_stats <- function(
+  stats,
+  stats_permuted,
+  by = "cca_id",
+  col_statistic = statistic,
+  col_p_value = p.value,
+  col_time_id = time_id,
+  col_id_permuted = starts_with("tar"),
+  alternative = c("greater", "less")
+) {
+  operator <- switch(match.arg(alternative), greater = `>=`, less = `<=`)
   clusters <- stats |>
     reframe(
       find_cluster(
@@ -44,10 +44,13 @@ calc_clusters_stats <- function(stats, stats_permuted,
     )
 }
 
-find_cluster <- function(statistic, p.value,
-                         index = NULL,
-                         keep = c("all", "largest"),
-                         alpha = 0.05) {
+find_cluster <- function(
+  statistic,
+  p.value,
+  index = NULL,
+  keep = c("all", "largest"),
+  alpha = 0.05
+) {
   keep <- match.arg(keep)
   # https://stackoverflow.com/a/43875717/5996475
   rle_signif <- rle(p.value < alpha)
@@ -62,7 +65,8 @@ find_cluster <- function(statistic, p.value,
   ) |>
     mutate(
       cluster_mass = map2_dbl(
-        start, end,
+        start,
+        end,
         \(start, end) {
           sum(statistic[start:end])
         }

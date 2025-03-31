@@ -125,7 +125,11 @@ calc_sync_within_halves <- function(data) {
         cor(use = "pairwise") |>
         atanh() |>
         as_tibble(rownames = "subj_id_row") |>
-        pivot_longer(cols = -subj_id_row, names_to = "subj_id_col", values_to = "r") |>
+        pivot_longer(
+          cols = -subj_id_row,
+          names_to = "subj_id_col",
+          values_to = "r"
+        ) |>
         mutate(across(starts_with("subj_id"), as.integer)) |>
         filter(subj_id_row < subj_id_col),
       .by = c(cca_id, half)

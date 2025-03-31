@@ -37,21 +37,24 @@ fit_curve <- function(x, y) {
   )
 }
 
-prepare_corr_plotmath <- function(stats,
-                                  col_r = "estimate",
-                                  col_p = "p.value",
-                                  name_r = "italic(r)",
-                                  name_p = "italic(p)[Holm]") {
+prepare_corr_plotmath <- function(
+    stats,
+    col_r = "estimate",
+    col_p = "p.value",
+    name_r = "italic(r)",
+    name_p = "italic(p)[Holm]") {
   stats |>
     rstatix::adjust_pvalue(col_p, "p_adj") |>
     rstatix::add_significance(
-      "p_adj", "p_adj_sig",
+      "p_adj",
+      "p_adj_sig",
       cutpoints = c(0, 0.001, 0.01, 0.05, 1),
       symbols = c("***", "**", "*", "")
     ) |>
     mutate(
       label = format_r_plotmath(
-        .data[[col_r]], p_adj,
+        .data[[col_r]],
+        p_adj,
         p.sig = p_adj_sig,
         name_r = name_r,
         name_p = name_p
@@ -59,10 +62,12 @@ prepare_corr_plotmath <- function(stats,
     )
 }
 
-format_r_plotmath <- function(r, p,
-                              p.sig = "",
-                              name_r = "italic(r)",
-                              name_p = "italic(p)[Holm]") {
+format_r_plotmath <- function(
+    r,
+    p,
+    p.sig = "",
+    name_r = "italic(r)",
+    name_p = "italic(p)[Holm]") {
   paste0(
     str_glue("{name_r}*' = '*{round(r, 2)}"),
     if (is.null(name_p)) {
@@ -80,8 +85,12 @@ format_r_plotmath <- function(r, p,
   )
 }
 
-visualize_scatter <- function(data, mem_perf, lab_stat, col_stat,
-                              show_legend = FALSE) {
+visualize_scatter <- function(
+    data,
+    mem_perf,
+    lab_stat,
+    col_stat,
+    show_legend = FALSE) {
   data_joind <- data |>
     left_join(mem_perf, by = "subj_id") |>
     mutate(cca_id = factor(cca_id))
@@ -115,13 +124,19 @@ visualize_scatter <- function(data, mem_perf, lab_stat, col_stat,
     theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
 }
 
-visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
-                             show_legend = FALSE) {
+visualize_mantel <- function(
+    patterns_x,
+    patterns_y,
+    stats,
+    name_x,
+    name_y,
+    show_legend = FALSE) {
   patterns_flat <- patterns_x |>
     mutate(
       pattern = map(
         pick(last_col())[[1]],
-        \(pat) tibble(
+        \(pat)
+        tibble(
           "{name_x}" := unclass(pat),
           "{name_y}" := unclass(patterns_y)
         )
@@ -144,10 +159,13 @@ visualize_mantel <- function(patterns_x, patterns_y, stats, name_x, name_y,
     geom_text(
       aes(x = min(patterns_flat[[name_x]]), y = Inf, label = label),
       prepare_corr_plotmath(
-        stats, "statistic",
+        stats,
+        "statistic",
         name_p = "italic(p)[Holm]^{Mantel}"
       ),
-      hjust = 0, vjust = 1, parse = TRUE
+      hjust = 0,
+      vjust = 1,
+      parse = TRUE
     ) +
     facet_grid(cols = vars(cca_id), scales = "free") +
     scale_x_continuous(name = name_x) +
@@ -192,13 +210,14 @@ visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
     )
 }
 
-visualize_dynamic <- function(stats,
-                              clusters_stats = NULL,
-                              col_stat = "estimate",
-                              lab_stat = "Estimate",
-                              col_cis = c("conf.low", "conf.high"),
-                              limits = NULL,
-                              show_legend = FALSE) {
+visualize_dynamic <- function(
+    stats,
+    clusters_stats = NULL,
+    col_stat = "estimate",
+    lab_stat = "Estimate",
+    col_cis = c("conf.low", "conf.high"),
+    limits = NULL,
+    show_legend = FALSE) {
   if (!is.null(clusters_stats)) {
     clusters_stats <- clusters_stats |>
       mutate(cca_id = factor(cca_id)) |>
@@ -348,7 +367,10 @@ p_memorability_content <- targets::tar_read(memorability_content) |>
   scale_y_continuous(name = "Count", expand = expansion(c(0, 0))) +
   theme(axis.line = element_line(linewidth = 1))
 
-p_perf + p_smc + p_memorability + p_memorability_content +
+p_perf +
+  p_smc +
+  p_memorability +
+  p_memorability_content +
   plot_layout(design = layout)
 
 ggsave("figures/behavioral.png", width = 8, height = 5, dpi = 600)
@@ -420,7 +442,10 @@ p_stability <- patterns_group_stability |>
   ggdist::stat_dotsinterval() +
   geom_point(aes(size, r), predictions, size = 1) +
   geom_line(aes(size, r), predictions, linetype = "longdash") +
-  scale_x_continuous(name = "# Participants", breaks = scales::breaks_width(40)) +
+  scale_x_continuous(
+    name = "# Participants",
+    breaks = scales::breaks_width(40)
+  ) +
   scale_y_continuous(name = "Stability") +
   scale_color_components() +
   facet_grid(cols = vars(cca_id), scales = "free") +
@@ -429,7 +454,10 @@ p_stability <- patterns_group_stability |>
 p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
   ggplot(aes(size, gss, color = factor(cca_id))) +
   ggdist::stat_dotsinterval() +
-  scale_x_continuous(name = "# Participants", breaks = scales::breaks_width(40)) +
+  scale_x_continuous(
+    name = "# Participants",
+    breaks = scales::breaks_width(40)
+  ) +
   scale_y_continuous(name = "GSS") +
   scale_color_components(guide = "none") +
   facet_grid(cols = vars(cca_id), scales = "free") +
@@ -438,11 +466,17 @@ p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
     strip.text = element_blank()
   )
 
-p_stability / p_trend_gss +
+p_stability /
+  p_trend_gss +
   plot_layout(guides = "collect", axes = "collect") &
   theme(legend.position = "bottom")
 
-ggsave("figures/group_representation_stability.png", width = 6, height = 4, dpi = 600)
+ggsave(
+  "figures/group_representation_stability.png",
+  width = 6,
+  height = 4,
+  dpi = 600
+)
 ```
 
 This is Figure 2 now.
@@ -489,7 +523,12 @@ p_gss_dynamic <- visualize_dynamic(
   plot_layout(guides = "collect") &
   # plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
-ggsave("figures/igs_memory_gss_semantics.png", width = 13, height = 5, dpi = 600)
+ggsave(
+  "figures/igs_memory_gss_semantics.png",
+  width = 13,
+  height = 5,
+  dpi = 600
+)
 ```
 
 # Semantic representation
@@ -535,7 +574,8 @@ p_iss_dist <- targets::tar_read(data_iss_whole) |>
   ) +
   ggsignif::geom_signif(
     aes(
-      xmin = start, xmax = end,
+      xmin = start,
+      xmax = end,
       annotations = adj.p.value.signif,
       y_position = y_position
     ),
@@ -605,7 +645,8 @@ p_compare_igs_partial <- stats |>
   geom_line(aes(group = cca_id), linewidth = 1) +
   ggsignif::geom_signif(
     aes(
-      xmin = start, xmax = end,
+      xmin = start,
+      xmax = end,
       annotations = p.value.signif,
       y_position = y_position
     ),
@@ -656,19 +697,23 @@ p_compare_predictions <- preds |>
   geom_smooth(method = "lm") +
   ggtext::geom_richtext(
     aes(
-      x, y,
+      x,
+      y,
       color = model,
       label = paste0(
         "*R*<sup>2</sup><sub>",
-        model, "</sub> = ",
+        model,
+        "</sub> = ",
         r_squared
       )
     ),
     model_eval,
     size = 3,
-    fill = NA, label.color = NA, # remove background and outline
+    fill = NA,
+    label.color = NA, # remove background and outline
     label.padding = grid::unit(rep(0, 4), "pt"), # remove padding
-    hjust = 0, vjust = 0.5, # bottom-left corner
+    hjust = 0,
+    vjust = 0.5, # bottom-left corner
     inherit.aes = FALSE,
     show.legend = FALSE
   ) +
@@ -676,7 +721,10 @@ p_compare_predictions <- preds |>
   scale_x_continuous(name = "Observed") +
   scale_y_continuous(name = "Predicted") +
   scale_color_grey(start = 0.1, end = 0.6, name = "Model", guide = "none") +
-  theme(strip.background = element_blank(), axis.line = element_line(linewidth = 1))
+  theme(
+    strip.background = element_blank(),
+    axis.line = element_line(linewidth = 1)
+  )
 ```
 
 ```{r}
@@ -691,8 +739,13 @@ CCCDDD
 EEFFFG
 "
 
-p_iss_dist + p_iss_dynamic + p_iss_mem_scatter + p_iss_mem_dynamic +
-  p_compare_igs_partial + p_igs_partial_scatter + p_compare_predictions +
+p_iss_dist +
+  p_iss_dynamic +
+  p_iss_mem_scatter +
+  p_iss_mem_dynamic +
+  p_compare_igs_partial +
+  p_igs_partial_scatter +
+  p_compare_predictions +
   plot_layout(design = layout, guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
@@ -702,7 +755,11 @@ ggsave("figures/semantics_memory.png", width = 13, height = 8, dpi = 600)
 ## Mediation analysis
 
 ```{r}
-construct_med_data <- function(param) {
+construct_med_data <- function(
+    param,
+    lab_x = "ISS\\n(Semantic)",
+    lab_m = "IGS\\n(Fidelity)",
+    lab_y = "Memory Performance") {
   param_formated <- param |>
     rstatix::add_significance(
       cutpoints = c(0, 0.001, 0.01, 0.05, 1),
@@ -718,9 +775,9 @@ construct_med_data <- function(param) {
     pivot_wider(names_from = Label, values_from = c(value, signif))
 
   data.frame(
-    lab_x = "ISS\\n(Semantic)",
-    lab_m = "IGS\\n(Fidelity)",
-    lab_y = "Memory Performance",
+    lab_x = lab_x,
+    lab_m = lab_m,
+    lab_y = lab_y,
     coef_xm = param_formated$value_a,
     coef_my = param_formated$value_b,
     coef_xy = sprintf(
@@ -735,9 +792,16 @@ construct_med_data <- function(param) {
 }
 
 # modified based on https://stackoverflow.com/a/64886536/5996475
-med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
-                        node_text_size = 12, edge_text_size = 12, color = "black",
-                        ranksep = .2, minlen = 3) {
+med_diagram <- function(
+    data,
+    height = .75,
+    width = 2,
+    graph_label = NA,
+    node_text_size = 12,
+    edge_text_size = 12,
+    color = "black",
+    ranksep = .2,
+    minlen = 3) {
   # Set parameters for nodes and edges
   data$height <- height # node height
   data$width <- width # node width
@@ -747,7 +811,11 @@ med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
 
   data$node_text_size <- node_text_size
   data$edge_text_size <- edge_text_size
-  data$graph_label <- ifelse(is.na(graph_label), "", paste0("label = '", graph_label, "'"))
+  data$graph_label <- ifelse(
+    is.na(graph_label),
+    "",
+    paste0("label = '", graph_label, "'")
+  )
 
   # Define edge style based on significance: dotted if not significant
   data$style_xm <- ifelse(data$signif_xm, "solid", "dotted")
@@ -755,7 +823,8 @@ med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
   data$style_xy <- ifelse(data$signif_xy, "solid", "dotted")
 
   # Construct diagram code with Glue
-  diagram_out <- glue::glue_data(data,
+  diagram_out <- glue::glue_data(
+    data,
     "digraph flowchart {
       fontname = Helvetica
       <<graph_label>>
@@ -779,7 +848,8 @@ med_diagram <- function(data, height = .75, width = 2, graph_label = NA,
       }
 
       ",
-    .open = "<<", .close = ">>"
+    .open = "<<",
+    .close = ">>"
   )
 
   # Generate the diagram with DiagrammeR
@@ -917,7 +987,10 @@ p_isps_smc_dynamic <- visualize_dynamic(
   lab_stat = expression(italic(r)[ISPS - SMC])
 )
 
-p_isps_dist + p_isps_clusters + p_isps_smc + p_isps_smc_dynamic +
+p_isps_dist +
+  p_isps_clusters +
+  p_isps_smc +
+  p_isps_smc_dynamic +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
@@ -972,7 +1045,8 @@ p_isps_smc_partial_semantic_memory_dynamic <- visualize_dynamic(
 
 (p_isps_smc_partial_memory | p_isps_smc_partial_memory_dynamic) /
   (p_isps_smc_partial_group_memory | p_isps_smc_partial_group_memory_dynamic) /
-  (p_isps_smc_partial_semantic_memory | p_isps_smc_partial_semantic_memory_dynamic) +
+  (p_isps_smc_partial_semantic_memory |
+    p_isps_smc_partial_semantic_memory_dynamic) +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
@@ -1015,7 +1089,8 @@ compare_sync_p <- sync_inter_intra |>
     symbols = c("***", "**", "*", "")
   ) |>
   mutate(
-    start = "intra", end = "inter_ahead",
+    start = "intra",
+    end = "inter_ahead",
     y_position = max(summary_sync$conf.high) * 1.1
   )
 p_sync_compare <- summary_sync |>
@@ -1092,7 +1167,9 @@ p_pred_mem <- sync_mem |>
   geom_text(
     aes(x, y, label = label),
     stats_sync_mem,
-    hjust = 0, vjust = 1, parse = TRUE,
+    hjust = 0,
+    vjust = 1,
+    parse = TRUE,
   ) +
   facet_grid(cols = vars(cca_id)) +
   scale_x_continuous(name = "Neural Sync") +
@@ -1127,7 +1204,10 @@ p_sync_smc_dynamic <- visualize_dynamic(
   lab_stat = expression(italic(r)[Sync - SMC])
 )
 
-p_sync_compare + p_pred_mem + p_sync_smc + p_sync_smc_dynamic +
+p_sync_compare +
+  p_pred_mem +
+  p_sync_smc +
+  p_sync_smc_dynamic +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
@@ -1175,19 +1255,39 @@ embedding |>
   ggplot(aes(id, 1, fill = `1`)) +
   geom_tile() +
   geom_text(aes(label = label), size = 12, vjust = 0.2) +
-  scale_fill_gradient(low = "grey80", high = "grey20", na.value = "white", guide = "none") +
+  scale_fill_gradient(
+    low = "grey80",
+    high = "grey20",
+    na.value = "white",
+    guide = "none"
+  ) +
   coord_fixed() +
   theme_void()
-ggplot2::ggsave("figures/diagrams/embedding_1.png", width = 8, height = 2, dpi = 300)
+ggplot2::ggsave(
+  "figures/diagrams/embedding_1.png",
+  width = 8,
+  height = 2,
+  dpi = 300
+)
 
 embedding |>
   ggplot(aes(id, 1, fill = `2`)) +
   geom_tile() +
   geom_text(aes(label = label), size = 12, vjust = 0.2) +
-  scale_fill_gradient(low = "grey80", high = "grey20", na.value = "white", guide = "none") +
+  scale_fill_gradient(
+    low = "grey80",
+    high = "grey20",
+    na.value = "white",
+    guide = "none"
+  ) +
   coord_fixed() +
   theme_void()
-ggplot2::ggsave("figures/diagrams/embedding_2.png", width = 8, height = 2, dpi = 300)
+ggplot2::ggsave(
+  "figures/diagrams/embedding_2.png",
+  width = 8,
+  height = 2,
+  dpi = 300
+)
 
 # neural activity ----
 targets::tar_load(file_cca_y)
@@ -1198,7 +1298,8 @@ data_trials |>
   nest(.by = trial_id) |>
   mutate(
     walk2(
-      data, trial_id,
+      data,
+      trial_id,
       ~ {
         ggplot(.x, aes(time_id, y)) +
           geom_line(linewidth = 3, color = "grey") +
@@ -1207,7 +1308,9 @@ data_trials |>
           theme_void()
         ggsave(
           paste0("figures/diagrams/trial_", .y, ".png"),
-          width = 8, height = 2, dpi = 300
+          width = 8,
+          height = 2,
+          dpi = 300
         )
       }
     )
@@ -1221,7 +1324,8 @@ data_group |>
   nest(.by = trial_id) |>
   mutate(
     walk2(
-      data, trial_id,
+      data,
+      trial_id,
       ~ {
         ggplot(.x, aes(time_id, y)) +
           geom_line(linewidth = 3, color = "black") +
@@ -1230,7 +1334,9 @@ data_group |>
           theme_void()
         ggsave(
           paste0("figures/diagrams/group_avg_trial_", .y, ".png"),
-          width = 8, height = 2, dpi = 300
+          width = 8,
+          height = 2,
+          dpi = 300
         )
       }
     )

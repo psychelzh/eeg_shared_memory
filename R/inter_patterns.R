@@ -79,7 +79,8 @@ compare_iss <- function(data_iss) {
     emmeans::contrast("pairwise") |>
     broom::tidy() |>
     separate_wider_delim(
-      contrast, " - ",
+      contrast,
+      " - ",
       names = c("start", "end")
     ) |>
     mutate(across(c("start", "end"), parse_number))
@@ -94,7 +95,8 @@ compare_iss_mem <- function(stats_iss_mem) {
     filter(start > end) |>
     mutate(
       map2(
-        start, end,
+        start,
+        end,
         \(x, y) {
           with(
             stats_iss_mem,
@@ -134,7 +136,8 @@ calc_stats_isps <- function(summary_isps, summary_isps_permuted) {
     left_join(summary_isps) |>
     mutate(
       p_perm = map2_dbl(
-        isps_mean_perm, isps_mean,
+        isps_mean_perm,
+        isps_mean,
         ~ (sum(.x >= .y) + 1) / (length(.x) + 1)
       )
     )

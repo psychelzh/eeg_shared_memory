@@ -88,7 +88,10 @@ list(
   ),
   tar_target(simil_mem, calc_simil_mem(mem_perf)),
   tar_target(memorability, calc_memorability(events_retrieval)),
-  tar_target(memorability_content, calc_mem_content(events_retrieval, memorability)),
+  tar_target(
+    memorability_content,
+    calc_mem_content(events_retrieval, memorability)
+  ),
 
   # stimuli patterns ----
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
@@ -230,7 +233,10 @@ list(
   ),
 
   # group averaged patterns and semantic pattern ----
-  tar_target(data_gss_whole, calc_mantel(patterns_group_whole, pattern_semantics)),
+  tar_target(
+    data_gss_whole,
+    calc_mantel(patterns_group_whole, pattern_semantics)
+  ),
   tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
   tar_cluster_permutation(
     "gss_dynamic",
@@ -355,14 +361,16 @@ list(
       stats_ifs_mem_dynamic |>
         mutate(
           p.value = convert_p2_p1(
-            p.value, statistic,
+            p.value,
+            statistic,
             alternative = "less"
           )
         ),
       stats_ifs_mem_dynamic_permuted |>
         mutate(
           p.value = convert_p2_p1(
-            p.value, statistic,
+            p.value,
+            statistic,
             alternative = "less"
           )
         ),
@@ -380,8 +388,14 @@ list(
         mutate(pattern = map(pattern, get_resid, pattern_semantics))
     )
   ),
-  tar_target(igs_comp_partial, compare_igs(data_igs_whole, data_igs_partial_whole)),
-  tar_target(lm_mem_igs_partial, fit_mem_pred(mem_perf, data_igs_partial_whole)),
+  tar_target(
+    igs_comp_partial,
+    compare_igs(data_igs_whole, data_igs_partial_whole)
+  ),
+  tar_target(
+    lm_mem_igs_partial,
+    fit_mem_pred(mem_perf, data_igs_partial_whole)
+  ),
   tar_target(
     lm_mem_iss_igs_partial,
     fit_mem_pred(mem_perf, data_igs_partial_whole, data_iss_whole)
@@ -408,7 +422,10 @@ list(
       calc_stats_isps(summary_isps_whole_permuted)
   ),
   tar_target(data_isps_dynamic, calc_isps(patterns_indiv_dynamic)),
-  tar_target(summary_isps_dynamic, summarise_isps(data_isps_dynamic, se = TRUE)),
+  tar_target(
+    summary_isps_dynamic,
+    summarise_isps(data_isps_dynamic, se = TRUE)
+  ),
   tarchetypes::tar_rep(
     data_isps_dynamic_permuted,
     patterns_indiv_dynamic |>
@@ -586,7 +603,8 @@ list(
       inner_join(sync_whole, by = "cca_id") |>
       mutate(
         mantel = map2(
-          isps, pattern,
+          isps,
+          pattern,
           vegan::mantel,
           permutations = 9999
         ),
@@ -600,7 +618,8 @@ list(
       inner_join(sync_whole, by = "cca_id") |>
       mutate(
         fit = map2(
-          isps, pattern,
+          isps,
+          pattern,
           \(isps, sync) lm(smc ~ isps + sync)
         ),
         .keep = "unused"
