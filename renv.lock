@@ -3551,7 +3551,7 @@
     },
     "targets": {
       "Package": "targets",
-      "Version": "1.9.0",
+      "Version": "1.11.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -3564,6 +3564,7 @@
         "data.table",
         "igraph",
         "knitr",
+        "prettyunits",
         "ps",
         "rlang",
         "secretbase",
@@ -3575,7 +3576,7 @@
         "vctrs",
         "yaml"
       ],
-      "Hash": "788a40e60a695237faca8af4015fd703"
+      "Hash": "ebb5c8ed3b67acf806e61952c2676eed"
     },
     "testthat": {
       "Package": "testthat",
