@@ -1,3 +1,0 @@
-fit_sme_lme:
-  script: _scripts/fit_sme_lme.R
-  store: _targets/fit_sme_lme
