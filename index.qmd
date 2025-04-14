@@ -779,11 +779,7 @@ construct_med_data <- function(param, lab_x, lab_m, lab_y) {
     lab_y = lab_y,
     coef_xm = param_formated$value_a,
     coef_my = param_formated$value_b,
-    coef_xy = sprintf(
-      "%s (%s)",
-      param_formated$value_c,
-      param_formated$value_total
-    ),
+    coef_xy = param_formated$value_c,
     signif_xm = param_formated$signif_a,
     signif_my = param_formated$signif_b,
     signif_xy = param_formated$signif_c
@@ -884,6 +880,34 @@ diagram_igs_iss |>
   DiagrammeRsvg::export_svg() |>
   charToRaw() |>
   rsvg::rsvg_png("figures/mediation_igs_iss.png", width = 1000)
+p_mediation <- png::readPNG("figures/mediation_igs_iss.png", native = TRUE)
+```
+
+```{r}
+#| label: sem-and-mem-with-med
+#| column: page
+#| fig-width: 13
+#| fig-height: 8
+
+layout <- "
+AABB
+CCDD
+EEFF
+GGH#
+"
+
+p_iss_dist +
+  p_iss_dynamic +
+  p_iss_mem_scatter +
+  p_iss_mem_dynamic +
+  p_mediation +
+  p_compare_igs_partial +
+  p_igs_partial_scatter +
+  p_compare_predictions +
+  plot_layout(design = layout, guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "right")
+ggsave("figures/semantics_memory_with_med.png", width = 14, height = 10, dpi = 600)
 ```
 
 # Control analysis: word shape similarity pattern
