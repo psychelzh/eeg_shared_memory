@@ -14,10 +14,7 @@ tar_option_set(
       workers = 12
     )
   },
-  garbage_collection = TRUE,
-  memory = "transient",
-  retrieval = "worker",
-  storage = "worker"
+  garbage_collection = TRUE
 )
 
 tar_source()
