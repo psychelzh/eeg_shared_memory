@@ -401,25 +401,23 @@ list(
     lm_mem_iss_igs_partial,
     fit_mem_pred(mem_perf, data_igs_partial_whole, data_iss_whole)
   ),
-  tar_cluster_permutation(
-    "igs_partial_mem_dynamic",
-    data_expr = calc_igs(
+  tar_target(
+    data_igs_partial_dynamic,
+    calc_igs(
       patterns_indiv_dynamic |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics)),
       patterns_group_dynamic_loo |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics))
+    )
+  ),
+  tar_cluster_permutation(
+    "igs_partial_mem_dynamic",
+    calc_igs_mem(data_igs_partial_dynamic, mem_perf),
+    calc_igs_mem(
+      data_igs_partial_dynamic,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
     ),
-    data_perm_expr = {
-      pattern_semantics_perm <- permute_dist(pattern_semantics)
-      calc_igs(
-        patterns_indiv_dynamic |>
-          mutate(pattern = map(pattern, get_resid, pattern_semantics_perm)),
-        patterns_group_dynamic_loo |>
-          mutate(pattern = map(pattern, get_resid, pattern_semantics_perm))
-      )
-    },
-    stats_expr = calc_igs_mem(!!.x, mem_perf),
-    stats_perm_expr = calc_igs_mem(!!.x, mem_perf, alternative = "greater"),
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
