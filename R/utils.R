@@ -51,3 +51,15 @@ regress_pattern <- function(y, x) {
     resid() |>
     vctrs::vec_restore(y)
 }
+
+compare_partial <- function(base, partial) {
+  fit <- bind_rows(base = base, partial = partial, .id = "type") |>
+    mutate(cca_id = factor(cca_id)) |>
+    lmerTest::lmer(igs ~ type * cca_id + (1 | subj_id), data = _)
+  emm <- emmeans::emmeans(fit, ~ type * cca_id)
+  pairwise <- pairs(emm, simple = "type")
+  list(
+    stats = broom::tidy(emm),
+    htest = broom::tidy(pairwise)
+  )
+}

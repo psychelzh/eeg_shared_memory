@@ -12,18 +12,6 @@ calc_igs <- function(patterns_indiv, patterns_group) {
     )
 }
 
-compare_partial <- function(base, partial) {
-  fit <- bind_rows(base = base, partial = partial, .id = "type") |>
-    mutate(cca_id = factor(cca_id)) |>
-    lmerTest::lmer(igs ~ type * cca_id + (1 | subj_id), data = _)
-  emm <- emmeans::emmeans(fit, ~ type * cca_id)
-  pairwise <- pairs(emm, simple = "type")
-  list(
-    stats = broom::tidy(emm),
-    htest = broom::tidy(pairwise)
-  )
-}
-
 calc_igs_mem <- function(data_igs, mem_perf, ...) {
   correlate_mem_perf(data_igs, mem_perf, igs, ...)
 }
@@ -55,6 +43,20 @@ calc_iss <- function(patterns_indiv, pattern_semantics) {
           \(x) atanh(cor(x, pattern_semantics, use = "pairwise"))
         ) |>
         atanh(),
+      .keep = "unused"
+    )
+}
+
+# two data frames situation
+calc_iss2 <- function(patterns_indiv, patterns_semantics) {
+  by <- setdiff(
+    intersect(names(patterns_indiv), names(patterns_semantics)),
+    "pattern"
+  )
+  patterns_indiv |>
+    inner_join(patterns_semantics, by = by) |>
+    mutate(
+      iss = atanh(map2_dbl(pattern.x, pattern.y, cor, use = "pairwise")),
       .keep = "unused"
     )
 }

@@ -427,7 +427,7 @@ list(
   # regress group averaged from semantic patterns ----
   tar_target(
     data_iss_partial_whole,
-    calc_iss(
+    calc_iss2(
       patterns_indiv_whole |>
         inner_join(
           patterns_group_whole_loo,
@@ -456,7 +456,7 @@ list(
   ),
   tar_target(
     data_iss_partial_dynamic,
-    calc_iss(
+    calc_iss2(
       patterns_indiv_dynamic |>
         inner_join(
           patterns_group_dynamic_loo,
