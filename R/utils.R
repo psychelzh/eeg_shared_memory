@@ -53,9 +53,13 @@ regress_pattern <- function(y, x) {
 }
 
 compare_partial <- function(base, partial) {
+  name_resp <- last(names(base))
   fit <- bind_rows(base = base, partial = partial, .id = "type") |>
     mutate(cca_id = factor(cca_id)) |>
-    lmerTest::lmer(igs ~ type * cca_id + (1 | subj_id), data = _)
+    lmerTest::lmer(
+      paste(name_resp, "~ type * cca_id + (1 | subj_id)"),
+      data = _
+    )
   emm <- emmeans::emmeans(fit, ~ type * cca_id)
   pairwise <- pairs(emm, simple = "type")
   list(
