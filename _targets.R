@@ -460,7 +460,7 @@ list(
       patterns_indiv_dynamic |>
         inner_join(
           patterns_group_dynamic_loo,
-          by = c("subj_id", "cca_id"),
+          by = c("subj_id", "cca_id", "time_id"),
           suffix = c("_indiv", "_group")
         ) |>
         mutate(
