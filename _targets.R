@@ -391,7 +391,7 @@ list(
   ),
   tar_target(
     igs_comp_partial,
-    compare_igs(data_igs_whole, data_igs_partial_whole)
+    compare_partial(data_igs_whole, data_igs_partial_whole)
   ),
   tar_target(
     lm_mem_igs_partial,
@@ -415,6 +415,67 @@ list(
     calc_igs_mem(data_igs_partial_dynamic, mem_perf),
     calc_igs_mem(
       data_igs_partial_dynamic,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y
+    )
+  ),
+
+  # regress group averaged from semantic patterns ----
+  tar_target(
+    data_iss_partial_whole,
+    calc_iss(
+      patterns_indiv_whole |>
+        inner_join(
+          patterns_group_whole_loo,
+          by = c("subj_id", "cca_id"),
+          suffix = c("_indiv", "_group")
+        ) |>
+        mutate(
+          pattern = map2(pattern_indiv, pattern_group, get_resid),
+          .keep = "unused"
+        ),
+      patterns_group_whole_loo |>
+        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x)))
+    )
+  ),
+  tar_target(
+    iss_comp_partial,
+    compare_partial(data_iss_whole, data_iss_partial_whole)
+  ),
+  tar_target(
+    lm_mem_iss_partial,
+    fit_mem_pred(mem_perf, data_iss_partial_whole)
+  ),
+  tar_target(
+    lm_mem_igs_iss_partial,
+    fit_mem_pred(mem_perf, data_iss_partial_whole, data_igs_whole)
+  ),
+  tar_target(
+    data_iss_partial_dynamic,
+    calc_iss(
+      patterns_indiv_dynamic |>
+        inner_join(
+          patterns_group_dynamic_loo,
+          by = c("subj_id", "cca_id"),
+          suffix = c("_indiv", "_group")
+        ) |>
+        mutate(
+          pattern = map2(pattern_indiv, pattern_group, get_resid),
+          .keep = "unused"
+        ),
+      patterns_group_dynamic_loo |>
+        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x)))
+    )
+  ),
+  tar_cluster_permutation(
+    "iss_partial_mem_dynamic",
+    calc_iss_mem(data_iss_partial_dynamic, mem_perf),
+    calc_iss_mem(
+      data_iss_partial_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
     ),
