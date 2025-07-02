@@ -183,7 +183,7 @@ list(
       calc_group_pattern()
   ),
 
-  # individual to group averaged pattern similarity ----
+  # individual to group averaged pattern similarity (IGS) ----
   tar_target(
     # leave one out
     patterns_group_whole_loo,
@@ -229,7 +229,7 @@ list(
     )
   ),
 
-  # group averaged patterns and semantic pattern ----
+  # group averaged patterns and semantic pattern (GSS) ----
   tar_target(
     data_gss_whole,
     calc_mantel(patterns_group_whole, pattern_semantics)
