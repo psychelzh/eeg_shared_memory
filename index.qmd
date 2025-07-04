@@ -41,11 +41,12 @@ fit_curve <- function(x, y) {
 }
 
 prepare_corr_plotmath <- function(
-    stats,
-    col_r = "estimate",
-    col_p = "p.value",
-    name_r = "italic(r)",
-    name_p = "italic(p)[Holm]") {
+  stats,
+  col_r = "estimate",
+  col_p = "p.value",
+  name_r = "italic(r)",
+  name_p = "italic(p)[Holm]"
+) {
   stats |>
     rstatix::adjust_pvalue(col_p, "p_adj") |>
     rstatix::add_significance(
@@ -66,11 +67,12 @@ prepare_corr_plotmath <- function(
 }
 
 format_r_plotmath <- function(
-    r,
-    p,
-    p.sig = "",
-    name_r = "italic(r)",
-    name_p = "italic(p)[Holm]") {
+  r,
+  p,
+  p.sig = "",
+  name_r = "italic(r)",
+  name_p = "italic(p)[Holm]"
+) {
   paste0(
     str_glue("{name_r}*' = '*{round(r, 2)}"),
     if (is.null(name_p)) {
@@ -89,11 +91,12 @@ format_r_plotmath <- function(
 }
 
 visualize_scatter <- function(
-    data,
-    mem_perf,
-    lab_stat,
-    col_stat,
-    show_legend = FALSE) {
+  data,
+  mem_perf,
+  lab_stat,
+  col_stat,
+  show_legend = FALSE
+) {
   data_joind <- data |>
     left_join(mem_perf, by = "subj_id") |>
     mutate(cca_id = factor(cca_id))
@@ -128,21 +131,23 @@ visualize_scatter <- function(
 }
 
 visualize_mantel <- function(
-    patterns_x,
-    patterns_y,
-    stats,
-    name_x,
-    name_y,
-    show_legend = FALSE) {
+  patterns_x,
+  patterns_y,
+  stats,
+  name_x,
+  name_y,
+  show_legend = FALSE
+) {
   patterns_flat <- patterns_x |>
     mutate(
       pattern = map(
         pick(last_col())[[1]],
-        \(pat)
-        tibble(
-          "{name_x}" := unclass(pat),
-          "{name_y}" := unclass(patterns_y)
-        )
+        \(pat) {
+          tibble(
+            "{name_x}" := unclass(pat),
+            "{name_y}" := unclass(patterns_y)
+          )
+        }
       ),
       .keep = "unused"
     ) |>
@@ -214,13 +219,14 @@ visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
 }
 
 visualize_dynamic <- function(
-    stats,
-    clusters_stats = NULL,
-    col_stat = "estimate",
-    lab_stat = "Estimate",
-    col_cis = c("conf.low", "conf.high"),
-    limits = NULL,
-    show_legend = FALSE) {
+  stats,
+  clusters_stats = NULL,
+  col_stat = "estimate",
+  lab_stat = "Estimate",
+  col_cis = c("conf.low", "conf.high"),
+  limits = NULL,
+  show_legend = FALSE
+) {
   if (!is.null(clusters_stats)) {
     clusters_stats <- clusters_stats |>
       mutate(cca_id = factor(cca_id)) |>
@@ -788,15 +794,16 @@ construct_med_data <- function(param, lab_x, lab_m, lab_y) {
 
 # modified based on https://stackoverflow.com/a/64886536/5996475
 med_diagram <- function(
-    data,
-    height = .75,
-    width = 2,
-    graph_label = NA,
-    node_text_size = 12,
-    edge_text_size = 12,
-    color = "black",
-    ranksep = .2,
-    minlen = 3) {
+  data,
+  height = .75,
+  width = 2,
+  graph_label = NA,
+  node_text_size = 12,
+  edge_text_size = 12,
+  color = "black",
+  ranksep = .2,
+  minlen = 3
+) {
   # Set parameters for nodes and edges
   data$height <- height # node height
   data$width <- width # node width
@@ -907,7 +914,12 @@ p_iss_dist +
   plot_layout(design = layout, guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "right")
-ggsave("figures/semantics_memory_with_med.png", width = 14, height = 10, dpi = 600)
+ggsave(
+  "figures/semantics_memory_with_med.png",
+  width = 14,
+  height = 10,
+  dpi = 600
+)
 ```
 
 # Control analysis: word shape similarity pattern
