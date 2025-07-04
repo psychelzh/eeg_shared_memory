@@ -61,6 +61,21 @@ calc_iss2 <- function(patterns_indiv, patterns_semantics) {
     )
 }
 
+calc_iss_ind_r2 <- function(patterns_indiv, pattern_semantics) {
+  patterns_indiv |>
+    summarise(
+      patterns = list(do.call(cbind, pattern)),
+      .by = subj_id
+    ) |>
+    mutate(
+      r2 = map_dbl(
+        patterns,
+        \(x) calc_r2_x_y(x, pattern_semantics)
+      ),
+      .keep = "unused"
+    )
+}
+
 calc_iss_stats <- function(data, ..., .by = c(cca_id, time_id)) {
   data |>
     summarise(

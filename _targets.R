@@ -294,6 +294,20 @@ list(
       !!.y
     )
   ),
+  tar_target(iss_mem_combine, fit_mem_pred(mem_perf, data_iss_whole)),
+  tar_target(
+    iss_r2_combine,
+    calc_iss_ind_r2(patterns_indiv_whole, pattern_semantics)
+  ),
+  tar_target(
+    iss_r2_mem_combine,
+    caret::train(
+      dprime ~ r2,
+      data = inner_join(iss_r2_combine, mem_perf, by = "subj_id"),
+      method = "lm",
+      trControl = caret::trainControl(method = "LOOCV")
+    )
+  ),
 
   # mediation analysis ----
   tar_target(

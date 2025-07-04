@@ -67,3 +67,13 @@ compare_partial <- function(base, partial) {
     htest = broom::tidy(pairwise)
   )
 }
+
+calc_r2_x_y <- function(x, y) {
+  rows_keep <- complete.cases(x, y)
+  if (sum(rows_keep) < 2) {
+    return(NA_real_)
+  }
+  x <- x[rows_keep, ]
+  y <- y[rows_keep]
+  cor(lm.fit(cbind(1, x), y)$fitted.values, y)^2
+}
