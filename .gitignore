@@ -4,7 +4,6 @@
 .Ruserdata
 *.asv
 *_files
-_targets
 
 /.quarto/
 _site
