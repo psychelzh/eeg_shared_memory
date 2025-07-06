@@ -16,6 +16,7 @@ Imports:
     crew.cluster,
     devtools,
     emmeans,
+    future.callr,
     ggh4x,
     ggpmisc,
     ggpubr,

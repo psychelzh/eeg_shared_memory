@@ -17,6 +17,8 @@ tar_option_set(
   garbage_collection = TRUE
 )
 
+future::plan(future.callr::callr)
+
 tar_source()
 
 targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
@@ -198,6 +200,7 @@ list(
     data_igs_whole,
     calc_igs(patterns_indiv_whole, patterns_group_whole_loo)
   ),
+  tar_target(stats_igs_whole, calc_stats_t(data_igs_whole, igs, .by = cca_id)),
   tar_target(
     # leave one out
     patterns_group_dynamic_loo,
@@ -208,9 +211,20 @@ list(
       add_column(subj_id = subj_id_loop, .before = 1L),
     pattern = map(subj_id_loop)
   ),
-  tar_target(
-    data_igs_dynamic,
-    calc_igs(patterns_indiv_dynamic, patterns_group_dynamic_loo)
+  tar_cluster_permutation(
+    "igs_dynamic",
+    data_expr = calc_igs(patterns_indiv_dynamic, patterns_group_dynamic_loo),
+    data_perm_expr = calc_igs(
+      patterns_indiv_dynamic,
+      patterns_group_dynamic_loo |>
+        mutate(pattern = map(pattern, permute_dist))
+    ),
+    stats_expr = calc_stats_t(!!.x, igs),
+    stats_perm_expr = calc_stats_t(!!.x, igs, alternative = "greater"),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y
+    )
   ),
 
   # IGS predicts memory ----

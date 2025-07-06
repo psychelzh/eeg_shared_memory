@@ -7,7 +7,9 @@ tar_cluster_permutation <- function(
   clusters_stats_expr = NULL,
   stats_name = NULL,
   data_name = NULL,
-  clusters_stats_name = NULL
+  clusters_stats_name = NULL,
+  reps = 10,
+  batches = 100
 ) {
   if (!missing(name)) {
     stats_name <- paste0("stats_", name)
@@ -52,8 +54,8 @@ tar_cluster_permutation <- function(
         tarchetypes::tar_rep_raw(
           data_name_permuted,
           substitute(data_perm_expr),
-          reps = 10,
-          batches = 100
+          reps = reps,
+          batches = batches
         ),
         tarchetypes::tar_rep2_raw(
           stats_name_permuted,
@@ -65,8 +67,8 @@ tar_cluster_permutation <- function(
       tarchetypes::tar_rep_raw(
         stats_name_permuted,
         substitute(stats_perm_expr),
-        reps = 10,
-        batches = 100
+        reps = reps,
+        batches = batches
       )
     },
     targets::tar_target_raw(clusters_stats_name, clusters_stats_expr)

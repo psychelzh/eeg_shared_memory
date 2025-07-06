@@ -159,3 +159,12 @@ calc_stats_isps <- function(summary_isps, summary_isps_permuted) {
       )
     )
 }
+
+# common functions ----
+calc_stats_t <- function(data, col, ..., .by = c(cca_id, time_id)) {
+  data |>
+    summarise(
+      broom::tidy(t.test({{ col }}, ...)),
+      .by = {{ .by }}
+    )
+}
