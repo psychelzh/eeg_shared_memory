@@ -281,15 +281,15 @@ list(
       patterns_indiv_dynamic,
       permute_dist(pattern_semantics)
     ),
-    stats_expr = calc_iss_stats(!!.x),
-    stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
+    stats_expr = calc_stats_t(!!.x, iss),
+    stats_perm_expr = calc_stats_t(!!.x, iss, alternative = "greater"),
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
     )
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
-  tar_target(stats_iss_whole, calc_iss_stats(data_iss_whole, .by = cca_id)),
+  tar_target(stats_iss_whole, calc_stats_t(data_iss_whole, iss, .by = cca_id)),
   tar_target(iss_comparison, compare_iss(data_iss_whole)),
 
   # ISS predicts memory ----
@@ -358,15 +358,15 @@ list(
       patterns_indiv_dynamic,
       permute_dist(pattern_shapes)
     ),
-    stats_expr = calc_iss_stats(!!.x),
-    stats_perm_expr = calc_iss_stats(!!.x, alternative = "greater"),
+    stats_expr = calc_stats_t(!!.x, iss),
+    stats_perm_expr = calc_stats_t(!!.x, iss, alternative = "greater"),
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
     )
   ),
   tar_target(data_ifs_whole, calc_iss(patterns_indiv_whole, pattern_shapes)),
-  tar_target(stats_ifs_whole, calc_iss_stats(data_ifs_whole, .by = cca_id)),
+  tar_target(stats_ifs_whole, calc_stats_t(data_ifs_whole, iss, .by = cca_id)),
   tar_target(ifs_comparison, compare_iss(data_ifs_whole)),
 
   # IFS predicts memory ----

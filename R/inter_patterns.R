@@ -76,14 +76,6 @@ calc_iss_ind_r2 <- function(patterns_indiv, pattern_semantics) {
     )
 }
 
-calc_iss_stats <- function(data, ..., .by = c(cca_id, time_id)) {
-  data |>
-    summarise(
-      broom::tidy(t.test(iss, ...)),
-      .by = {{ .by }}
-    )
-}
-
 compare_iss <- function(data_iss) {
   data_iss |>
     mutate(cca_id = factor(cca_id)) |>
