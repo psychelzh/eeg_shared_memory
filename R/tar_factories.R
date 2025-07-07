@@ -19,12 +19,12 @@ tar_cluster_permutation <- function(
   stats_name_permuted <- paste0(stats_name, "_permuted")
   data_name_permuted <- paste0(data_name, "_permuted")
   if (!is.null(substitute(data_expr))) {
-    stats_expr <- targets::tar_tidy_eval(
+    stats_expr <- tar_tidy_eval(
       as.expression(substitute(stats_expr)),
       envir = list(.x = rlang::sym(data_name)),
       tidy_eval = TRUE
     )
-    stats_perm_expr <- targets::tar_tidy_eval(
+    stats_perm_expr <- tar_tidy_eval(
       as.expression(substitute(stats_perm_expr)),
       envir = list(.x = rlang::sym(data_name_permuted)),
       tidy_eval = TRUE
@@ -37,7 +37,7 @@ tar_cluster_permutation <- function(
       rlang::sym(stats_name_permuted)
     )
   } else {
-    clusters_stats_expr <- targets::tar_tidy_eval(
+    clusters_stats_expr <- tar_tidy_eval(
       as.expression(substitute(clusters_stats_expr)),
       envir = list(
         .x = rlang::sym(stats_name),
@@ -47,10 +47,10 @@ tar_cluster_permutation <- function(
     )
   }
   list(
-    targets::tar_target_raw(stats_name, substitute(stats_expr)),
+    tar_target_raw(stats_name, substitute(stats_expr)),
     if (!is.null(substitute(data_expr))) {
       list(
-        targets::tar_target_raw(data_name, substitute(data_expr)),
+        tar_target_raw(data_name, substitute(data_expr)),
         tarchetypes::tar_rep_raw(
           data_name_permuted,
           substitute(data_perm_expr),
@@ -71,7 +71,7 @@ tar_cluster_permutation <- function(
         batches = batches
       )
     },
-    targets::tar_target_raw(clusters_stats_name, clusters_stats_expr)
+    tar_target_raw(clusters_stats_name, clusters_stats_expr)
   )
 }
 
