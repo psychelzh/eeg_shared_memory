@@ -142,11 +142,12 @@ visualize_mantel <- function(
     mutate(
       pattern = map(
         pick(last_col())[[1]],
-        \(pat)
+        \(pat) {
           tibble(
             "{name_x}" := unclass(pat),
             "{name_y}" := unclass(patterns_y)
           )
+        }
       ),
       .keep = "unused"
     ) |>
