@@ -1,12 +1,3 @@
-correlate_mem_perf <- function(data, mem_perf, col, ...) {
-  data |>
-    left_join(mem_perf, by = "subj_id") |>
-    summarise(
-      broom::tidy(cor.test({{ col }}, dprime, use = "pairwise", ...)),
-      .by = !c(subj_id, {{ col }}, dprime)
-    )
-}
-
 convert_p2_p1 <- function(
   p.value,
   statistic,

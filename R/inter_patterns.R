@@ -12,10 +12,6 @@ calc_igs <- function(patterns_indiv, patterns_group) {
     )
 }
 
-calc_igs_mem <- function(data_igs, mem_perf, ...) {
-  correlate_mem_perf(data_igs, mem_perf, igs, ...)
-}
-
 fit_mem_pred <- function(mem_perf, ...) {
   data <- lst(...) |> # use `lst()` to keep argument names
     lapply(\(dat) rename(dat, x = last_col())) |> # data is in the last column
@@ -95,10 +91,6 @@ compare_iss <- function(data_iss) {
     mutate(across(c("start", "end"), parse_number))
 }
 
-calc_iss_mem <- function(data_iss, mem_perf, ...) {
-  correlate_mem_perf(data_iss, mem_perf, iss, ...)
-}
-
 compare_iss_mem <- function(stats_iss_mem) {
   expand_grid(start = 1:3, end = 1:3) |>
     filter(start > end) |>
@@ -158,5 +150,51 @@ calc_stats_t <- function(data, col, ..., .by = c(cca_id, time_id)) {
     summarise(
       broom::tidy(t.test({{ col }}, ...)),
       .by = {{ .by }}
+    )
+}
+
+compare_inter_patterns <- function(data, col = last_col()) {
+  name_resp <- names(select(data, {{ col }}))
+  data |>
+    mutate(cca_id = factor(cca_id)) |>
+    lmerTest::lmer(
+      str_c(name_resp, " ~ cca_id + (1 | subj_id)"),
+      data = _
+    ) |>
+    emmeans::emmeans(
+      ~cca_id,
+      lmer.df = "satterthwaite",
+      lmerTest.limit = Inf
+    ) |>
+    emmeans::contrast("pairwise") |>
+    broom::tidy() |>
+    separate_wider_delim(
+      contrast,
+      " - ",
+      names = c("start", "end")
+    ) |>
+    mutate(across(c("start", "end"), parse_number))
+}
+
+correlate_mem_perf <- function(
+  data,
+  mem_perf,
+  ...,
+  col_pred = last_col(),
+  col_perf = dprime,
+  by = "subj_id" # no need to support complex joins for now
+) {
+  name_pred <- names(select(data, {{ col_pred }}))
+  name_perf <- names(select(mem_perf, {{ col_perf }}))
+  data |>
+    left_join(mem_perf, by = by) |>
+    summarise(
+      broom::tidy(cor.test(
+        .data[[name_pred]],
+        .data[[name_perf]],
+        use = "pairwise",
+        ...
+      )),
+      .by = !all_of(c(by, name_pred, name_perf))
     )
 }

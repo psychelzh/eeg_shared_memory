@@ -226,13 +226,14 @@ list(
       !!.y
     )
   ),
+  tar_target(igs_comparison, compare_inter_patterns(data_igs_whole)),
 
   # IGS predicts memory ----
-  tar_target(stats_igs_mem_whole, calc_igs_mem(data_igs_whole, mem_perf)),
+  tar_target(stats_igs_mem_whole, correlate_mem_perf(data_igs_whole, mem_perf)),
   tar_cluster_permutation(
     "igs_mem_dynamic",
-    calc_igs_mem(data_igs_dynamic, mem_perf),
-    calc_igs_mem(
+    correlate_mem_perf(data_igs_dynamic, mem_perf),
+    correlate_mem_perf(
       data_igs_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -290,15 +291,15 @@ list(
   ),
   tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(stats_iss_whole, calc_stats_t(data_iss_whole, iss, .by = cca_id)),
-  tar_target(iss_comparison, compare_iss(data_iss_whole)),
+  tar_target(iss_comparison, compare_inter_patterns(data_iss_whole)),
 
   # ISS predicts memory ----
-  tar_target(stats_iss_mem_whole, calc_iss_mem(data_iss_whole, mem_perf)),
+  tar_target(stats_iss_mem_whole, correlate_mem_perf(data_iss_whole, mem_perf)),
   tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
   tar_cluster_permutation(
     "iss_mem_dynamic",
-    calc_iss_mem(data_iss_dynamic, mem_perf),
-    calc_iss_mem(
+    correlate_mem_perf(data_iss_dynamic, mem_perf),
+    correlate_mem_perf(
       data_iss_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -367,15 +368,15 @@ list(
   ),
   tar_target(data_ifs_whole, calc_iss(patterns_indiv_whole, pattern_shapes)),
   tar_target(stats_ifs_whole, calc_stats_t(data_ifs_whole, iss, .by = cca_id)),
-  tar_target(ifs_comparison, compare_iss(data_ifs_whole)),
+  tar_target(ifs_comparison, compare_inter_patterns(data_ifs_whole)),
 
   # IFS predicts memory ----
-  tar_target(stats_ifs_mem_whole, calc_iss_mem(data_ifs_whole, mem_perf)),
+  tar_target(stats_ifs_mem_whole, correlate_mem_perf(data_ifs_whole, mem_perf)),
   tar_target(comparison_ifs_mem, compare_iss_mem(stats_ifs_mem_whole)),
   tar_cluster_permutation(
     "ifs_mem_dynamic",
-    calc_iss_mem(data_ifs_dynamic, mem_perf),
-    calc_iss_mem(
+    correlate_mem_perf(data_ifs_dynamic, mem_perf),
+    correlate_mem_perf(
       data_ifs_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id))
     ),
@@ -440,8 +441,8 @@ list(
   ),
   tar_cluster_permutation(
     "igs_partial_mem_dynamic",
-    calc_igs_mem(data_igs_partial_dynamic, mem_perf),
-    calc_igs_mem(
+    correlate_mem_perf(data_igs_partial_dynamic, mem_perf),
+    correlate_mem_perf(
       data_igs_partial_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -501,8 +502,8 @@ list(
   ),
   tar_cluster_permutation(
     "iss_partial_mem_dynamic",
-    calc_iss_mem(data_iss_partial_dynamic, mem_perf),
-    calc_iss_mem(
+    correlate_mem_perf(data_iss_partial_dynamic, mem_perf),
+    correlate_mem_perf(
       data_iss_partial_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
