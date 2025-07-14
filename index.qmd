@@ -21,7 +21,10 @@ editor_options:
 library(tidyverse)
 library(patchwork)
 common::source.all("R_quarto", isolate = FALSE)
-theme_set(ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12))
+theme_set(
+  ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12) +
+    theme(axis.line = element_line(linewidth = 1))
+)
 ```
 
 # Behavioral Results
@@ -44,16 +47,14 @@ p_perf <- targets::tar_read(mem_perf) |>
   ggplot(aes(dprime)) +
   geom_histogram(fill = "grey") +
   scale_x_continuous(name = "d' (Overall)") +
-  scale_y_continuous(name = "Count") +
-  theme(axis.line = element_line(linewidth = 1))
+  scale_y_continuous(name = "Count")
 
 p_smc <- targets::tar_read(smc) |>
   enframe() |>
   ggplot(aes(value)) +
   geom_histogram(fill = "grey") +
   scale_x_continuous(name = "SMC") +
-  scale_y_continuous(name = "Count") +
-  theme(axis.line = element_line(linewidth = 1))
+  scale_y_continuous(name = "Count")
 
 p_memorability <- targets::tar_read(memorability) |>
   filter(word_id <= 150) |>
@@ -63,8 +64,7 @@ p_memorability <- targets::tar_read(memorability) |>
   ggplot(aes(trial_id_new, ymin = 0, ymax = pc)) +
   geom_linerange(color = "grey", linewidth = 0.7) +
   scale_x_continuous(name = "Order of Words", expand = expansion(add = 0.5)) +
-  scale_y_continuous(name = "Memorability", expand = c(0, 0)) +
-  theme(axis.line = element_line(linewidth = 1))
+  scale_y_continuous(name = "Memorability", expand = c(0, 0))
 
 p_memorability_content <- targets::tar_read(memorability_content) |>
   ggplot(aes(r)) +
@@ -77,8 +77,7 @@ p_memorability_content <- targets::tar_read(memorability_content) |>
   scale_x_continuous(
     name = "Individual-to-Group\nMemory Content Similarity"
   ) +
-  scale_y_continuous(name = "Count", expand = expansion(c(0, 0))) +
-  theme(axis.line = element_line(linewidth = 1))
+  scale_y_continuous(name = "Count", expand = expansion(c(0, 0)))
 
 p_perf +
   p_smc +
@@ -123,7 +122,6 @@ targets::tar_read(mem_perf) |>
     switch = "both"
   ) +
   theme(
-    axis.line = element_line(linewidth = 1),
     strip.text = element_text(size = 16),
     strip.background = element_blank(),
     strip.placement = "outside"
@@ -162,7 +160,7 @@ p_stability <- patterns_group_stability |>
   scale_y_continuous(name = "Stability") +
   scale_color_components() +
   facet_grid(cols = vars(cca_id), scales = "free") +
-  theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
+  theme(strip.text = element_blank())
 
 p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
   ggplot(aes(size, gss, color = factor(cca_id))) +
@@ -174,10 +172,7 @@ p_trend_gss <- targets::tar_read(data_gss_whole_resampled) |>
   scale_y_continuous(name = "GSS") +
   scale_color_components(guide = "none") +
   facet_grid(cols = vars(cca_id), scales = "free") +
-  theme(
-    axis.line = element_line(linewidth = 1),
-    strip.text = element_blank()
-  )
+  theme(strip.text = element_blank())
 
 p_stability /
   p_trend_gss +
@@ -376,8 +371,7 @@ p_compare_igs_partial <- stats |>
   scale_color_components(guide = "none") +
   theme(
     strip.text = element_blank(),
-    strip.background = element_blank(),
-    axis.line = element_line(linewidth = 1)
+    strip.background = element_blank()
   )
 
 p_igs_partial_scatter <- visualize_scatter(
@@ -434,10 +428,7 @@ p_compare_predictions <- preds |>
   scale_x_continuous(name = "Observed") +
   scale_y_continuous(name = "Predicted") +
   scale_color_grey(start = 0.1, end = 0.6, name = "Model", guide = "none") +
-  theme(
-    strip.background = element_blank(),
-    axis.line = element_line(linewidth = 1)
-  )
+  theme(strip.background = element_blank())
 ```
 
 ```{r}
@@ -704,8 +695,7 @@ p_isps_dist <- targets::tar_read(data_isps_whole) |>
   scale_color_components(
     aesthetics = c("slab_color", "slab_fill"),
     guide = "none"
-  ) +
-  theme(axis.line = element_line(linewidth = 1))
+  )
 
 # p_isps_dynamic <- visualize_dynamic(
 #   targets::tar_read(stats_isps_dynamic) |>
@@ -887,10 +877,7 @@ p_sync_compare <- summary_sync |>
     values = c(1, 0),
     guide = "none"
   ) +
-  theme(
-    strip.text = element_blank(),
-    axis.line = element_line(linewidth = 1)
-  )
+  theme(strip.text = element_blank())
 
 sync_mem <- sync_inter_intra |>
   left_join(targets::tar_read(mem_perf), by = "subj_id") |>
@@ -944,10 +931,7 @@ p_pred_mem <- sync_mem |>
     # guide = "none"
   ) +
   scale_color_components(guide = "none") +
-  theme(
-    strip.text = element_blank(),
-    axis.line = element_line(linewidth = 1)
-  )
+  theme(strip.text = element_blank())
 
 p_sync_smc <- visualize_mantel_dist(
   targets::tar_read(sync_smc_whole),

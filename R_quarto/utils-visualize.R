@@ -35,7 +35,7 @@ visualize_scatter <- function(
     scale_x_continuous(name = lab_stat) +
     scale_y_continuous(name = "d'") +
     scale_color_components() +
-    theme(axis.line = element_line(linewidth = 1), strip.text = element_blank())
+    theme(strip.text = element_blank())
 }
 
 visualize_mantel <- function(
@@ -87,10 +87,7 @@ visualize_mantel <- function(
     scale_x_continuous(name = name_x) +
     scale_y_continuous(name = name_y) +
     scale_color_components(aesthetics = c("color", "fill")) +
-    theme(
-      strip.text = element_blank(),
-      axis.line = element_line(linewidth = 1)
-    )
+    theme(strip.text = element_blank())
 }
 
 visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
@@ -120,7 +117,6 @@ visualize_mantel_dist <- function(data, stats, label, show_legend = FALSE) {
     scale_y_continuous(name = "Count", expand = expansion(mult = c(0, 0.05))) +
     scale_color_components(aesthetics = "fill") +
     theme(
-      axis.line = element_line(linewidth = 1),
       strip.text = element_blank(),
       strip.background = element_blank()
     )
@@ -163,8 +159,8 @@ visualize_dynamic <- function(
       linewidth = 1,
       show.legend = show_legend
     ) +
-    # TODO: Convert these as functions
     {
+      # use ribbon to show confidence intervals if available
       if (show_cis) {
         geom_ribbon(
           aes(
@@ -178,6 +174,7 @@ visualize_dynamic <- function(
       }
     } +
     {
+      # annotate significant clusters using rect and text
       if (!is.null(clusters_stats)) {
         list(
           geom_rect(
@@ -212,8 +209,7 @@ visualize_dynamic <- function(
     scale_color_components(aesthetics = c("color", "fill")) +
     theme(
       strip.text = element_blank(),
-      strip.background = element_blank(),
-      axis.line = element_line(linewidth = 1)
+      strip.background = element_blank()
     )
 }
 
