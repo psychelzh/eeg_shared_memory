@@ -15,10 +15,13 @@ editor_options:
 
 ```{r}
 #| label: setup
+#| warning: false
+#| message: false
 
 library(tidyverse)
 library(patchwork)
 common::source.all("R_quarto", isolate = FALSE)
+theme_set(ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12))
 ```
 
 # Behavioral Results
@@ -278,7 +281,7 @@ p_iss_dist <- targets::tar_read(data_iss_whole) |>
   geom_text(
     aes(cca_id, y, label = p.value.adj.signif),
     stats_iss_whole,
-    size = size_label,
+    size = SIZE_LABEL,
     vjust = 0,
     inherit.aes = FALSE
   ) +
@@ -291,7 +294,7 @@ p_iss_dist <- targets::tar_read(data_iss_whole) |>
     ),
     iss_comparison,
     size = 0.8,
-    textsize = size_label,
+    textsize = SIZE_LABEL,
     vjust = 0.5,
     inherit.aes = FALSE,
     manual = TRUE
@@ -350,7 +353,7 @@ htests <- igs_comp_partial$htest |>
   filter(p.value < 0.05)
 p_compare_igs_partial <- stats |>
   ggplot(aes(type, estimate, ymax = ymax, ymin = ymin, color = cca_id)) +
-  geom_point(size = size_label) +
+  geom_point(size = SIZE_LABEL) +
   geom_errorbar(width = 0.1, linewidth = 1) +
   geom_line(aes(group = cca_id), linewidth = 1) +
   ggsignif::geom_signif(
@@ -362,7 +365,7 @@ p_compare_igs_partial <- stats |>
     ),
     htests,
     size = 0.8,
-    textsize = size_label,
+    textsize = SIZE_LABEL,
     vjust = 0.5,
     inherit.aes = FALSE,
     manual = TRUE
@@ -563,9 +566,9 @@ diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
   parameters::model_parameters(standardize = TRUE) |>
   as_tibble() |>
   construct_med_data(
-    lab_x = lab_iss_med,
-    lab_m = lab_igs_med,
-    lab_y = lab_mem_med
+    lab_x = LAB_ISS_MED,
+    lab_m = LAB_IGS_MED,
+    lab_y = LAB_MEM_MED
   ) |>
   med_diagram()
 diagram_iss_igs
@@ -578,9 +581,9 @@ diagram_igs_iss <- targets::tar_read(fit_med_igs_iss_dprime) |>
   parameters::model_parameters(standardize = TRUE) |>
   as_tibble() |>
   construct_med_data(
-    lab_x = lab_igs_med,
-    lab_m = lab_iss_med,
-    lab_y = lab_mem_med
+    lab_x = LAB_IGS_MED,
+    lab_m = LAB_ISS_MED,
+    lab_y = LAB_MEM_MED
   ) |>
   med_diagram()
 diagram_igs_iss
@@ -858,7 +861,7 @@ p_sync_compare <- summary_sync |>
   geom_text(
     aes(y = conf.high, label = p.value.adj.signif),
     vjust = 0,
-    size = size_label
+    size = SIZE_LABEL
   ) +
   ggsignif::geom_signif(
     data = compare_sync_p,
@@ -868,7 +871,7 @@ p_sync_compare <- summary_sync |>
       annotations = p.value.adj.signif,
       y_position = y_position
     ),
-    textsize = size_label,
+    textsize = SIZE_LABEL,
     inherit.aes = FALSE,
     manual = TRUE
   ) +
@@ -940,7 +943,7 @@ p_pred_mem <- sync_mem |>
     labels = c("Intra", "Inter")
     # guide = "none"
   ) +
-  scale_color_manual(values = colors_components, guide = "none") +
+  scale_color_components(guide = "none") +
   theme(
     strip.text = element_blank(),
     axis.line = element_line(linewidth = 1)

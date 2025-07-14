@@ -198,7 +198,7 @@ visualize_dynamic <- function(
               y = limits_rect[2],
               label = p_perm.adj.signif
             ),
-            size = size_label,
+            size = SIZE_LABEL,
             inherit.aes = FALSE
           )
         )
@@ -220,7 +220,7 @@ visualize_dynamic <- function(
 scale_color_components <- function(...) {
   scale_color_manual(
     name = "CCA Comp.",
-    values = colors_components,
+    values = COLORS_COMPONENTS,
     labels = \(x) paste0("C", x),
     ...
   )
