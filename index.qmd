@@ -20,7 +20,7 @@ editor_options:
 
 library(tidyverse)
 library(patchwork)
-common::source.all("R_quarto", isolate = FALSE)
+invisible(common::source.all("R_quarto", isolate = FALSE))
 theme_set(
   ggpubr::theme_pubr(base_family = "Gill Sans MT", base_size = 12) +
     theme(axis.line = element_line(linewidth = 1))
@@ -203,6 +203,8 @@ Here we use individual to semantic representation similarity (ISS), indicating *
 
 ```{r}
 #| label: fig-2-iss-igs-pred-mem
+#| fig-width: 13
+#| fig-height: 8
 
 # ISS predicts memory
 p_iss_mem_scatter <- visualize_scatter(
@@ -253,6 +255,8 @@ Note we decided that the figures will be only included in the supplementary mate
 
 ```{r}
 #| label: fig-supp-3-iss-igs-comparison
+#| fig-width: 13
+#| fig-height: 8
 
 p_iss_comp <- visualize_data_distr(
   targets::tar_read(data_iss_whole),
@@ -335,8 +339,8 @@ p_iss_partial_dynamic <- visualize_dynamic(
 )
 
 p_compare_predictions <- visualize_comp_preds(
-  `ISS|G` = targets::tar_read(lm_mem_iss_partial),
-  `IGS + ISS|G` = targets::tar_read(lm_mem_igs_iss_partial)
+  `IGS + ISS|G` = targets::tar_read(lm_mem_igs_iss_partial),
+  `ISS|G` = targets::tar_read(lm_mem_iss_partial)
 )
 ```
 
@@ -351,7 +355,6 @@ diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
     lab_m = LAB_IGS_MED,
     lab_y = LAB_MEM_MED
   )
-diagram_iss_igs
 diagram_iss_igs |>
   DiagrammeRsvg::export_svg() |>
   charToRaw() |>
@@ -366,27 +369,25 @@ p_mediation <- png::readPNG("figures/mediation_iss_igs_mem.png", native = TRUE)
 #| fig-height: 8
 
 design <- "
-AAAABBBBC
-DDDDEEEEE
+AAAAABBBBB
+AAAAABBBBB
+AAAAABBBBB
+CCCCDDDDDE
+CCCCDDDDDE
+CCCCDDDDDE
 "
 
 p_iss_partial_scatter +
   p_iss_partial_dynamic +
-  guide_area() +
   p_compare_predictions +
   p_mediation +
+  guide_area() +
   plot_layout(design = design, guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "right")
 if (!interactive()) {
   ggsave(use_default_name(), width = 14, height = 8, dpi = 600)
 }
-ggsave(
-  "figures/semantics_memory_with_med.png",
-  width = 14,
-  height = 10,
-  dpi = 600
-)
 ```
 
 # Control analysis: word shape similarity pattern
