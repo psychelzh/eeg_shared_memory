@@ -29,8 +29,10 @@ theme_set(
 
 # Behavioral Results
 
+## Main Results
+
 ```{r}
-#| label: behav
+#| label: fig-1-behav
 #| fig-width: 8
 #| fig-height: 5
 
@@ -85,11 +87,15 @@ p_perf +
   p_memorability_content +
   plot_layout(design = layout)
 
-ggsave("figures/behavioral.png", width = 8, height = 5, dpi = 600)
+if (!interactive()) {
+  ggsave(use_default_name(), width = 8, height = 5, dpi = 600)
+}
 ```
 
+## Supplementary Results
+
 ```{r}
-#| label: behav-corr
+#| label: fig-supp-1-behav-corr
 #| fig-width: 6
 #| fig-height: 6
 
@@ -126,15 +132,20 @@ targets::tar_read(mem_perf) |>
     strip.background = element_blank(),
     strip.placement = "outside"
   )
-ggsave("figures/behavioral_correlation.png", width = 6, height = 6, dpi = 600)
+
+if (!interactive()) {
+  ggsave(use_default_name(), width = 6, height = 6, dpi = 600)
+}
 ```
 
-# Group averaged representation
+# Representation Stability
 
-This is supplementary figure showing the stability.
+Here we investigate the stability of group-level representations across participants. We compute the stability of group-level representations by randomly sampling a subset of participants and computing the correlation between the group-level representation computed from this subset and the full group-level representation.
+
+Note this figure should be combined with the CCA results plot, and this figure will be included in the *supplementary materials*.
 
 ```{r}
-#| label: group-averaged-stability
+#| label: fig-supp-2-group-averaged-stability
 #| fig-width: 6
 #| fig-height: 4
 
@@ -179,24 +190,37 @@ p_stability /
   plot_layout(guides = "collect", axes = "collect") &
   theme(legend.position = "bottom")
 
-ggsave(
-  "figures/group_representation_stability.png",
-  width = 6,
-  height = 4,
-  dpi = 600
-)
+if (!interactive()) {
+  ggsave(use_default_name(), width = 6, height = 4, dpi = 600)
+}
 ```
 
-This is Figure 2 now.
+# Semantic transformation, representation fidelity, and memory
+
+Here we use individual to semantic representation similarity (ISS), indicating *semantic transformation*, and individual to group representation similarity (IGS), indicating *representation fidelity*, to predict memory performance. We also compare the predictive power of ISS and IGS, and we explore the mediation effect of representation fidelity on the effect of semantic transformation on memory performance.
+
+## Predictive power of ISS and IGS
 
 ```{r}
-#| label: igs-mem-gss
-#| column: page
-#| fig-width: 13
-#| fig-height: 5
+#| label: fig-2-iss-igs-pred-mem
 
-# IGS predicts memory ----
-p_igs_mem <- visualize_scatter(
+# ISS predicts memory
+p_iss_mem_scatter <- visualize_scatter(
+  targets::tar_read(data_iss_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "ISS",
+  col_stat = "iss"
+)
+
+p_iss_mem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iss_mem_dynamic),
+  targets::tar_read(clusters_stats_iss_mem_dynamic),
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)[ISS - "d'"])
+)
+
+# IGS predicts memory
+p_igs_mem_scatter <- visualize_scatter(
   targets::tar_read(data_igs_whole),
   targets::tar_read(mem_perf),
   lab_stat = "IGS",
@@ -210,7 +234,53 @@ p_igs_mem_dynamic <- visualize_dynamic(
   lab_stat = expression(italic(r)[IGS - "d'"])
 )
 
-# semantics related to group pattern (not shape) ----
+(p_iss_mem_scatter | p_iss_mem_dynamic) /
+  (p_igs_mem_scatter | p_igs_mem_dynamic) +
+  plot_layout(guides = "collect") &
+  # plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+
+if (!interactive()) {
+  ggsave(use_default_name(), width = 13, height = 5, dpi = 600)
+}
+```
+
+## Comparison of ISS and IGS
+
+Here we compare the predictive power of ISS and IGS on memory performance. We use linear regression to model the relationship between ISS/IGS and memory performance, and we compare the models using adjusted R-squared.
+
+Note we decided that the figures will be only included in the supplementary materials.
+
+```{r}
+#| label: fig-supp-3-iss-igs-comparison
+
+p_iss_comp <- visualize_data_distr(
+  targets::tar_read(data_iss_whole),
+  targets::tar_read(stats_iss_whole),
+  targets::tar_read(iss_comparison),
+  show_legend = TRUE
+)
+
+p_iss_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iss_dynamic),
+  targets::tar_read(clusters_stats_iss_dynamic),
+  col_stat = "estimate",
+  lab_stat = "ISS"
+)
+
+p_igs_comp <- visualize_data_distr(
+  targets::tar_read(data_igs_whole),
+  targets::tar_read(stats_igs_whole),
+  targets::tar_read(igs_comparison)
+)
+
+p_igs_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_igs_dynamic),
+  targets::tar_read(clusters_stats_igs_dynamic),
+  col_stat = "estimate",
+  lab_stat = "IGS"
+)
+
 p_gss_whole <- visualize_mantel(
   targets::tar_read(patterns_group_whole),
   targets::tar_read(pattern_semantics),
@@ -226,389 +296,91 @@ p_gss_dynamic <- visualize_dynamic(
   lab_stat = "GSS"
 )
 
-(p_igs_mem | p_igs_mem_dynamic) /
+(p_iss_comp | p_iss_dynamic) /
+  (p_igs_comp | p_igs_dynamic) /
   (p_gss_whole | p_gss_dynamic) +
   plot_layout(guides = "collect") &
-  # plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
-ggsave(
-  "figures/igs_memory_gss_semantics.png",
-  width = 13,
-  height = 5,
-  dpi = 600
-)
+
+if (!interactive()) {
+  ggsave(use_default_name(), width = 13, height = 8, dpi = 600)
+}
 ```
 
-# Semantic representation
+## Mediation analysis of ISS and IGS on memory performance
 
-Semantic information is important but non-semantic information is also important.
-
-This will be Figure 3.
+First, we investigate the predictive power of ISS on memory performance after controlling for the effect of IGS. We use linear regression to model the relationship between ISS and memory performance, and we compare the models with and without IGS as a covariate.
 
 ```{r}
-stats_iss_whole <- targets::tar_read(stats_iss_whole) |>
-  rstatix::adjust_pvalue() |>
-  rstatix::add_significance(
-    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-    symbols = c("***", "**", "*", "")
-  ) |>
-  add_column(y = 0.13, .after = 1L)
-iss_comparison <- targets::tar_read(iss_comparison) |>
-  filter(adj.p.value < 0.05) |>
-  mutate(
-    across(c(start, end), \(x) factor(x, levels = 1:3)),
-    y_position = 0.14 * (1 + 0.12 * seq_len(n()))
-  ) |>
-  rstatix::add_significance(
-    "adj.p.value",
-    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-    symbols = c("***", "**", "*", "")
-  )
+#| label: fig-3-part-1-iss-igs-partial
 
-p_iss_dist <- targets::tar_read(data_iss_whole) |>
-  mutate(cca_id = factor(cca_id)) |>
-  ggplot(aes(cca_id, iss)) +
-  ggdist::stat_dotsinterval(
-    aes(slab_color = cca_id, slab_fill = cca_id),
-    slab_alpha = 0.4,
-    side = "both"
-  ) +
-  geom_text(
-    aes(cca_id, y, label = p.value.adj.signif),
-    stats_iss_whole,
-    size = SIZE_LABEL,
-    vjust = 0,
-    inherit.aes = FALSE
-  ) +
-  ggsignif::geom_signif(
-    aes(
-      xmin = start,
-      xmax = end,
-      annotations = adj.p.value.signif,
-      y_position = y_position
-    ),
-    iss_comparison,
-    size = 0.8,
-    textsize = SIZE_LABEL,
-    vjust = 0.5,
-    inherit.aes = FALSE,
-    manual = TRUE
-  ) +
-  scale_x_discrete(name = NULL, labels = \(x) paste0("C", x)) +
-  scale_y_continuous(name = "ISS") +
-  scale_color_components(
-    aesthetics = c("slab_color", "slab_fill"),
-    guide = "none"
-  ) +
-  theme(axis.line = element_line(linewidth = 1))
+p_compare_iss_partial <- visualize_comp_partial(
+  targets::tar_read(iss_comp_partial),
+  comp_labels = c("ISS", "ISS|G")
+)
 
-p_iss_dynamic <- visualize_dynamic(
-  targets::tar_read(stats_iss_dynamic),
-  targets::tar_read(clusters_stats_iss_dynamic),
-  col_stat = "estimate",
-  lab_stat = "ISS",
+p_iss_partial_scatter <- visualize_scatter(
+  targets::tar_read(data_iss_partial_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "ISS|G",
+  col_stat = "iss",
   show_legend = TRUE
 )
 
-p_iss_mem_scatter <- visualize_scatter(
-  targets::tar_read(data_iss_whole),
-  targets::tar_read(mem_perf),
-  lab_stat = "ISS",
-  col_stat = "iss"
-)
-
-p_iss_mem_dynamic <- visualize_dynamic(
-  targets::tar_read(stats_iss_mem_dynamic),
-  targets::tar_read(clusters_stats_iss_mem_dynamic),
+p_iss_partial_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iss_partial_mem_dynamic),
+  targets::tar_read(clusters_stats_iss_partial_mem_dynamic),
   col_stat = "estimate",
-  lab_stat = expression(italic(r)[ISS - "d'"])
+  lab_stat = expression(italic(r)["ISS|G" - "d'"])
+)
+
+p_compare_predictions <- visualize_comp_preds(
+  `ISS|G` = targets::tar_read(lm_mem_iss_partial),
+  `IGS + ISS|G` = targets::tar_read(lm_mem_igs_iss_partial)
 )
 ```
 
-```{r}
-targets::tar_load(igs_comp_partial)
-mult <- 1
-stats <- igs_comp_partial$stats |>
-  mutate(
-    ymax = estimate + mult * std.error,
-    ymin = estimate - mult * std.error
-  )
-htests <- igs_comp_partial$htest |>
-  separate_wider_delim(
-    contrast,
-    " - ",
-    names = c("start", "end")
-  ) |>
-  rstatix::add_significance(
-    "p.value",
-    cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-    symbols = c("***", "**", "*", "")
-  ) |>
-  mutate(y_position = max(stats$ymax)) |>
-  filter(p.value < 0.05)
-p_compare_igs_partial <- stats |>
-  ggplot(aes(type, estimate, ymax = ymax, ymin = ymin, color = cca_id)) +
-  geom_point(size = SIZE_LABEL) +
-  geom_errorbar(width = 0.1, linewidth = 1) +
-  geom_line(aes(group = cca_id), linewidth = 1) +
-  ggsignif::geom_signif(
-    aes(
-      xmin = start,
-      xmax = end,
-      annotations = p.value.signif,
-      y_position = y_position
-    ),
-    htests,
-    size = 0.8,
-    textsize = SIZE_LABEL,
-    vjust = 0.5,
-    inherit.aes = FALSE,
-    manual = TRUE
-  ) +
-  facet_grid(cols = vars(cca_id), scales = "free") +
-  scale_x_discrete(name = NULL, labels = c("IGS", "IGS|S")) +
-  scale_y_continuous(name = expression(italic(r))) +
-  scale_color_components(guide = "none") +
-  theme(
-    strip.text = element_blank(),
-    strip.background = element_blank()
-  )
-
-p_igs_partial_scatter <- visualize_scatter(
-  targets::tar_read(data_igs_partial_whole),
-  targets::tar_read(mem_perf),
-  lab_stat = "IGS|S",
-  col_stat = "igs"
-)
-
-targets::tar_load(c(lm_mem_igs_partial, lm_mem_iss_igs_partial))
-preds <- bind_rows(
-  `IGS|S` = lm_mem_igs_partial$pred,
-  `ISS + IGS|S` = lm_mem_iss_igs_partial$pred,
-  .id = "model"
-) |>
-  mutate(model = factor(model, c("ISS + IGS|S", "IGS|S")))
-model_eval <- tibble(
-  x = min(preds$obs),
-  y = max(preds$pred) * (1 + c(0.1, 0.02)),
-  model = factor(c("ISS + IGS|S", "IGS|S")),
-  r_squared = c(
-    caret::getTrainPerf(lm_mem_iss_igs_partial)$TrainRsquared,
-    caret::getTrainPerf(lm_mem_igs_partial)$TrainRsquared
-  ) |>
-    signif(2)
-)
-p_compare_predictions <- preds |>
-  ggplot(aes(obs, pred, color = model)) +
-  geom_point(shape = 16) +
-  geom_smooth(method = "lm") +
-  ggtext::geom_richtext(
-    aes(
-      x,
-      y,
-      color = model,
-      label = paste0(
-        "*R*<sup>2</sup><sub>",
-        model,
-        "</sub> = ",
-        r_squared
-      )
-    ),
-    model_eval,
-    size = 3,
-    fill = NA,
-    label.color = NA, # remove background and outline
-    label.padding = grid::unit(rep(0, 4), "pt"), # remove padding
-    hjust = 0,
-    vjust = 0.5, # bottom-left corner
-    inherit.aes = FALSE,
-    show.legend = FALSE
-  ) +
-  # facet_grid(cols = vars(model)) +
-  scale_x_continuous(name = "Observed") +
-  scale_y_continuous(name = "Predicted") +
-  scale_color_grey(start = 0.1, end = 0.6, name = "Model", guide = "none") +
-  theme(strip.background = element_blank())
-```
+Second, we investigate the mediation effect of IGS on the relationship between ISS and memory performance. We use structural equation modeling (SEM) to model the mediation effect, and we visualize the mediation diagram.
 
 ```{r}
-#| label: sem-and-mem
-#| column: page
-#| fig-width: 13
-#| fig-height: 8
-
-layout <- "
-AAABBB
-CCCDDD
-EEFFFG
-"
-
-p_iss_dist +
-  p_iss_dynamic +
-  p_iss_mem_scatter +
-  p_iss_mem_dynamic +
-  p_compare_igs_partial +
-  p_igs_partial_scatter +
-  p_compare_predictions +
-  plot_layout(design = layout, guides = "collect") +
-  plot_annotation(tag_levels = "A") &
-  theme(legend.position = "bottom")
-ggsave("figures/semantics_memory.png", width = 13, height = 8, dpi = 600)
-```
-
-## Mediation analysis
-
-```{r}
-construct_med_data <- function(param, lab_x, lab_m, lab_y) {
-  param_formated <- param |>
-    rstatix::add_significance(
-      cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-      symbols = c("***", "**", "*", "")
-    ) |>
-    mutate(
-      value = str_glue(
-        "{round(Coefficient, 2)}{p.signif}"
-      ),
-      signif = p < 0.05 # Flag for significance (TRUE if p < 0.05, else FALSE)
-    ) |>
-    select(Label, value, signif) |>
-    pivot_wider(names_from = Label, values_from = c(value, signif))
-
-  data.frame(
-    lab_x = lab_x,
-    lab_m = lab_m,
-    lab_y = lab_y,
-    coef_xm = param_formated$value_a,
-    coef_my = param_formated$value_b,
-    coef_xy = param_formated$value_c,
-    signif_xm = param_formated$signif_a,
-    signif_my = param_formated$signif_b,
-    signif_xy = param_formated$signif_c
-  )
-}
-
-# modified based on https://stackoverflow.com/a/64886536/5996475
-med_diagram <- function(
-  data,
-  height = .75,
-  width = 2,
-  graph_label = NA,
-  node_text_size = 12,
-  edge_text_size = 12,
-  color = "black",
-  ranksep = .2,
-  minlen = 3
-) {
-  # Set parameters for nodes and edges
-  data$height <- height # node height
-  data$width <- width # node width
-  data$color <- color # node + edge border color
-  data$ranksep <- ranksep # separation btwn mediator row and x->y row
-  data$minlen <- minlen # minimum edge length
-
-  data$node_text_size <- node_text_size
-  data$edge_text_size <- edge_text_size
-  data$graph_label <- ifelse(
-    is.na(graph_label),
-    "",
-    paste0("label = '", graph_label, "'")
-  )
-
-  # Define edge style based on significance: dotted if not significant
-  data$style_xm <- ifelse(data$signif_xm, "solid", "dotted")
-  data$style_my <- ifelse(data$signif_my, "solid", "dotted")
-  data$style_xy <- ifelse(data$signif_xy, "solid", "dotted")
-
-  # Construct diagram code with Glue
-  diagram_out <- glue::glue_data(
-    data,
-    "digraph flowchart {
-      fontname = Helvetica
-      <<graph_label>>
-      graph [ranksep = <<ranksep>>]
-
-      # node definitions with substituted label text
-      node [fontname = Helvetica, shape = rectangle, fixedsize = TRUE, width = <<width>>, height = <<height>>, fontsize = <<node_text_size>>, color = <<color>>]
-        mm [label = '<<lab_m>>']
-        xx [label = '<<lab_x>>']
-        yy [label = '<<lab_y>>']
-
-      # edge definitions with the node IDs
-      edge [minlen = <<minlen>>, fontname = Helvetica, fontsize = <<edge_text_size>>, color = <<color>>]
-        mm -> yy [label = '<<coef_my>>', style = '<<style_my>>'];
-        xx -> mm [label = '<<coef_xm>>', style = '<<style_xm>>'];
-        xx -> yy [label = '<<coef_xy>>', style = '<<style_xy>>'];
-
-      { rank = same; mm }
-      { rank = same; xx; yy }
-
-      }
-
-      ",
-    .open = "<<",
-    .close = ">>"
-  )
-
-  # Generate the diagram with DiagrammeR
-  DiagrammeR::grViz(diagram_out)
-}
+#| label: fig-3-part-2-iss-igs-med
 
 diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
-  parameters::model_parameters(standardize = TRUE) |>
-  as_tibble() |>
-  construct_med_data(
+  visualize_mediation(
     lab_x = LAB_ISS_MED,
     lab_m = LAB_IGS_MED,
     lab_y = LAB_MEM_MED
-  ) |>
-  med_diagram()
+  )
 diagram_iss_igs
 diagram_iss_igs |>
   DiagrammeRsvg::export_svg() |>
   charToRaw() |>
-  rsvg::rsvg_png("figures/mediation_iss_igs.png", width = 1000)
-
-diagram_igs_iss <- targets::tar_read(fit_med_igs_iss_dprime) |>
-  parameters::model_parameters(standardize = TRUE) |>
-  as_tibble() |>
-  construct_med_data(
-    lab_x = LAB_IGS_MED,
-    lab_m = LAB_ISS_MED,
-    lab_y = LAB_MEM_MED
-  ) |>
-  med_diagram()
-diagram_igs_iss
-diagram_igs_iss |>
-  DiagrammeRsvg::export_svg() |>
-  charToRaw() |>
-  rsvg::rsvg_png("figures/mediation_igs_iss.png", width = 1000)
-p_mediation <- png::readPNG("figures/mediation_igs_iss.png", native = TRUE)
+  rsvg::rsvg_png("figures/mediation_iss_igs_mem.png", width = 1000)
+p_mediation <- png::readPNG("figures/mediation_iss_igs_mem.png", native = TRUE)
 ```
 
 ```{r}
-#| label: sem-and-mem-with-med
+#| label: fig-3-iss-igs-mem
 #| column: page
 #| fig-width: 13
 #| fig-height: 8
 
-layout <- "
-AABB
-CCDD
-EEFF
-GGH#
+design <- "
+AAAABBBBC
+DDDDEEEEE
 "
 
-p_iss_dist +
-  p_iss_dynamic +
-  p_iss_mem_scatter +
-  p_iss_mem_dynamic +
-  p_mediation +
-  p_compare_igs_partial +
-  p_igs_partial_scatter +
+p_iss_partial_scatter +
+  p_iss_partial_dynamic +
+  guide_area() +
   p_compare_predictions +
-  plot_layout(design = layout, guides = "collect") +
+  p_mediation +
+  plot_layout(design = design, guides = "collect") +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "right")
+if (!interactive()) {
+  ggsave(use_default_name(), width = 14, height = 8, dpi = 600)
+}
 ggsave(
   "figures/semantics_memory_with_med.png",
   width = 14,
