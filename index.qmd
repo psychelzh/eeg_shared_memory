@@ -371,7 +371,6 @@ p_mediation <- png::readPNG("figures/mediation_iss_igs_mem.png", native = TRUE)
 design <- "
 AAAAABBBBB
 AAAAABBBBB
-AAAAABBBBB
 CCCCDDDDDE
 CCCCDDDDDE
 CCCCDDDDDE
@@ -386,7 +385,7 @@ p_iss_partial_scatter +
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "right")
 if (!interactive()) {
-  ggsave(use_default_name(), width = 14, height = 8, dpi = 600)
+  ggsave(use_default_name(), width = 13, height = 6, dpi = 600)
 }
 ```
 
