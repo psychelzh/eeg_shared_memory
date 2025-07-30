@@ -239,8 +239,9 @@ p_igs_mem_dynamic <- visualize_dynamic(
 (p_iss_mem_scatter | p_iss_mem_dynamic) /
   (p_igs_mem_scatter | p_igs_mem_dynamic) +
   plot_layout(guides = "collect") &
+  # tags are added in Adobe Illustrator
   # plot_annotation(tag_levels = "A") &
-  theme(legend.position = "bottom")
+  theme(legend.position = "top")
 
 if (!interactive()) {
   ggsave(use_default_name(), width = 13, height = 5, dpi = 600)
