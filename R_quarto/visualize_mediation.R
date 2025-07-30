@@ -41,7 +41,7 @@ visualize_mediation <- function(
       "digraph flowchart {
       fontname = Helvetica
       <<graph_label>>
-      graph [ranksep = <<ranksep>>]
+      graph [ranksep = <<ranksep>>, bgcolor=transparent]
 
       # node definitions with substituted label text
       node [fontname = Helvetica, shape = rectangle, fixedsize = TRUE, width = <<width>>, height = <<height>>, fontsize = <<node_text_size>>, color = <<color>>]

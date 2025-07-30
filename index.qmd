@@ -373,56 +373,27 @@ p_mediation <- png::readPNG("figures/mediation_iss_igs_mem.png", native = TRUE)
 ```
 
 ```{r}
-#| label: fig-3-iss-igs-mem-lack-1
-#| column: page
-#| fig-width: 13
-#| fig-height: 8
-
-design <- "
-AAAAABBBBB
-AAAAABBBBB
-CCCCDDDDDE
-CCCCDDDDDE
-CCCCDDDDDE
-"
-
-p_iss_partial_scatter +
-  p_iss_partial_dynamic +
-  p_compare_predictions +
-  p_mediation +
-  guide_area() +
-  plot_layout(design = design, guides = "collect") +
-  plot_annotation(tag_levels = "A") &
-  theme(legend.position = "right")
-if (!interactive()) {
-  ggsave_default(width = 13, height = 6)
-}
-```
-
-```{r}
 #| label: fig-3-iss-igs-mem
 #| column: page
 #| fig-width: 13
 #| fig-height: 8
 
 design <- "
-AAAAAAAABBBBBBBB
-AAAAAAAABBBBBBBB
-AAAAAAAABBBBBBBB
-AAAAAAAABBBBBBBB
-CCCCCCCCDDDEEEEE
-CCCCCCCCDDDEEEEE
-CCCCCCCCDDDEEEEE
-CCCCCCCCFFFFFFFF
+AAAAABBBBBBBBEEE
+AAAAABBBBBBBBEEE
+AAAAABBBBBBBBEEE
+CCCCCCCCDDDDDDDD
+CCCCCCCCDDDDDDDD
+CCCCCCCCDDDDDDDD
 "
-p_compare_iss_partial +
+wrap_elements(p_mediation) +
+  p_compare_iss_partial +
   p_iss_partial_scatter +
   p_iss_partial_dynamic +
   p_compare_predictions +
-  p_mediation +
-  guide_area() +
   plot_layout(design = design, guides = "collect") +
-  plot_annotation(tag_levels = "A")
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
 if (!interactive()) {
   ggsave_default(width = 13, height = 6)
 }
