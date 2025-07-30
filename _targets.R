@@ -243,6 +243,35 @@ list(
       !!.y
     )
   ),
+  # more precise memory performance
+  tarchetypes::tar_map(
+    config_mem_precise,
+    tar_target(
+      stats_igs_mem_whole,
+      correlate_mem_perf(
+        data_igs_whole,
+        select(mem_perf_precise, subj_id, dprime = index_name)
+      )
+    ),
+    tar_cluster_permutation(
+      "igs_mem_dynamic",
+      correlate_mem_perf(
+        data_igs_dynamic,
+        select(mem_perf_precise, subj_id, dprime = index_name)
+      ),
+      correlate_mem_perf(
+        data_igs_dynamic,
+        mem_perf_precise |>
+          mutate(subj_id = sample(subj_id)) |>
+          select(subj_id, dprime = index_name),
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y
+      )
+    )
+  ),
 
   # group averaged patterns and semantic pattern (GSS) ----
   tar_target(
@@ -321,6 +350,35 @@ list(
       data = inner_join(iss_r2_combine, mem_perf, by = "subj_id"),
       method = "lm",
       trControl = caret::trainControl(method = "LOOCV")
+    )
+  ),
+  # more precise memory performance
+  tarchetypes::tar_map(
+    config_mem_precise,
+    tar_target(
+      stats_iss_mem_whole,
+      correlate_mem_perf(
+        data_iss_whole,
+        select(mem_perf_precise, subj_id, dprime = index_name)
+      )
+    ),
+    tar_cluster_permutation(
+      "iss_mem_dynamic",
+      correlate_mem_perf(
+        data_iss_dynamic,
+        select(mem_perf_precise, subj_id, dprime = index_name)
+      ),
+      correlate_mem_perf(
+        data_iss_dynamic,
+        mem_perf_precise |>
+          mutate(subj_id = sample(subj_id)) |>
+          select(subj_id, dprime = index_name),
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y
+      )
     )
   ),
 
