@@ -313,10 +313,11 @@ p_gss_dynamic <- visualize_dynamic(
   (p_igs_comp | p_igs_dynamic) /
   (p_gss_whole | p_gss_dynamic) +
   plot_layout(guides = "collect") &
+  plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
 
 if (!interactive()) {
-  ggsave_default(width = 13, height = 8)
+  ggsave_default(width = 13, height = 10)
 }
 ```
 

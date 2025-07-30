@@ -6,7 +6,8 @@ visualize_data_distr <- function(
   col_data = last_col(),
   col_label = NULL,
   show_legend = FALSE,
-  signif_step = 0.1
+  signif_base = 0.03,
+  signif_step = 0.12
 ) {
   rlang::check_dots_empty()
   col_data_name <- names(select(data, {{ col_data }}))
@@ -23,7 +24,7 @@ visualize_data_distr <- function(
     filter(adj.p.value < 0.05) |>
     mutate(
       across(c(start, end), \(x) factor(x, levels = 1:3)),
-      y_position = max_y * (1 + signif_step * seq_len(n()))
+      y_position = max_y * (1 + signif_base + signif_step * seq_len(n()))
     ) |>
     rstatix::add_significance(
       "adj.p.value",
