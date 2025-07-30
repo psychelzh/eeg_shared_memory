@@ -9,6 +9,13 @@ fit_curve <- function(x, y) {
   )
 }
 
+ggsave_default <- purrr::partial(
+  ggplot2::ggsave,
+  filename = use_default_name(),
+  dpi = 600,
+  bg = "transparent"
+)
+
 use_default_name <- function(label = NULL, path = "figures") {
   # https://github.com/rstudio/rstudio/issues/16050
   # unfortunately, opts_current() does not work in interactive mode
