@@ -207,7 +207,7 @@ if (!interactive()) {
 
 Here we use individual to semantic representation similarity (ISS), indicating *semantic transformation*, and individual to group representation similarity (IGS), indicating *representation fidelity*, to predict memory performance. We also compare the predictive power of ISS and IGS, and we explore the mediation effect of representation fidelity on the effect of semantic transformation on memory performance.
 
-## Predictive power of ISS and IGS
+## Predictive power of ISS and IGS (overall d')
 
 ```{r}
 #| label: fig-2-iss-igs-pred-mem
@@ -215,11 +215,11 @@ Here we use individual to semantic representation similarity (ISS), indicating *
 #| fig-height: 8
 
 # ISS predicts memory
+# show legend because this the first panel of the figure
 p_iss_mem_scatter <- visualize_scatter(
   targets::tar_read(data_iss_whole),
   targets::tar_read(mem_perf),
-  lab_stat = "ISS",
-  col_stat = "iss"
+  show_legend = TRUE
 )
 
 p_iss_mem_dynamic <- visualize_dynamic(
@@ -232,10 +232,7 @@ p_iss_mem_dynamic <- visualize_dynamic(
 # IGS predicts memory
 p_igs_mem_scatter <- visualize_scatter(
   targets::tar_read(data_igs_whole),
-  targets::tar_read(mem_perf),
-  lab_stat = "IGS",
-  col_stat = "igs",
-  show_legend = TRUE
+  targets::tar_read(mem_perf)
 )
 
 p_igs_mem_dynamic <- visualize_dynamic(
@@ -256,6 +253,84 @@ if (!interactive()) {
 }
 ```
 
+## Predictive power of ISS and IGS (precise d')
+
+```{r}
+#| label: fig-supp-3-iss-igs-pred-mem
+#| fig-width: 13
+#| fig-height: 8
+
+# ISS predicts memory
+p_iss_mem_rem_scatter <- visualize_scatter(
+  targets::tar_read(data_iss_whole),
+  targets::tar_read(mem_perf_precise) |>
+    select(subj_id, dprime = dprime_rem),
+  lab_perf = "Recollection",
+  show_legend = TRUE
+)
+
+p_iss_mem_rem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iss_mem_dynamic_dprime_rem),
+  targets::tar_read(clusters_stats_iss_mem_dynamic_dprime_rem),
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)[ISS - "Recollection"])
+)
+
+p_iss_mem_know_scatter <- visualize_scatter(
+  targets::tar_read(data_iss_whole),
+  targets::tar_read(mem_perf_precise) |>
+    select(subj_id, dprime = dprime_know),
+  lab_perf = "Familiarity",
+  col_stat = "iss"
+)
+
+p_iss_mem_know_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iss_mem_dynamic_dprime_know),
+  targets::tar_read(clusters_stats_iss_mem_dynamic_dprime_know),
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)[ISS - "Familiarity"])
+)
+
+# IGS predicts memory
+p_igs_mem_rem_scatter <- visualize_scatter(
+  targets::tar_read(data_igs_whole),
+  targets::tar_read(mem_perf_precise) |>
+    select(subj_id, dprime = dprime_rem),
+  lab_perf = "Recollection"
+)
+
+p_igs_mem_rem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_igs_mem_dynamic_dprime_rem),
+  targets::tar_read(clusters_stats_igs_mem_dynamic_dprime_rem),
+  lab_stat = expression(italic(r)[IGS - "Recollection"])
+)
+
+p_igs_mem_know_scatter <- visualize_scatter(
+  targets::tar_read(data_igs_whole),
+  targets::tar_read(mem_perf_precise) |>
+    select(subj_id, dprime = dprime_know),
+  lab_perf = "Familiarity"
+)
+
+p_igs_mem_know_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_igs_mem_dynamic_dprime_know),
+  targets::tar_read(clusters_stats_igs_mem_dynamic_dprime_know),
+  lab_stat = expression(italic(r)[IGS - "Familiarity"])
+)
+
+(p_iss_mem_rem_scatter | p_iss_mem_rem_dynamic) /
+  (p_iss_mem_know_scatter | p_iss_mem_know_dynamic) /
+  (p_igs_mem_rem_scatter | p_igs_mem_rem_dynamic) /
+  (p_igs_mem_know_scatter | p_igs_mem_know_dynamic) +
+  plot_layout(guides = "collect") &
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+
+if (!interactive()) {
+  ggsave_default(width = 13, height = 8)
+}
+```
+
 ## Comparison of ISS and IGS
 
 Here we compare the predictive power of ISS and IGS on memory performance. We use linear regression to model the relationship between ISS/IGS and memory performance, and we compare the models using adjusted R-squared.
@@ -263,7 +338,7 @@ Here we compare the predictive power of ISS and IGS on memory performance. We us
 Note we decided that the figures will be only included in the supplementary materials.
 
 ```{r}
-#| label: fig-supp-3-iss-igs-comparison
+#| label: fig-supp-4-iss-igs-comparison
 #| fig-width: 13
 #| fig-height: 8
 
@@ -402,7 +477,7 @@ if (!interactive()) {
 # Control analysis: word shape similarity pattern
 
 ```{r}
-#| label: fig-supp-4-word-shape-pattern
+#| label: fig-supp-5-word-shape-pattern
 #| column: page
 #| fig-width: 12
 #| fig-height: 6
@@ -531,7 +606,7 @@ if (!interactive()) {
 ```
 
 ```{r}
-#| label: fig-supp-5-isps-smc-partial
+#| label: fig-supp-6-isps-smc-partial
 #| column: page
 #| fig-width: 13
 #| fig-height: 7
