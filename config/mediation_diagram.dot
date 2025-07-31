@@ -1,0 +1,20 @@
+digraph flowchart {
+    fontname = Helvetica
+    <<graph_label>>
+    graph [ranksep = <<ranksep>>, bgcolor=transparent]
+
+    # node definitions with substituted label text
+    node [fontname = Helvetica, shape = rectangle, fixedsize = TRUE, width = <<width>>, height = <<height>>, fontsize = <<node_text_size>>, color = <<color>>]
+    mm [label = '<<lab_m>>']
+    xx [label = '<<lab_x>>']
+    yy [label = '<<lab_y>>']
+
+    # edge definitions with the node IDs
+    edge [minlen = <<minlen>>, fontname = Helvetica, fontsize = <<edge_text_size>>, color = <<color>>]
+    mm -> yy [label = '<<coef_b>>', style = '<<style_b>>'];
+    xx -> mm [label = '<<coef_a>>', style = '<<style_a>>'];
+    xx -> yy [label = '<<coef_c>>', style = '<<style_c>>'];
+
+    { rank = same; mm }
+    { rank = same; xx; yy }
+}

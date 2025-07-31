@@ -20,51 +20,18 @@ visualize_mediation <- function(
       symbols = c("***", "**", "*", "")
     ) |>
     mutate(
-      coef = str_glue(
-        "{round(Coefficient, 2)}{p.signif}"
-      ),
-      signif = p < 0.05 # Flag for significance (TRUE if p < 0.05, else FALSE)
+      coef = str_glue("{round(Coefficient, 2)}{p.signif}"),
+      style = if_else(p.signif != "", "solid", "dotted")
     ) |>
     as_tibble() |>
-    select(Label, coef, signif) |>
-    pivot_wider(names_from = Label, values_from = c(coef, signif)) |>
-    mutate(
-      style_a = ifelse(signif_a, "solid", "dotted"), # x to m
-      style_b = ifelse(signif_b, "solid", "dotted"), # m to y
-      style_c = ifelse(signif_c, "solid", "dotted") # x to y
-    )
+    select(Label, coef, style) |>
+    pivot_wider(names_from = Label, values_from = c(coef, style))
 
   # Construct diagram code with Glue
-  diagram_out <- with(
+  with(
     params,
-    str_glue(
-      "digraph flowchart {
-      fontname = Helvetica
-      <<graph_label>>
-      graph [ranksep = <<ranksep>>, bgcolor=transparent]
-
-      # node definitions with substituted label text
-      node [fontname = Helvetica, shape = rectangle, fixedsize = TRUE, width = <<width>>, height = <<height>>, fontsize = <<node_text_size>>, color = <<color>>]
-        mm [label = '<<lab_m>>']
-        xx [label = '<<lab_x>>']
-        yy [label = '<<lab_y>>']
-
-      # edge definitions with the node IDs
-      edge [minlen = <<minlen>>, fontname = Helvetica, fontsize = <<edge_text_size>>, color = <<color>>]
-        mm -> yy [label = '<<coef_b>>', style = '<<style_b>>'];
-        xx -> mm [label = '<<coef_a>>', style = '<<style_a>>'];
-        xx -> yy [label = '<<coef_c>>', style = '<<style_c>>'];
-
-      { rank = same; mm }
-      { rank = same; xx; yy }
-
-      }
-      ",
-      .open = "<<",
-      .close = ">>"
-    )
-  )
-
-  # Generate the diagram with DiagrammeR
-  DiagrammeR::grViz(diagram_out)
+    read_file("config/mediation_diagram.dot") |>
+      str_glue(.open = "<<", .close = ">>")
+  ) |>
+    DiagrammeR::grViz()
 }
