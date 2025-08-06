@@ -11,10 +11,14 @@ read_csv(file_mem, show_col_types = FALSE) |>
     by = join_by(i1_subj_id, i2_subj_id, trial_id)
   ) |>
   mutate(subj_id_pair = paste(i1_subj_id, i2_subj_id, sep = "_")) |>
+  # fmt: skip
   filter(component == {component}) |>
   brm(
-    formula = corr_fz ~ 0 + word_category : memory_type +
-      (0 + word_category : memory_type | subj_id_pair) + (1 | trial_id),
+    formula = corr_fz ~
+      0 +
+        word_category:memory_type +
+        (0 + word_category:memory_type | subj_id_pair) +
+        (1 | trial_id),
     data = _,
     chains = 4,
     cores = 4,
