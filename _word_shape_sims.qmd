@@ -2,6 +2,8 @@
 ```{python}
 # | label: char-similar-module
 
+import os
+from tqdm import tqdm
 import itertools
 import numpy as np
 import pandas as pd
@@ -13,20 +15,22 @@ def calc_sim_word(w1, w2):
     return np.average(sim_list, weights=[1, 0.5, 0.5, 1])
 
 
-words = pd.read_csv("../data/stimuli/words_list.tsv", sep="\t")["word"][:150].to_numpy()
+file_words = os.path.join("data", "stimuli", "words_list.tsv")
+file_sims = os.path.join("data", "stimuli", "word_shape_sims", "char_similar.tsv")
+words = pd.read_csv(file_words, sep="\t")["word"][:150].to_numpy()
 sim_scores = pd.DataFrame.from_records(
     itertools.combinations(range(150), 2), columns=["word_id1", "word_id2"]
 )
 sim_scores["word1"] = words[sim_scores["word_id1"]]
 sim_scores["word2"] = words[sim_scores["word_id2"]]
 sim_scores["similarity"] = np.nan
-for row in sim_scores.itertuples():
+for row in tqdm(sim_scores.itertuples()):
     sim_scores.loc[row.Index, "similarity"] = calc_sim_word(row.word1, row.word2)
 
 sim_scores.word_id1 = sim_scores.word_id1 + 1
 sim_scores.word_id2 = sim_scores.word_id2 + 1
 
-sim_scores.to_csv("../data/stimuli/words_shape_similarity.tsv", sep="\t", index=False)
+sim_scores.to_csv(file_sims, sep="\t", index=False)
 ```
 
 ```{python}
@@ -79,7 +83,8 @@ def calc_similarity(model_histories, layer_name):
     return np.corrcoef(X)
 
 
-path_images = "data/stimuli/images"
+path_images = os.path.join("data", "stimuli", "images")
+file_sims = os.path.join("data", "stimuli", "word_shape_sims", "alexnet.tsv")
 files_image = os.listdir(path_images)
 model_histories = []
 for file in tqdm(files_image):
@@ -115,11 +120,5 @@ similarities = pd.concat(
 )
 
 # save to a tsv file
-similarities.to_csv("data/stimuli/alexnet_similarities.tsv", sep="\t", index=False)
-
-# save the similarities to a file
-import pickle
-
-with open("data/stimuli/alexnet_similarities.pkl", "wb") as f:
-    pickle.dump(similarities, f)
+similarities.to_csv(file_sims, sep="\t", index=False)
 ```
