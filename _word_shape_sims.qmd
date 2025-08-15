@@ -1,0 +1,125 @@
+
+```{python}
+# | label: char-similar-module
+
+import itertools
+import numpy as np
+import pandas as pd
+from char_similar import pool_cal_sim
+
+
+def calc_sim_word(w1, w2):
+    sim_list = [pool_cal_sim(w_i, w_j) for w_i in w1 for w_j in w2]
+    return np.average(sim_list, weights=[1, 0.5, 0.5, 1])
+
+
+words = pd.read_csv("../data/stimuli/words_list.tsv", sep="\t")["word"][:150].to_numpy()
+sim_scores = pd.DataFrame.from_records(
+    itertools.combinations(range(150), 2), columns=["word_id1", "word_id2"]
+)
+sim_scores["word1"] = words[sim_scores["word_id1"]]
+sim_scores["word2"] = words[sim_scores["word_id2"]]
+sim_scores["similarity"] = np.nan
+for row in sim_scores.itertuples():
+    sim_scores.loc[row.Index, "similarity"] = calc_sim_word(row.word1, row.word2)
+
+sim_scores.word_id1 = sim_scores.word_id1 + 1
+sim_scores.word_id2 = sim_scores.word_id2 + 1
+
+sim_scores.to_csv("../data/stimuli/words_shape_similarity.tsv", sep="\t", index=False)
+```
+
+```{python}
+# | label: alexnet
+
+import os
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+import torch
+from torchvision.models import alexnet, AlexNet_Weights
+import torchlens as tl
+from torchvision import transforms
+from PIL import Image
+
+
+def extract_features_alexnet(img_path):
+    """
+    使用预训练的 AlexNet 提取图像特征。
+    """
+    # 1. 加载预训练的 AlexNet 模型
+    weights = AlexNet_Weights.DEFAULT
+    model = alexnet(weights=weights).eval()
+    # 2. 定义预处理步骤
+    preprocess = weights.transforms()
+    # 3. 加载并预处理图像
+    img = Image.open(img_path).convert("RGB")
+    x = preprocess(img).unsqueeze(0)  # 添加 batch 维度
+    # 4. 使用 TorchLens 记录前向传播所有运算的激活
+    model_history = tl.log_forward_pass(
+        model,
+        x,
+        layers_to_save="all",  # 保存所有运算节点的激活
+        vis_opt="none",  # 可选：生成可视化结构图
+    )
+    return model_history
+
+
+def calc_similarity(model_histories, layer_name):
+    """
+    计算指定层的特征相似性。
+    """
+    vectors = []
+    for model_history in model_histories:
+        tensor = model_history[layer_name].tensor_contents
+        vec = tensor.flatten().detach().numpy()
+        vectors.append(vec)
+
+    X = np.stack(vectors, axis=0)
+    return np.corrcoef(X)
+
+
+path_images = "data/stimuli/images"
+files_image = os.listdir(path_images)
+model_histories = []
+for file in tqdm(files_image):
+    if file.endswith(".JPG"):
+        img_path = os.path.join(path_images, file)
+        model_history = extract_features_alexnet(img_path)
+        model_histories.append(model_history)
+
+layers = [
+    "conv2d_1_1",
+    "conv2d_2_4",
+    "conv2d_3_7",
+    "conv2d_4_9",
+    "conv2d_5_11",
+    "linear_1_17",
+    "linear_2_20",
+    "linear_3_22",
+]
+
+similarities = {}
+for layer in tqdm(layers):
+    similarity = calc_similarity(model_histories, layer)
+    labels = [f"{i+1}" for i in range(similarity.shape[0])]
+    df_similarity = pd.DataFrame(similarity, index=labels, columns=labels)
+    long_df = df_similarity.stack().reset_index()
+    long_df.columns = ["image_id1", "image_id2", "similarity"]
+    similarities[layer] = long_df
+
+# stack all layers into a single DataFrame
+similarities = pd.concat(
+    [df.assign(layer=layer) for layer, df in similarities.items()],
+    ignore_index=True,
+)
+
+# save to a tsv file
+similarities.to_csv("data/stimuli/alexnet_similarities.tsv", sep="\t", index=False)
+
+# save the similarities to a file
+import pickle
+
+with open("data/stimuli/alexnet_similarities.pkl", "wb") as f:
+    pickle.dump(similarities, f)
+```
