@@ -1,10 +1,10 @@
 
 ```{python}
-# | label: char-similar-module
+# | label: char-similar
 
-import os
+from pathlib import Path
 from tqdm import tqdm
-import itertools
+from itertools import combinations
 import numpy as np
 import pandas as pd
 from char_similar import pool_cal_sim
@@ -15,56 +15,51 @@ def calc_sim_word(w1, w2):
     return np.average(sim_list, weights=[1, 0.5, 0.5, 1])
 
 
-file_words = os.path.join("data", "stimuli", "words_list.tsv")
-file_sims = os.path.join("data", "stimuli", "word_shape_sims", "char_similar.tsv")
-words = pd.read_csv(file_words, sep="\t")["word"][:150].to_numpy()
-sim_scores = pd.DataFrame.from_records(
-    itertools.combinations(range(150), 2), columns=["word_id1", "word_id2"]
-)
-sim_scores["word1"] = words[sim_scores["word_id1"]]
-sim_scores["word2"] = words[sim_scores["word_id2"]]
-sim_scores["similarity"] = np.nan
-for row in tqdm(sim_scores.itertuples()):
-    sim_scores.loc[row.Index, "similarity"] = calc_sim_word(row.word1, row.word2)
+path_words = Path("data") / "stimuli" / "words_list.tsv"
+words_used = range(150)
+words = pd.read_csv(path_words, sep="\t")["word"][words_used].to_numpy()
+pairs = list(combinations(words_used, 2))
+rows = []
+for i, j in tqdm(pairs, desc="computing similarities", leave=True):
+    sim = calc_sim_word(words[i], words[j])
+    rows.append(
+        {
+            "word_id1": i + 1,
+            "word_id2": j + 1,
+            "word1": words[i],
+            "word2": words[j],
+            "similarity": sim,
+        }
+    )
+sim_scores = pd.DataFrame(rows)
 
-sim_scores.word_id1 = sim_scores.word_id1 + 1
-sim_scores.word_id2 = sim_scores.word_id2 + 1
-
+path_sims = Path("data") / "stimuli" / "word_shape_sims" / "char_similar.tsv"
 sim_scores.to_csv(file_sims, sep="\t", index=False)
 ```
 
 ```{python}
 # | label: alexnet
 
-import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import torch
 from torchvision.models import alexnet, AlexNet_Weights
 import torchlens as tl
-from torchvision import transforms
 from PIL import Image
 
 
-def extract_features_alexnet(img_path):
+def extract_features_alexnet(img_path, model, preprocess, layers_to_save):
     """
     使用预训练的 AlexNet 提取图像特征。
     """
-    # 1. 加载预训练的 AlexNet 模型
-    weights = AlexNet_Weights.DEFAULT
-    model = alexnet(weights=weights).eval()
-    # 2. 定义预处理步骤
-    preprocess = weights.transforms()
-    # 3. 加载并预处理图像
     img = Image.open(img_path).convert("RGB")
     x = preprocess(img).unsqueeze(0)  # 添加 batch 维度
-    # 4. 使用 TorchLens 记录前向传播所有运算的激活
     model_history = tl.log_forward_pass(
         model,
         x,
-        layers_to_save="all",  # 保存所有运算节点的激活
-        vis_opt="none",  # 可选：生成可视化结构图
+        layers_to_save=layers_to_save,
+        vis_opt="none",
     )
     return model_history
 
@@ -83,16 +78,10 @@ def calc_similarity(model_histories, layer_name):
     return np.corrcoef(X)
 
 
-path_images = os.path.join("data", "stimuli", "images")
-file_sims = os.path.join("data", "stimuli", "word_shape_sims", "alexnet.tsv")
-files_image = os.listdir(path_images)
-model_histories = []
-for file in tqdm(files_image):
-    if file.endswith(".JPG"):
-        img_path = os.path.join(path_images, file)
-        model_history = extract_features_alexnet(img_path)
-        model_histories.append(model_history)
-
+# Load model globbally to avoid reloading for each image
+weights = AlexNet_Weights.DEFAULT
+model = alexnet(weights=weights).eval()
+preprocess = weights.transforms()
 layers = [
     "conv2d_1_1",
     "conv2d_2_4",
@@ -104,10 +93,20 @@ layers = [
     "linear_3_22",
 ]
 
+path_images = Path("data") / "stimuli" / "images"
+files_images = list(path_images.glob("*.JPG"))
+model_histories = []
+for file_image in tqdm(files_images, desc="Processing images", leave=True):
+    model_history = extract_features_alexnet(
+        file_image, model, preprocess, layers_to_save=layers
+    )
+    model_histories.append(model_history)
+
+
 similarities = {}
-for layer in tqdm(layers):
+for layer in tqdm(layers, desc="Calculating similarities", leave=True):
     similarity = calc_similarity(model_histories, layer)
-    labels = [f"{i+1}" for i in range(similarity.shape[0])]
+    labels = [f"{i + 1}" for i in range(similarity.shape[0])]
     df_similarity = pd.DataFrame(similarity, index=labels, columns=labels)
     long_df = df_similarity.stack().reset_index()
     long_df.columns = ["image_id1", "image_id2", "similarity"]
@@ -120,5 +119,6 @@ similarities = pd.concat(
 )
 
 # save to a tsv file
-similarities.to_csv(file_sims, sep="\t", index=False)
+path_sims = Path("data") / "stimuli" / "word_shape_sims" / "alexnet.tsv"
+similarities.to_csv(path_sims, sep="\t", index=False)
 ```
