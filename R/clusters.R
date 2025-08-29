@@ -31,7 +31,7 @@ calc_clusters_stats <- function(
   clusters |>
     left_join(
       clusters_permuted |>
-        select(cca_id, cluster_mass_perm = cluster_mass) |>
+        select(all_of(by), cluster_mass_perm = cluster_mass) |>
         chop(cluster_mass_perm),
       by = by
     ) |>
