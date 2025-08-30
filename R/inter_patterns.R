@@ -111,7 +111,22 @@ compare_iss_mem <- function(stats_iss_mem) {
     )
 }
 
-# ISGS ----
+# IWS ----
+# note iws now is calculated on two data frames
+calc_iws <- function(patterns_indiv, patterns_shapes) {
+  patterns_indiv |>
+    cross_join(patterns_shapes) |>
+    mutate(
+      iws = map2_dbl(
+        pattern.x,
+        pattern.y,
+        \(x, y) atanh(cor(x, y, use = "pairwise"))
+      ),
+      .keep = "unused"
+    )
+}
+
+# ISPS ----
 calc_isps <- function(patterns_indiv) {
   patterns_indiv |>
     summarise(

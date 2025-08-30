@@ -20,6 +20,22 @@ calc_mantel_partial <- function(data, ydis, zdis, col_xdis = last_col()) {
     )
 }
 
+calc_mantel2 <- function(
+  data_xdis,
+  data_ydis
+) {
+  data_xdis |>
+    cross_join(data_ydis) |>
+    mutate(
+      mantel = map2(
+        pattern.x,
+        pattern.y,
+        \(xdis, ydis) vegan::mantel(xdis, ydis, permutations = 9999)
+      ),
+      .keep = "unused"
+    )
+}
+
 extract_stats_mantel <- function(data_mantel) {
   data_mantel |>
     mutate(
