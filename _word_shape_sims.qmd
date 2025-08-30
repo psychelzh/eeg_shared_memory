@@ -34,7 +34,7 @@ for i, j in tqdm(pairs, desc="computing similarities", leave=True):
 sim_scores = pd.DataFrame(rows)
 
 path_sims = Path("data") / "stimuli" / "word_shape_sims" / "char_similar.tsv"
-sim_scores.to_csv(file_sims, sep="\t", index=False)
+sim_scores.to_csv(path_sims, sep="\t", index=False)
 ```
 
 ```{python}
