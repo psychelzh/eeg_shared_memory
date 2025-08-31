@@ -20,10 +20,7 @@ calc_mantel_partial <- function(data, ydis, zdis, col_xdis = last_col()) {
     )
 }
 
-calc_mantel2 <- function(
-  data_xdis,
-  data_ydis
-) {
+calc_mantel2 <- function(data_xdis, data_ydis) {
   data_xdis |>
     cross_join(data_ydis) |>
     mutate(
