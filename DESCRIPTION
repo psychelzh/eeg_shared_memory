@@ -28,6 +28,7 @@ Imports:
     proxy,
     psych,
     qs,
+    qs2,
     R.matlab,
     rcompanion,
     seriation,

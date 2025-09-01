@@ -161,6 +161,87 @@ list(
       calc_indiv_pattern()
   ),
 
+  ## individualized patterns (orginal regions) ----
+  tarchetypes::tar_file_read(
+    channel_regions,
+    "config/eeg_channel_labels_64.csv",
+    read = read_csv(!!.x, show_col_types = FALSE)
+  ),
+  tar_target(
+    file_eeg_data,
+    "data-raw/grp_subjs206_nodemean_1000ms.qs2",
+  ),
+  tarchetypes::tar_map(
+    list(region = 1:6),
+    tar_target(
+      patterns_indiv_dynamic_region,
+      read_eeg_region(file_eeg_data, channel_regions, region) |>
+        calc_indiv_pattern_dynamic_region()
+    ),
+    tar_target(
+      patterns_indiv_whole_region,
+      read_eeg_region(file_eeg_data, channel_regions, region) |>
+        calc_indiv_pattern_region()
+    ),
+    tar_cluster_permutation(
+      "iss_dynamic_region",
+      data_expr = calc_iss(patterns_indiv_dynamic_region, pattern_semantics),
+      data_perm_expr = calc_iss(
+        patterns_indiv_dynamic_region,
+        permute_dist(pattern_semantics)
+      ),
+      stats_expr = calc_stats_t(!!.x, iss, .by = time_id),
+      stats_perm_expr = calc_stats_t(
+        !!.x,
+        iss,
+        .by = time_id,
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y,
+        by = NULL
+      )
+    ),
+    tar_target(
+      data_iss_whole_region,
+      calc_iss(patterns_indiv_whole_region, pattern_semantics)
+    ),
+    tar_target(
+      stats_iss_whole_region,
+      calc_stats_t(data_iss_whole_region, iss, .by = NULL)
+    ),
+    tar_cluster_permutation(
+      "iws_dynamic_region",
+      data_expr = calc_iws(patterns_indiv_dynamic_region, patterns_shapes),
+      data_perm_expr = calc_iws(
+        patterns_indiv_dynamic_region,
+        patterns_shapes |>
+          mutate(pattern = map(pattern, permute_dist))
+      ),
+      stats_expr = calc_stats_t(!!.x, iws, .by = c(time_id, model, layer)),
+      stats_perm_expr = calc_stats_t(
+        !!.x,
+        iws,
+        .by = c(time_id, model, layer),
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y,
+        by = c("model", "layer")
+      )
+    ),
+    tar_target(
+      data_iws_whole_region,
+      calc_iws(patterns_indiv_whole_region, patterns_shapes)
+    ),
+    tar_target(
+      stats_iws_whole_region,
+      calc_stats_t(data_iws_whole_region, iws, .by = NULL)
+    )
+  ),
+
   ## group averaged patterns ----
   targets_patterns_group_whole_resampled,
   tarchetypes::tar_combine(

@@ -47,6 +47,16 @@ calc_indiv_pattern <- function(data) {
     )
 }
 
+calc_indiv_pattern_region <- function(data) {
+  sz <- dim(data) # c(channels, time, trials, subjects)
+  array(
+    data,
+    c(sz[1] * sz[2], sz[3], sz[4])
+  ) |>
+    apply(3, calc_pattern, simplify = FALSE) |>
+    enframe(name = "subj_id", value = "pattern")
+}
+
 calc_indiv_pattern_dynamic <- function(data) {
   data |>
     pivot_wider(
@@ -58,6 +68,27 @@ calc_indiv_pattern_dynamic <- function(data) {
       calc_slide_window(pick(!time_id)),
       .by = c(subj_id, cca_id)
     )
+}
+
+calc_indiv_pattern_dynamic_region <- function(data) {
+  sz <- dim(data) # c(channels, time, trials, subjects)
+  slider::slide(
+    seq_len(sz[2]),
+    \(idx) {
+      array(
+        data[, idx, , ],
+        c(sz[1] * length(idx), sz[3], sz[4])
+      ) |>
+        apply(3, calc_pattern, simplify = FALSE) |>
+        enframe(name = "subj_id", value = "pattern")
+    },
+    .before = 25,
+    .after = 25,
+    .step = 5,
+    .complete = TRUE
+  ) |>
+    enframe(name = "time_id", value = "data") |>
+    unnest(data)
 }
 
 regress_patterns <- function(patterns_y, patterns_x, by = NULL) {

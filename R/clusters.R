@@ -27,14 +27,15 @@ calc_clusters_stats <- function(
         keep = "largest"
       ),
       .by = c(all_of(by), {{ col_id_permuted }})
-    )
-  clusters |>
-    left_join(
-      clusters_permuted |>
-        select(all_of(by), cluster_mass_perm = cluster_mass) |>
-        chop(cluster_mass_perm),
-      by = by
     ) |>
+    select(all_of(by), cluster_mass_perm = cluster_mass) |>
+    chop(cluster_mass_perm)
+  clusters_combined <- if (is_empty(by)) {
+    cross_join(clusters, clusters_permuted)
+  } else {
+    inner_join(clusters, clusters_permuted, by = by)
+  }
+  clusters_combined |>
     mutate(
       p_perm = map2_dbl(
         cluster_mass_perm,

@@ -68,3 +68,8 @@ calc_r2_x_y <- function(x, y) {
   y <- y[rows_keep]
   cor(lm.fit(cbind(1, x), y)$fitted.values, y)^2
 }
+
+order_by_trial <- function(pattern, mapping) {
+  order <- with(mapping, word_id[trial_id > 0])
+  as.dist(pattern[order, order])
+}
