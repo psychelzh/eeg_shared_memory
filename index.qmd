@@ -150,7 +150,7 @@ if (!interactive()) {
 
 Here we investigate the stability of group-level representations across participants. We compute the stability of group-level representations by randomly sampling a subset of participants and computing the correlation between the group-level representation computed from this subset and the full group-level representation.
 
-Note this figure should be combined with the CCA results plot, and this figure will be included in the *supplementary materials*.
+See [this quarto document](./_topoplot.qmd) for the topography of CCA components (first 3 only).
 
 ```{r}
 #| label: fig-supp-2-group-averaged-stability
