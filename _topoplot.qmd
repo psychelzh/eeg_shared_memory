@@ -1,0 +1,32 @@
+```{python}
+# | label: fig-supp-2-part-1-topomap
+
+from pathlib import Path
+import mne
+from scipy import io
+import numpy as np
+from matplotlib import pyplot as plt
+
+path_data = Path("data-raw") / "CorCA" / "res_cca_206subjs_A.mat"
+A = io.loadmat(path_data)["A"]
+biosemi_montage = mne.channels.make_standard_montage("biosemi64")
+data_info = mne.create_info(
+    ch_names=biosemi_montage.ch_names, sfreq=250.0, ch_types="eeg"
+)
+data_evoked = mne.EvokedArray(A[:, :3], data_info)
+data_evoked.set_montage(biosemi_montage)
+for comp in range(3):
+    data = data_evoked.data[:, comp]
+    max_value = np.max(data)
+    min_value = np.min(data)
+    vmax = np.max(np.abs([max_value, min_value]))
+    fig, ax = plt.subplots(figsize=(4, 4))
+    mne.viz.plot_topomap(
+        data_evoked.data[:, comp],
+        data_evoked.info,
+        axes=ax,
+        vlim=(-vmax, vmax),
+        show=False,
+    )
+    fig.savefig(Path("figures") / f"topomap_{comp}.png", transparent=True, dpi=600)
+```
