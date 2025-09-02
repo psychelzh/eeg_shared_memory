@@ -238,7 +238,7 @@ list(
     ),
     tar_target(
       stats_iws_whole_region,
-      calc_stats_t(data_iws_whole_region, iws, .by = NULL)
+      calc_stats_t(data_iws_whole_region, iws, .by = c(model, layer))
     )
   ),
 
