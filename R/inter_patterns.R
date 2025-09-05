@@ -1,58 +1,34 @@
-# IGS ----
-calc_igs <- function(patterns_indiv, patterns_group) {
-  by <- setdiff(
-    intersect(names(patterns_indiv), names(patterns_group)),
-    "pattern"
-  )
-  patterns_indiv |>
-    inner_join(patterns_group, by = by) |>
+# single y pattern situation ----
+corr_patterns_1 <- function(patterns_x, pattern_y, name) {
+  patterns_x |>
     mutate(
-      igs = atanh(map2_dbl(pattern.x, pattern.y, cor, use = "pairwise")),
+      "{name}" := map_dbl(
+        pattern,
+        calc_inter_patterns,
+        pattern_y
+      ),
       .keep = "unused"
     )
 }
 
-fit_mem_pred <- function(mem_perf, ...) {
-  data <- lst(...) |> # use `lst()` to keep argument names
-    lapply(\(dat) rename(dat, x = last_col())) |> # data is in the last column
-    bind_rows(.id = "src") |>
-    pivot_wider(
-      names_from = c(src, cca_id),
-      values_from = x
-    ) |>
-    left_join(mem_perf, by = "subj_id") |>
-    select(-subj_id)
-  caret::train(
-    dprime ~ .,
-    data = data,
-    method = "lm",
-    trControl = caret::trainControl(method = "LOOCV")
-  )
-}
-
-# ISS ----
-calc_iss <- function(patterns_indiv, pattern_semantics) {
-  patterns_indiv |>
-    mutate(
-      iss = pattern |>
-        map_dbl(
-          \(x) atanh(cor(x, pattern_semantics, use = "pairwise"))
-        ) |>
-        atanh(),
-      .keep = "unused"
-    )
-}
-
-# two data frames situation
-calc_iss2 <- function(patterns_indiv, patterns_semantics) {
+# two data frames situation ----
+corr_patterns <- function(patterns_x, patterns_y, name) {
   by <- setdiff(
-    intersect(names(patterns_indiv), names(patterns_semantics)),
+    intersect(names(patterns_x), names(patterns_y)),
     "pattern"
   )
-  patterns_indiv |>
-    inner_join(patterns_semantics, by = by) |>
+  if (length(by) == 0) {
+    data <- cross_join(patterns_x, patterns_y)
+  } else {
+    data <- inner_join(patterns_x, patterns_y, by = by)
+  }
+  data |>
     mutate(
-      iss = atanh(map2_dbl(pattern.x, pattern.y, cor, use = "pairwise")),
+      "{name}" := map2_dbl(
+        pattern.x,
+        pattern.y,
+        calc_inter_patterns
+      ),
       .keep = "unused"
     )
 }
@@ -108,21 +84,6 @@ compare_iss_mem <- function(stats_iss_mem) {
         }
       ) |>
         list_rbind()
-    )
-}
-
-# IWS ----
-# note iws now is calculated on two data frames
-calc_iws <- function(patterns_indiv, patterns_shapes) {
-  patterns_indiv |>
-    cross_join(patterns_shapes) |>
-    mutate(
-      iws = map2_dbl(
-        pattern.x,
-        pattern.y,
-        \(x, y) atanh(cor(x, y, use = "pairwise"))
-      ),
-      .keep = "unused"
     )
 }
 
@@ -189,27 +150,4 @@ compare_inter_patterns <- function(data, col = last_col()) {
       names = c("start", "end")
     ) |>
     mutate(across(c("start", "end"), parse_number))
-}
-
-correlate_mem_perf <- function(
-  data,
-  mem_perf,
-  ...,
-  col_pred = last_col(),
-  col_perf = dprime,
-  by = "subj_id" # no need to support complex joins for now
-) {
-  name_pred <- names(select(data, {{ col_pred }}))
-  name_perf <- names(select(mem_perf, {{ col_perf }}))
-  data |>
-    left_join(mem_perf, by = by) |>
-    summarise(
-      broom::tidy(cor.test(
-        .data[[name_pred]],
-        .data[[name_perf]],
-        use = "pairwise",
-        ...
-      )),
-      .by = !all_of(c(by, name_pred, name_perf))
-    )
 }

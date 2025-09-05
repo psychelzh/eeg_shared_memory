@@ -2,6 +2,7 @@ library(targets)
 
 tar_option_set(
   packages = c("tidyverse"),
+  format = "qs",
   controller = if (Sys.info()["nodename"] %in% c("shadow", "hippocampus")) {
     crew.cluster::crew_controller_sge(
       name = "sge",
@@ -13,12 +14,9 @@ tar_option_set(
       name = "local",
       workers = 12
     )
-  },
-  garbage_collection = TRUE
+  }
 )
-
 future::plan(future.callr::callr)
-
 tar_source()
 
 targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
@@ -135,13 +133,16 @@ list(
     format = "file"
   ),
   tar_target(
-    patterns_shapes,
-    read_alexnet(file_alexnet, mapping_word_trial) |>
-      add_row(
-        model = "char_similar",
-        layer = NA_character_,
-        pattern = list(read_charsim(file_charsim, mapping_word_trial))
-      )
+    file_rawgray,
+    "data/stimuli/word_shape_sims/raw_gray.qs2",
+    format = "file"
+  ),
+  tarchetypes::tar_eval(
+    tar_target(
+      name_pattern,
+      read(file, mapping_word_trial, layer.out = layer)
+    ),
+    word_shape_methods
   ),
 
   ## individualized patterns ----
@@ -159,87 +160,6 @@ list(
       filter(time_id >= index_onset) |>
       collect() |>
       calc_indiv_pattern()
-  ),
-
-  ## individualized patterns (orginal regions) ----
-  tarchetypes::tar_file_read(
-    channel_regions,
-    "config/eeg_channel_labels_64.csv",
-    read = read_csv(!!.x, show_col_types = FALSE)
-  ),
-  tar_target(
-    file_eeg_data,
-    "data-raw/grp_subjs206_nodemean_1000ms.qs2",
-  ),
-  tarchetypes::tar_map(
-    list(region = 1:6),
-    tar_target(
-      patterns_indiv_dynamic_region,
-      read_eeg_region(file_eeg_data, channel_regions, region) |>
-        calc_indiv_pattern_dynamic_region()
-    ),
-    tar_target(
-      patterns_indiv_whole_region,
-      read_eeg_region(file_eeg_data, channel_regions, region) |>
-        calc_indiv_pattern_region()
-    ),
-    tar_cluster_permutation(
-      "iss_dynamic_region",
-      data_expr = calc_iss(patterns_indiv_dynamic_region, pattern_semantics),
-      data_perm_expr = calc_iss(
-        patterns_indiv_dynamic_region,
-        permute_dist(pattern_semantics)
-      ),
-      stats_expr = calc_stats_t(!!.x, iss, .by = time_id),
-      stats_perm_expr = calc_stats_t(
-        !!.x,
-        iss,
-        .by = time_id,
-        alternative = "greater"
-      ),
-      clusters_stats_expr = calc_clusters_stats(
-        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
-        !!.y,
-        by = NULL
-      )
-    ),
-    tar_target(
-      data_iss_whole_region,
-      calc_iss(patterns_indiv_whole_region, pattern_semantics)
-    ),
-    tar_target(
-      stats_iss_whole_region,
-      calc_stats_t(data_iss_whole_region, iss, .by = NULL)
-    ),
-    tar_cluster_permutation(
-      "iws_dynamic_region",
-      data_expr = calc_iws(patterns_indiv_dynamic_region, patterns_shapes),
-      data_perm_expr = calc_iws(
-        patterns_indiv_dynamic_region,
-        patterns_shapes |>
-          mutate(pattern = map(pattern, permute_dist))
-      ),
-      stats_expr = calc_stats_t(!!.x, iws, .by = c(time_id, model, layer)),
-      stats_perm_expr = calc_stats_t(
-        !!.x,
-        iws,
-        .by = c(time_id, model, layer),
-        alternative = "greater"
-      ),
-      clusters_stats_expr = calc_clusters_stats(
-        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
-        !!.y,
-        by = c("model", "layer")
-      )
-    ),
-    tar_target(
-      data_iws_whole_region,
-      calc_iws(patterns_indiv_whole_region, patterns_shapes)
-    ),
-    tar_target(
-      stats_iws_whole_region,
-      calc_stats_t(data_iws_whole_region, iws, .by = c(model, layer))
-    )
   ),
 
   ## group averaged patterns ----
@@ -291,7 +211,7 @@ list(
   ),
   tar_target(
     data_igs_whole,
-    calc_igs(patterns_indiv_whole, patterns_group_whole_loo)
+    corr_patterns(patterns_indiv_whole, patterns_group_whole_loo, name = "igs")
   ),
   tar_target(stats_igs_whole, calc_stats_t(data_igs_whole, igs, .by = cca_id)),
   tar_target(
@@ -306,11 +226,16 @@ list(
   ),
   tar_cluster_permutation(
     "igs_dynamic",
-    data_expr = calc_igs(patterns_indiv_dynamic, patterns_group_dynamic_loo),
-    data_perm_expr = calc_igs(
+    data_expr = corr_patterns(
+      patterns_indiv_dynamic,
+      patterns_group_dynamic_loo,
+      name = "igs"
+    ),
+    data_perm_expr = corr_patterns(
       patterns_indiv_dynamic,
       patterns_group_dynamic_loo |>
-        mutate(pattern = map(pattern, permute_dist))
+        mutate(pattern = map(pattern, permute_dist)),
+      name = "igs"
     ),
     stats_expr = calc_stats_t(!!.x, igs),
     stats_perm_expr = calc_stats_t(!!.x, igs, alternative = "greater"),
@@ -322,11 +247,11 @@ list(
   tar_target(igs_comparison, compare_inter_patterns(data_igs_whole)),
 
   ## IGS predicts memory ----
-  tar_target(stats_igs_mem_whole, correlate_mem_perf(data_igs_whole, mem_perf)),
+  tar_target(stats_igs_mem_whole, corr_mem(data_igs_whole, mem_perf)),
   tar_cluster_permutation(
     "igs_mem_dynamic",
-    correlate_mem_perf(data_igs_dynamic, mem_perf),
-    correlate_mem_perf(
+    corr_mem(data_igs_dynamic, mem_perf),
+    corr_mem(
       data_igs_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -341,18 +266,18 @@ list(
     config_mem_precise,
     tar_target(
       stats_igs_mem_whole,
-      correlate_mem_perf(
+      corr_mem(
         data_igs_whole,
         select(mem_perf_precise, subj_id, dprime = index_name)
       )
     ),
     tar_cluster_permutation(
       "igs_mem_dynamic",
-      correlate_mem_perf(
+      corr_mem(
         data_igs_dynamic,
         select(mem_perf_precise, subj_id, dprime = index_name)
       ),
-      correlate_mem_perf(
+      corr_mem(
         data_igs_dynamic,
         mem_perf_precise |>
           mutate(subj_id = sample(subj_id)) |>
@@ -384,57 +309,67 @@ list(
   ),
 
   # GWS: group averaged and word shape ----
-  tar_target(
-    data_gws_whole,
-    calc_mantel2(patterns_group_whole, patterns_shapes)
-  ),
-  tar_target(stats_gws_whole, extract_stats_mantel(data_gws_whole)),
-  tar_cluster_permutation(
-    "gws_dynamic",
-    data_expr = calc_mantel2(patterns_group_dynamic, patterns_shapes),
-    data_perm_expr = calc_mantel2(
-      patterns_group_dynamic,
-      patterns_shapes |>
-        mutate(pattern = map(pattern, permute_dist))
-    ),
-    stats_expr = extract_stats_mantel(!!.x),
-    stats_perm_expr = extract_stats_mantel(!!.x),
-    clusters_stats_expr = calc_clusters_stats(
-      !!.x,
-      !!.y,
-      by = c("cca_id", "model", "layer")
-    ),
-    reps = 10, # to save memory
-    batches = 100
-  ),
+  # tarchetypes::tar_map(
+  #   word_shape_methods,
+  #   names = c(model, layer),
+  #   tar_target(
+  #     data_gws_whole,
+  #     calc_mantel(patterns_group_whole, name_pattern)
+  #   ),
+  #   tar_target(stats_gws_whole, extract_stats_mantel(data_gws_whole)),
+  #   tar_cluster_permutation(
+  #     "gws_dynamic",
+  #     data_expr = calc_mantel(patterns_group_dynamic, name_pattern),
+  #     data_perm_expr = calc_mantel(
+  #       patterns_group_dynamic,
+  #       permute_dist(name_pattern)
+  #     ),
+  #     stats_expr = extract_stats_mantel(!!.x),
+  #     stats_perm_expr = extract_stats_mantel(!!.x)
+  #   )
+  # ),
 
   # ISS: individual to semantic patterns ----
   ## ISS calculation ----
   tar_cluster_permutation(
     "iss_dynamic",
-    data_expr = calc_iss(patterns_indiv_dynamic, pattern_semantics),
-    data_perm_expr = calc_iss(
+    data_expr = corr_patterns_1(
       patterns_indiv_dynamic,
-      permute_dist(pattern_semantics)
+      pattern_semantics,
+      name = "iss"
+    ),
+    data_perm_expr = corr_patterns_1(
+      patterns_indiv_dynamic,
+      permute_dist(pattern_semantics),
+      name = "iss"
     ),
     stats_expr = calc_stats_t(!!.x, iss),
     stats_perm_expr = calc_stats_t(!!.x, iss, alternative = "greater"),
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
+    ),
+    reps = 100,
+    batches = 10
+  ),
+  tar_target(
+    data_iss_whole,
+    corr_patterns_1(
+      patterns_indiv_whole,
+      pattern_semantics,
+      name = "iss"
     )
   ),
-  tar_target(data_iss_whole, calc_iss(patterns_indiv_whole, pattern_semantics)),
   tar_target(stats_iss_whole, calc_stats_t(data_iss_whole, iss, .by = cca_id)),
   tar_target(iss_comparison, compare_inter_patterns(data_iss_whole)),
 
   ## ISS predicts memory ----
-  tar_target(stats_iss_mem_whole, correlate_mem_perf(data_iss_whole, mem_perf)),
+  tar_target(stats_iss_mem_whole, corr_mem(data_iss_whole, mem_perf)),
   tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
   tar_cluster_permutation(
     "iss_mem_dynamic",
-    correlate_mem_perf(data_iss_dynamic, mem_perf),
-    correlate_mem_perf(
+    corr_mem(data_iss_dynamic, mem_perf),
+    corr_mem(
       data_iss_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -463,18 +398,18 @@ list(
     config_mem_precise,
     tar_target(
       stats_iss_mem_whole,
-      correlate_mem_perf(
+      corr_mem(
         data_iss_whole,
         select(mem_perf_precise, subj_id, dprime = index_name)
       )
     ),
     tar_cluster_permutation(
       "iss_mem_dynamic",
-      correlate_mem_perf(
+      corr_mem(
         data_iss_dynamic,
         select(mem_perf_precise, subj_id, dprime = index_name)
       ),
-      correlate_mem_perf(
+      corr_mem(
         data_iss_dynamic,
         mem_perf_precise |>
           mutate(subj_id = sample(subj_id)) |>
@@ -517,98 +452,111 @@ list(
 
   # control analyses ----
   ## IWS: individual patterns and word shape pattern ----
-  ### IWS calculation ----
-  tar_cluster_permutation(
-    "iws_dynamic",
-    data_expr = calc_iws(patterns_indiv_dynamic, patterns_shapes),
-    data_perm_expr = calc_iws(
-      patterns_indiv_dynamic,
-      patterns_shapes |>
-        mutate(pattern = map(pattern, permute_dist))
+  tarchetypes::tar_map(
+    word_shape_methods,
+    names = c(model, layer),
+    ### IWS calculation ----
+    tar_cluster_permutation(
+      "iws_dynamic",
+      data_expr = corr_patterns_1(
+        patterns_indiv_dynamic,
+        name_pattern,
+        name = "iws"
+      ),
+      data_perm_expr = corr_patterns_1(
+        patterns_indiv_dynamic,
+        permute_dist(name_pattern),
+        name = "iws"
+      ),
+      stats_expr = calc_stats_t(
+        !!.x,
+        iws
+      ),
+      stats_perm_expr = calc_stats_t(
+        !!.x,
+        iws,
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y
+      ),
+      reps = 100,
+      batches = 10
     ),
-    stats_expr = calc_stats_t(
-      !!.x,
-      iws,
-      .by = c(cca_id, time_id, model, layer)
+    tar_target(
+      data_iws_whole,
+      corr_patterns_1(
+        patterns_indiv_whole,
+        name_pattern,
+        name = "iws"
+      )
     ),
-    stats_perm_expr = calc_stats_t(
-      !!.x,
-      iws,
-      .by = c(cca_id, time_id, model, layer),
-      alternative = "greater"
+    tar_target(
+      stats_iws_whole,
+      calc_stats_t(data_iws_whole, iws, .by = c(cca_id, model, layer))
     ),
-    clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
-      !!.y,
-      by = c("cca_id", "model", "layer")
-    ),
-    reps = 100, # to save memory
-    batches = 10
-  ),
-  tar_target(data_iws_whole, calc_iws(patterns_indiv_whole, patterns_shapes)),
-  tar_target(
-    stats_iws_whole,
-    calc_stats_t(data_iws_whole, iws, .by = c(cca_id, model, layer))
-  ),
-  tar_target(
-    iws_comparison,
-    data_iws_whole |>
-      nest(.by = c(model, layer)) |>
-      mutate(
-        comparison = map(data, compare_inter_patterns),
-        .keep = "unused"
-      ) |>
-      unnest(comparison)
-  ),
-
-  ### IWS predicts memory ----
-  tar_target(stats_iws_mem_whole, correlate_mem_perf(data_iws_whole, mem_perf)),
-  tar_target(comparison_iws_mem, compare_iss_mem(stats_iws_mem_whole)),
-  tar_cluster_permutation(
-    "iws_mem_dynamic",
-    correlate_mem_perf(data_iws_dynamic, mem_perf),
-    correlate_mem_perf(
-      data_iws_dynamic,
-      mutate(mem_perf, subj_id = sample(subj_id))
-    ),
-    clusters_stats_expr = calc_clusters_stats(
-      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
-      mutate(!!.y, p.value = convert_p2_p1(p.value, statistic)),
-      by = c("cca_id", "model", "layer")
-    )
-  ),
-  tar_target(
-    clusters_stats_less_iws_mem_dynamic,
-    calc_clusters_stats(
-      stats_iws_mem_dynamic |>
+    tar_target(
+      iws_comparison,
+      data_iws_whole |>
+        nest(.by = c(model, layer)) |>
         mutate(
-          p.value = convert_p2_p1(
-            p.value,
-            statistic,
-            alternative = "less"
-          )
-        ),
-      stats_iws_mem_dynamic_permuted |>
-        mutate(
-          p.value = convert_p2_p1(
-            p.value,
-            statistic,
-            alternative = "less"
-          )
-        ),
-      alternative = "less",
-      by = c("cca_id", "model", "layer")
+          comparison = map(data, compare_inter_patterns),
+          .keep = "unused"
+        ) |>
+        unnest(comparison)
+    ),
+    ### IWS predicts memory ----
+    tar_target(
+      stats_iws_mem_whole,
+      corr_mem(data_iws_whole, mem_perf)
+    ),
+    tar_target(comparison_iws_mem, compare_iss_mem(stats_iws_mem_whole)),
+    tar_cluster_permutation(
+      "iws_mem_dynamic",
+      corr_mem(data_iws_dynamic, mem_perf),
+      corr_mem(
+        data_iws_dynamic,
+        mutate(mem_perf, subj_id = sample(subj_id))
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        mutate(!!.y, p.value = convert_p2_p1(p.value, statistic))
+      )
+    ),
+    tar_target(
+      clusters_stats_less_iws_mem_dynamic,
+      calc_clusters_stats(
+        stats_iws_mem_dynamic |>
+          mutate(
+            p.value = convert_p2_p1(
+              p.value,
+              statistic,
+              alternative = "less"
+            )
+          ),
+        stats_iws_mem_dynamic_permuted |>
+          mutate(
+            p.value = convert_p2_p1(
+              p.value,
+              statistic,
+              alternative = "less"
+            )
+          ),
+        alternative = "less"
+      )
     )
   ),
 
   ## regress semantic from group averaged ----
   tar_target(
     data_igs_partial_whole,
-    calc_igs(
+    corr_patterns(
       patterns_indiv_whole |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics)),
       patterns_group_whole_loo |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics))
+        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      name = "igs"
     )
   ),
   tar_target(
@@ -625,17 +573,18 @@ list(
   ),
   tar_target(
     data_igs_partial_dynamic,
-    calc_igs(
+    corr_patterns(
       patterns_indiv_dynamic |>
         mutate(pattern = map(pattern, get_resid, pattern_semantics)),
       patterns_group_dynamic_loo |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics))
+        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      name = "igs"
     )
   ),
   tar_cluster_permutation(
     "igs_partial_mem_dynamic",
-    correlate_mem_perf(data_igs_partial_dynamic, mem_perf),
-    correlate_mem_perf(
+    corr_mem(data_igs_partial_dynamic, mem_perf),
+    corr_mem(
       data_igs_partial_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -649,7 +598,7 @@ list(
   ## regress group averaged from semantic patterns ----
   tar_target(
     data_iss_partial_whole,
-    calc_iss2(
+    corr_patterns(
       patterns_indiv_whole |>
         inner_join(
           patterns_group_whole_loo,
@@ -661,7 +610,8 @@ list(
           .keep = "unused"
         ),
       patterns_group_whole_loo |>
-        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x)))
+        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x))),
+      name = "iss"
     )
   ),
   tar_target(
@@ -678,7 +628,7 @@ list(
   ),
   tar_target(
     data_iss_partial_dynamic,
-    calc_iss2(
+    corr_patterns(
       patterns_indiv_dynamic |>
         inner_join(
           patterns_group_dynamic_loo,
@@ -690,13 +640,14 @@ list(
           .keep = "unused"
         ),
       patterns_group_dynamic_loo |>
-        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x)))
+        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x))),
+      name = "iss"
     )
   ),
   tar_cluster_permutation(
     "iss_partial_mem_dynamic",
-    correlate_mem_perf(data_iss_partial_dynamic, mem_perf),
-    correlate_mem_perf(
+    corr_mem(data_iss_partial_dynamic, mem_perf),
+    corr_mem(
       data_iss_partial_dynamic,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
@@ -704,6 +655,107 @@ list(
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
+    )
+  ),
+
+  ## replicate through orginal regions ----
+  tarchetypes::tar_file_read(
+    channel_regions,
+    "config/eeg_channel_labels_64.csv",
+    read = read_csv(!!.x, show_col_types = FALSE)
+  ),
+  tar_target(
+    file_eeg_data,
+    "data-raw/grp_subjs206_nodemean_1000ms.qs2",
+  ),
+  tar_target(
+    patterns_indiv_dynamic_regions,
+    read_eeg_regions(file_eeg_data, channel_regions) |>
+      mutate(data = map(data, calc_indiv_pattern_dynamic_region)) |>
+      unnest(data)
+  ),
+  tar_target(
+    patterns_indiv_whole_regions,
+    read_eeg_regions(file_eeg_data, channel_regions) |>
+      mutate(data = map(data, calc_indiv_pattern_region)) |>
+      unnest(data)
+  ),
+  tar_cluster_permutation(
+    "iss_dynamic_regions",
+    data_expr = corr_patterns_1(
+      patterns_indiv_dynamic_regions,
+      pattern_semantics,
+      name = "iss"
+    ),
+    data_perm_expr = corr_patterns_1(
+      patterns_indiv_dynamic_regions,
+      permute_dist(pattern_semantics),
+      name = "iss"
+    ),
+    stats_expr = calc_stats_t(!!.x, iss, .by = c(region_id, time_id)),
+    stats_perm_expr = calc_stats_t(
+      !!.x,
+      iss,
+      .by = c(region_id, time_id),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y,
+      by = "region_id"
+    )
+  ),
+  tar_target(
+    data_iss_whole_regions,
+    corr_patterns_1(
+      patterns_indiv_whole_regions,
+      pattern_semantics,
+      name = "iss"
+    )
+  ),
+  tar_target(
+    stats_iss_whole_regions,
+    calc_stats_t(data_iss_whole_regions, iss, .by = region_id)
+  ),
+  tarchetypes::tar_map(
+    word_shape_methods,
+    names = c(model, layer),
+    tar_cluster_permutation(
+      "iws_dynamic_region",
+      data_expr = corr_patterns_1(
+        patterns_indiv_dynamic_regions,
+        name_pattern,
+        name = "iws"
+      ),
+      data_perm_expr = corr_patterns_1(
+        patterns_indiv_dynamic_regions,
+        permute_dist(name_pattern),
+        name = "iws"
+      ),
+      stats_expr = calc_stats_t(!!.x, iws, .by = c(region_id, time_id)),
+      stats_perm_expr = calc_stats_t(
+        !!.x,
+        iws,
+        .by = c(region_id, time_id),
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y,
+        by = "region_id"
+      )
+    ),
+    tar_target(
+      data_iws_whole_region,
+      corr_patterns_1(
+        patterns_indiv_whole_region,
+        name_pattern,
+        name = "iws"
+      )
+    ),
+    tar_target(
+      stats_iws_whole_region,
+      calc_stats_t(data_iws_whole_region, iws, .by = region_id)
     )
   ),
 

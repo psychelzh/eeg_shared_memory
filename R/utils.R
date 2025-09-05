@@ -33,6 +33,10 @@ calc_pattern <- function(x) {
   atanh(as.dist(cor(x, use = "pairwise")))
 }
 
+calc_inter_patterns <- function(pattern_x, pattern_y) {
+  atanh(cor(pattern_x, pattern_y, use = "pairwise"))
+}
+
 permute_dist <- function(dist) {
   seriation::permute(dist, sample.int(attr(dist, "Size")))
 }
