@@ -1,4 +1,4 @@
-path_src = fullfile("data", "SM_RSA_rawEEG_preprocessed");
+path_src = fullfile("data-raw", "SM_RSA_rawEEG_preprocessed");
 files_src = ls(fullfile(path_src, "*.mat"));
 eeg = cell(1, size(files_src, 1));
 subjs = strings(1, size(files_src, 1));

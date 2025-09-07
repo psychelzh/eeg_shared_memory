@@ -37,6 +37,19 @@ calc_inter_patterns <- function(pattern_x, pattern_y) {
   atanh(cor(pattern_x, pattern_y, use = "pairwise"))
 }
 
+regress_patterns <- function(patterns_y, patterns_x, by = NULL) {
+  if (is.null(by)) {
+    by <- intersect(names(patterns_y), names(patterns_x)) |>
+      setdiff("pattern")
+  }
+  patterns_x |>
+    left_join(patterns_y, by = by) |>
+    mutate(
+      pattern = map2(pattern.y, pattern.x, regress_pattern),
+      .keep = "unused"
+    )
+}
+
 permute_dist <- function(dist) {
   seriation::permute(dist, sample.int(attr(dist, "Size")))
 }

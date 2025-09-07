@@ -759,7 +759,8 @@ list(
     )
   ),
 
-  # intersubject pattern similarity (ISPS) ----
+  # ISPS: intersubject pattern similarity ----
+  ## ISPS calculation ----
   tar_target(data_isps_whole, calc_isps(patterns_indiv_whole)),
   tarchetypes::tar_rep(
     data_isps_whole_permuted,
@@ -820,7 +821,7 @@ list(
     )
   ),
 
-  # ISPS and shared memory content (SMC) ----
+  ## ISPS and shared memory content (SMC) ----
   tar_target(data_isps_smc_whole, calc_mantel(data_isps_whole, smc)),
   tar_target(stats_isps_smc_whole, extract_stats_mantel(data_isps_smc_whole)),
   tar_cluster_permutation(
@@ -887,109 +888,5 @@ list(
     data_isps_partial_semantic_dynamic,
     smc,
     simil_mem
-  ),
-
-  # shared and individualized patterns ----
-  tar_target(
-    cca_y_halves_trials,
-    arrow::open_dataset(file_cca_y) |>
-      mutate(half = if_else(trial_id <= 75, "first", "second")) |>
-      filter(!is.nan(y)) |>
-      count(subj_id, cca_id, time_id, half) |>
-      distinct(subj_id, cca_id, half, n) |>
-      collect()
-  ),
-  tar_target(
-    cca_y_halves,
-    arrow::read_parquet(file_cca_y) |>
-      mutate(half = if_else(trial_id <= 75, "first", "second")) |>
-      summarise(
-        y_avg = mean(y, na.rm = TRUE),
-        .by = c(subj_id, cca_id, time_id, half)
-      )
-  ),
-  tar_target(
-    sync_within_halves,
-    cca_y_halves |>
-      filter(time_id >= index_onset) |>
-      calc_sync_within_halves()
-  ),
-  tar_target(
-    sync_between_halves,
-    cca_y_halves |>
-      filter(time_id >= index_onset) |>
-      calc_sync_between_halves()
-  ),
-  tar_target(sync_inter_intra, prepare_sync_inter_intra(sync_between_halves)),
-
-  # inter-subject synchronization predicts memory ----
-  tar_target(
-    whole_erps,
-    # `na.rm` not supported in `open_dataset()`
-    # https://github.com/apache/arrow/issues/44089
-    arrow::read_parquet(file_cca_y) |>
-      summarise(
-        y_avg = mean(y, na.rm = TRUE),
-        .by = c(subj_id, cca_id, time_id)
-      )
-  ),
-  tar_target(
-    sync_whole,
-    whole_erps |>
-      filter(time_id >= index_onset) |>
-      calc_sync_whole()
-  ),
-  tar_target(sync_smc_whole, calc_mantel(sync_whole, smc)),
-  tar_target(
-    stats_sync_smc_whole,
-    extract_stats_mantel(sync_smc_whole)
-  ),
-  tar_target(sync_dynamic, calc_sync_dynamic(whole_erps)),
-  # the verbose names are for the compatibility with history relics
-  tar_cluster_permutation(
-    "sync_smc_dynamic",
-    data_expr = calc_mantel(sync_dynamic, smc),
-    data_perm_expr = calc_mantel(sync_dynamic, permute_dist(smc)),
-    stats_expr = extract_stats_mantel(!!.x),
-    stats_perm_expr = extract_stats_mantel(!!.x)
-  ),
-
-  # WIP: compare ISPS and synchronization in predicting SMC ----
-  tar_target(
-    mantel_isps_sync,
-    data_isps_whole |>
-      inner_join(sync_whole, by = "cca_id") |>
-      mutate(
-        mantel = map2(
-          isps,
-          pattern,
-          vegan::mantel,
-          permutations = 9999
-        ),
-        .keep = "unused"
-      )
-  ),
-  tar_target(stats_mantel_isps_sync, extract_stats_mantel(mantel_isps_sync)),
-  tar_target(
-    fit_smc_isps_sync,
-    data_isps_whole |>
-      inner_join(sync_whole, by = "cca_id") |>
-      mutate(
-        fit = map2(
-          isps,
-          pattern,
-          \(isps, sync) lm(smc ~ isps + sync)
-        ),
-        .keep = "unused"
-      )
-  ),
-  tar_target(
-    stats_smc_isps_sync,
-    fit_smc_isps_sync |>
-      reframe(
-        map(fit, broom::tidy) |>
-          list_rbind(),
-        .by = cca_id
-      )
   )
 )

@@ -33,6 +33,7 @@ corr_patterns <- function(patterns_x, patterns_y, name) {
     )
 }
 
+# special ISS calculation ----
 calc_iss_ind_r2 <- function(patterns_indiv, pattern_semantics) {
   patterns_indiv |>
     summarise(
@@ -87,7 +88,7 @@ compare_iss_mem <- function(stats_iss_mem) {
     )
 }
 
-# ISPS ----
+# inter-subject pattern similarity ----
 calc_isps <- function(patterns_indiv) {
   patterns_indiv |>
     summarise(
