@@ -664,10 +664,7 @@ list(
     "config/eeg_channel_labels_64.csv",
     read = read_csv(!!.x, show_col_types = FALSE)
   ),
-  tar_target(
-    file_eeg_data,
-    "data-raw/grp_subjs206_nodemean_1000ms.qs2",
-  ),
+  tar_target(file_eeg_data, "data-raw/EEG/eeg_206.qs2", format = "file"),
   tar_target(
     patterns_indiv_dynamic_regions,
     read_eeg_regions(file_eeg_data, channel_regions) |>
