@@ -309,25 +309,25 @@ list(
   ),
 
   # GWS: group averaged and word shape ----
-  # tarchetypes::tar_map(
-  #   word_shape_methods,
-  #   names = c(model, layer),
-  #   tar_target(
-  #     data_gws_whole,
-  #     calc_mantel(patterns_group_whole, name_pattern)
-  #   ),
-  #   tar_target(stats_gws_whole, extract_stats_mantel(data_gws_whole)),
-  #   tar_cluster_permutation(
-  #     "gws_dynamic",
-  #     data_expr = calc_mantel(patterns_group_dynamic, name_pattern),
-  #     data_perm_expr = calc_mantel(
-  #       patterns_group_dynamic,
-  #       permute_dist(name_pattern)
-  #     ),
-  #     stats_expr = extract_stats_mantel(!!.x),
-  #     stats_perm_expr = extract_stats_mantel(!!.x)
-  #   )
-  # ),
+  tarchetypes::tar_map(
+    word_shape_methods,
+    names = c(model, layer),
+    tar_target(
+      data_gws_whole,
+      calc_mantel(patterns_group_whole, name_pattern)
+    ),
+    tar_target(stats_gws_whole, extract_stats_mantel(data_gws_whole)),
+    tar_cluster_permutation(
+      "gws_dynamic",
+      data_expr = calc_mantel(patterns_group_dynamic, name_pattern),
+      data_perm_expr = calc_mantel(
+        patterns_group_dynamic,
+        permute_dist(name_pattern)
+      ),
+      stats_expr = extract_stats_mantel(!!.x),
+      stats_perm_expr = extract_stats_mantel(!!.x)
+    )
+  ),
 
   # ISS: individual to semantic patterns ----
   ## ISS calculation ----
