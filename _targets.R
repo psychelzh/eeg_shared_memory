@@ -745,7 +745,7 @@ list(
     tar_target(
       data_iws_whole_region,
       corr_patterns_1(
-        patterns_indiv_whole_region,
+        patterns_indiv_whole_regions,
         name_pattern,
         name = "iws"
       )
