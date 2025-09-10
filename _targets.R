@@ -244,7 +244,7 @@ list(
       !!.y
     )
   ),
-  tar_target(igs_comparison, compare_inter_patterns(data_igs_whole)),
+  tar_target(igs_comparison, compare_corr_patterns(data_igs_whole)),
 
   ## IGS predicts memory ----
   tar_target(stats_igs_mem_whole, corr_mem(data_igs_whole, mem_perf)),
@@ -266,22 +266,15 @@ list(
     config_mem_precise,
     tar_target(
       stats_igs_mem_whole,
-      corr_mem(
-        data_igs_whole,
-        select(mem_perf_precise, subj_id, dprime = index_name)
-      )
+      corr_mem(data_igs_whole, mem_perf_precise, name_perf = index_name)
     ),
     tar_cluster_permutation(
       "igs_mem_dynamic",
+      corr_mem(data_igs_dynamic, mem_perf_precise, name_perf = index_name),
       corr_mem(
         data_igs_dynamic,
-        select(mem_perf_precise, subj_id, dprime = index_name)
-      ),
-      corr_mem(
-        data_igs_dynamic,
-        mem_perf_precise |>
-          mutate(subj_id = sample(subj_id)) |>
-          select(subj_id, dprime = index_name),
+        mutate(mem_perf_precise, subj_id = sample(subj_id)),
+        name_perf = index_name,
         alternative = "greater"
       ),
       clusters_stats_expr = calc_clusters_stats(
@@ -361,11 +354,11 @@ list(
     )
   ),
   tar_target(stats_iss_whole, calc_stats_t(data_iss_whole, iss, .by = cca_id)),
-  tar_target(iss_comparison, compare_inter_patterns(data_iss_whole)),
+  tar_target(iss_comparison, compare_corr_patterns(data_iss_whole)),
 
   ## ISS predicts memory ----
   tar_target(stats_iss_mem_whole, corr_mem(data_iss_whole, mem_perf)),
-  tar_target(comparison_iss_mem, compare_iss_mem(stats_iss_mem_whole)),
+  tar_target(comparison_iss_mem, compare_corr_mem(stats_iss_mem_whole)),
   tar_cluster_permutation(
     "iss_mem_dynamic",
     corr_mem(data_iss_dynamic, mem_perf),
@@ -382,7 +375,7 @@ list(
   tar_target(iss_mem_combine, fit_mem_pred(mem_perf, data_iss_whole)),
   tar_target(
     iss_r2_combine,
-    calc_iss_ind_r2(patterns_indiv_whole, pattern_semantics)
+    corr_patterns_r2(patterns_indiv_whole, pattern_semantics)
   ),
   tar_target(
     iss_r2_mem_combine,
@@ -398,22 +391,15 @@ list(
     config_mem_precise,
     tar_target(
       stats_iss_mem_whole,
-      corr_mem(
-        data_iss_whole,
-        select(mem_perf_precise, subj_id, dprime = index_name)
-      )
+      corr_mem(data_iss_whole, mem_perf_precise, name_perf = index_name)
     ),
     tar_cluster_permutation(
       "iss_mem_dynamic",
+      corr_mem(data_iss_dynamic, mem_perf_precise, name_perf = index_name),
       corr_mem(
         data_iss_dynamic,
-        select(mem_perf_precise, subj_id, dprime = index_name)
-      ),
-      corr_mem(
-        data_iss_dynamic,
-        mem_perf_precise |>
-          mutate(subj_id = sample(subj_id)) |>
-          select(subj_id, dprime = index_name),
+        mutate(mem_perf_precise, subj_id = sample(subj_id)),
+        name_perf = index_name,
         alternative = "greater"
       ),
       clusters_stats_expr = calc_clusters_stats(
@@ -496,22 +482,10 @@ list(
       stats_iws_whole,
       calc_stats_t(data_iws_whole, iws, .by = c(cca_id, model, layer))
     ),
-    tar_target(
-      iws_comparison,
-      data_iws_whole |>
-        nest(.by = c(model, layer)) |>
-        mutate(
-          comparison = map(data, compare_inter_patterns),
-          .keep = "unused"
-        ) |>
-        unnest(comparison)
-    ),
+    tar_target(iws_comparison, compare_corr_patterns(data_iws_whole)),
     ### IWS predicts memory ----
-    tar_target(
-      stats_iws_mem_whole,
-      corr_mem(data_iws_whole, mem_perf)
-    ),
-    tar_target(comparison_iws_mem, compare_iss_mem(stats_iws_mem_whole)),
+    tar_target(stats_iws_mem_whole, corr_mem(data_iws_whole, mem_perf)),
+    tar_target(comparison_iws_mem, compare_corr_mem(stats_iws_mem_whole)),
     tar_cluster_permutation(
       "iws_mem_dynamic",
       corr_mem(data_iws_dynamic, mem_perf),
@@ -552,10 +526,8 @@ list(
   tar_target(
     data_igs_partial_whole,
     corr_patterns(
-      patterns_indiv_whole |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
-      patterns_group_whole_loo |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      regress_patterns_1(patterns_indiv_whole, pattern_semantics),
+      regress_patterns_1(patterns_group_whole_loo, pattern_semantics),
       name = "igs"
     )
   ),
@@ -574,10 +546,8 @@ list(
   tar_target(
     data_igs_partial_dynamic,
     corr_patterns(
-      patterns_indiv_dynamic |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
-      patterns_group_dynamic_loo |>
-        mutate(pattern = map(pattern, get_resid, pattern_semantics)),
+      regress_patterns_1(patterns_indiv_dynamic, pattern_semantics),
+      regress_patterns_1(patterns_group_dynamic_loo, pattern_semantics),
       name = "igs"
     )
   ),
@@ -599,18 +569,8 @@ list(
   tar_target(
     data_iss_partial_whole,
     corr_patterns(
-      patterns_indiv_whole |>
-        inner_join(
-          patterns_group_whole_loo,
-          by = c("subj_id", "cca_id"),
-          suffix = c("_indiv", "_group")
-        ) |>
-        mutate(
-          pattern = map2(pattern_indiv, pattern_group, get_resid),
-          .keep = "unused"
-        ),
-      patterns_group_whole_loo |>
-        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x))),
+      regress_patterns(patterns_indiv_whole, patterns_group_whole_loo),
+      regress_patterns_1r(pattern_semantics, patterns_group_whole_loo),
       name = "iss"
     )
   ),
@@ -629,18 +589,8 @@ list(
   tar_target(
     data_iss_partial_dynamic,
     corr_patterns(
-      patterns_indiv_dynamic |>
-        inner_join(
-          patterns_group_dynamic_loo,
-          by = c("subj_id", "cca_id", "time_id"),
-          suffix = c("_indiv", "_group")
-        ) |>
-        mutate(
-          pattern = map2(pattern_indiv, pattern_group, get_resid),
-          .keep = "unused"
-        ),
-      patterns_group_dynamic_loo |>
-        mutate(pattern = map(pattern, \(x) get_resid(pattern_semantics, x))),
+      regress_patterns(patterns_indiv_dynamic, patterns_group_dynamic_loo),
+      regress_patterns_1r(pattern_semantics, patterns_group_dynamic_loo),
       name = "iss"
     )
   ),
@@ -863,14 +813,12 @@ list(
   # control for semantic representation
   tar_target(
     data_isps_partial_semantic_whole,
-    patterns_indiv_whole |>
-      mutate(pattern = map(pattern, regress_pattern, pattern_semantics)) |>
+    regress_patterns(patterns_indiv_whole, pattern_semantics) |>
       calc_isps()
   ),
   tar_target(
     data_isps_partial_semantic_dynamic,
-    patterns_indiv_dynamic |>
-      mutate(pattern = map(pattern, regress_pattern, pattern_semantics)) |>
+    regress_patterns(patterns_indiv_dynamic, pattern_semantics) |>
       calc_isps()
   ),
   tar_mantel(

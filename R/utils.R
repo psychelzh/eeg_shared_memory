@@ -1,3 +1,28 @@
+# statistics ----
+calc_stats_t <- function(data, col, ..., .by = c(cca_id, time_id)) {
+  data |>
+    summarise(
+      broom::tidy(t.test({{ col }}, ...)),
+      .by = {{ .by }}
+    )
+}
+
+regress_pattern <- function(y, x) {
+  lm(as.vector(y) ~ as.vector(x), na.action = na.exclude) |>
+    resid() |>
+    vctrs::vec_restore(y)
+}
+
+calc_r2_x_y <- function(x, y) {
+  rows_keep <- complete.cases(x, y)
+  if (sum(rows_keep) < 2) {
+    return(NA_real_)
+  }
+  x <- x[rows_keep, ]
+  y <- y[rows_keep]
+  cor(lm.fit(cbind(1, x), y)$fitted.values, y)^2
+}
+
 convert_p2_p1 <- function(
   p.value,
   statistic,
@@ -9,55 +34,6 @@ convert_p2_p1 <- function(
     1 - p.value / 2,
     p.value / 2
   )
-}
-
-get_resid <- function(y, x) {
-  resid(lm(y ~ x, na.action = na.exclude))
-}
-
-calc_slide_window <- function(data, ...) {
-  data |>
-    slider::slide(
-      calc_pattern,
-      ...,
-      .before = 25,
-      .after = 25,
-      .step = 5,
-      .complete = TRUE
-    ) |>
-    enframe(name = "time_id", value = "pattern") |>
-    filter(!map_lgl(pattern, is.null))
-}
-
-calc_pattern <- function(x) {
-  atanh(as.dist(cor(x, use = "pairwise")))
-}
-
-calc_inter_patterns <- function(pattern_x, pattern_y) {
-  atanh(cor(pattern_x, pattern_y, use = "pairwise"))
-}
-
-regress_patterns <- function(patterns_y, patterns_x, by = NULL) {
-  if (is.null(by)) {
-    by <- intersect(names(patterns_y), names(patterns_x)) |>
-      setdiff("pattern")
-  }
-  patterns_x |>
-    left_join(patterns_y, by = by) |>
-    mutate(
-      pattern = map2(pattern.y, pattern.x, regress_pattern),
-      .keep = "unused"
-    )
-}
-
-permute_dist <- function(dist) {
-  seriation::permute(dist, sample.int(attr(dist, "Size")))
-}
-
-regress_pattern <- function(y, x) {
-  lm(as.vector(y) ~ as.vector(x), na.action = na.exclude) |>
-    resid() |>
-    vctrs::vec_restore(y)
 }
 
 compare_partial <- function(base, partial) {
@@ -76,14 +52,32 @@ compare_partial <- function(base, partial) {
   )
 }
 
-calc_r2_x_y <- function(x, y) {
-  rows_keep <- complete.cases(x, y)
-  if (sum(rows_keep) < 2) {
-    return(NA_real_)
-  }
-  x <- x[rows_keep, ]
-  y <- y[rows_keep]
-  cor(lm.fit(cbind(1, x), y)$fitted.values, y)^2
+# pattern related ----
+calc_pattern <- function(x) {
+  atanh(as.dist(cor(x, use = "pairwise")))
+}
+
+calc_inter_patterns <- function(pattern_x, pattern_y) {
+  atanh(cor(pattern_x, pattern_y, use = "pairwise"))
+}
+
+calc_slide_window <- function(data, ...) {
+  data |>
+    slider::slide(
+      calc_pattern,
+      ...,
+      .before = 25,
+      .after = 25,
+      .step = 5,
+      .complete = TRUE
+    ) |>
+    enframe(name = "time_id", value = "pattern") |>
+    filter(!map_lgl(pattern, is.null))
+}
+
+# misc ----
+permute_dist <- function(dist) {
+  seriation::permute(dist, sample.int(attr(dist, "Size")))
 }
 
 order_by_trial <- function(pattern, mapping) {
