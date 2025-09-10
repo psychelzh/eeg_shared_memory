@@ -454,15 +454,8 @@ list(
         permute_dist(name_pattern),
         name = "iws"
       ),
-      stats_expr = calc_stats_t(
-        !!.x,
-        iws
-      ),
-      stats_perm_expr = calc_stats_t(
-        !!.x,
-        iws,
-        alternative = "greater"
-      ),
+      stats_expr = calc_stats_t(!!.x, iws),
+      stats_perm_expr = calc_stats_t(!!.x, iws, alternative = "greater"),
       clusters_stats_expr = calc_clusters_stats(
         mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
         !!.y
