@@ -473,7 +473,7 @@ list(
     ),
     tar_target(
       stats_iws_whole,
-      calc_stats_t(data_iws_whole, iws, .by = c(cca_id, model, layer))
+      calc_stats_t(data_iws_whole, iws, .by = cca_id)
     ),
     tar_target(iws_comparison, compare_corr_patterns(data_iws_whole)),
     ### IWS predicts memory ----
