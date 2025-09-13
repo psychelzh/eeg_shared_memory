@@ -152,7 +152,8 @@ list(
       filter(subj_id == subj_id_loop) |>
       collect() |>
       calc_indiv_pattern_dynamic(),
-    pattern = map(subj_id_loop)
+    pattern = map(subj_id_loop),
+    iteration = "list"
   ),
   tar_target(
     patterns_indiv_whole,
@@ -242,7 +243,8 @@ list(
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
-    )
+    ),
+    pattern = map(patterns_indiv_dynamic)
   ),
   tar_target(igs_comparison, compare_corr_patterns(data_igs_whole)),
 
@@ -761,7 +763,8 @@ list(
       stats_isps_dynamic,
       stats_isps_dynamic_permuted,
       col_statistic = isps_mean,
-      col_p_value = p_perm
+      col_p_value = p_perm,
+      col_id_permuted = starts_with("tar")
     )
   ),
 

@@ -8,8 +8,8 @@ tar_cluster_permutation <- function(
   stats_name = NULL,
   data_name = NULL,
   clusters_stats_name = NULL,
-  reps = 10,
-  batches = 100
+  pattern = NULL,
+  reps = 1000
 ) {
   if (!missing(name)) {
     stats_name <- paste0("stats_", name)
@@ -29,6 +29,18 @@ tar_cluster_permutation <- function(
       envir = list(.x = rlang::sym(data_name_permuted)),
       tidy_eval = TRUE
     )
+    if (!is.null(substitute(pattern))) {
+      pattern_data <- substitute(pattern)
+      pattern_stats <- rlang::call2("map", rlang::sym(data_name))
+      pattern_stats_permuted <- rlang::call2(
+        "map",
+        rlang::sym(data_name_permuted)
+      )
+    } else {
+      pattern_data <- pattern_stats <- pattern_stats_permuted <- NULL
+    }
+  } else {
+    pattern_stats <- pattern_stats_permuted <- substitute(pattern)
   }
   if (is.null(substitute(clusters_stats_expr))) {
     clusters_stats_expr <- rlang::call2(
@@ -47,35 +59,47 @@ tar_cluster_permutation <- function(
     )
   }
   list(
-    tar_target_raw(stats_name, substitute(stats_expr)),
+    tar_target_raw(stats_name, substitute(stats_expr), pattern = pattern_stats),
     if (!is.null(substitute(data_expr))) {
       list(
-        tar_target_raw(data_name, substitute(data_expr)),
-        tarchetypes::tar_rep_raw(
-          data_name_permuted,
-          substitute(data_perm_expr),
-          reps = reps,
-          batches = batches
+        tar_target_raw(
+          data_name,
+          substitute(data_expr),
+          pattern = pattern_data,
+          iteration = "list"
         ),
-        tarchetypes::tar_rep2_raw(
+        tar_target_raw(
+          data_name_permuted,
+          bquote(run_rep_df(.(substitute(data_perm_expr)), .(reps))),
+          pattern = pattern_data,
+          iteration = "list"
+        ),
+        tar_target_raw(
           stats_name_permuted,
           substitute(stats_perm_expr),
-          data_name_permuted
+          pattern = pattern_stats_permuted
         )
       )
     } else {
       tarchetypes::tar_rep_raw(
         stats_name_permuted,
-        substitute(stats_perm_expr),
-        reps = reps,
-        batches = batches
+        bquote(run_rep_df(.(substitute(stats_perm_expr)), .(reps))),
+        pattern = pattern_stats_permuted,
       )
     },
     tar_target_raw(clusters_stats_name, clusters_stats_expr)
   )
 }
 
-tar_mantel <- function(name, data_whole, data_dynamic, ydis, zdis = NULL) {
+tar_mantel <- function(
+  name,
+  data_whole,
+  data_dynamic,
+  ydis,
+  zdis = NULL,
+  pattern = NULL,
+  reps = 1000
+) {
   tar_whole <- function(name, data_expr) {
     name_data <- paste0("data_", name, "_whole")
     name_stats <- paste0("stats_", name, "_whole")
@@ -113,9 +137,16 @@ tar_mantel <- function(name, data_whole, data_dynamic, ydis, zdis = NULL) {
           data_expr = .(data_dynamic_expr),
           data_perm_expr = .(data_dynamic_perm_expr),
           stats_expr = extract_stats_mantel(!!.x),
-          stats_perm_expr = extract_stats_mantel(!!.x)
+          stats_perm_expr = extract_stats_mantel(!!.x),
+          pattern = .(substitute(pattern)),
+          reps = .(reps)
         )
       )
     )
   )
+}
+
+run_rep_df <- function(expr, n) {
+  replicate(n, expr, simplify = FALSE) |>
+    list_rbind(names_to = ".rep")
 }

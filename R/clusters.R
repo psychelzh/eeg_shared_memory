@@ -5,7 +5,7 @@ calc_clusters_stats <- function(
   col_statistic = statistic,
   col_p_value = p.value,
   col_time_id = time_id,
-  col_id_permuted = starts_with("tar"),
+  col_id_permuted = .rep,
   alternative = c("greater", "less")
 ) {
   operator <- switch(match.arg(alternative), greater = `>=`, less = `<=`)
