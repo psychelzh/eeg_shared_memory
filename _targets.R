@@ -643,7 +643,9 @@ list(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y,
       by = "region_id"
-    )
+    ),
+    reps = 100,
+    batches = 10
   ),
   tar_target(
     data_iss_whole_regions,
@@ -661,7 +663,7 @@ list(
     word_shape_methods,
     names = c(model, layer),
     tar_cluster_permutation(
-      "iws_dynamic_region",
+      "iws_dynamic_regions",
       data_expr = corr_patterns_1(
         patterns_indiv_dynamic_regions,
         name_pattern,
@@ -683,10 +685,12 @@ list(
         mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
         !!.y,
         by = "region_id"
-      )
+      ),
+      reps = 100,
+      batches = 10
     ),
     tar_target(
-      data_iws_whole_region,
+      data_iws_whole_regions,
       corr_patterns_1(
         patterns_indiv_whole_regions,
         name_pattern,
@@ -694,8 +698,8 @@ list(
       )
     ),
     tar_target(
-      stats_iws_whole_region,
-      calc_stats_t(data_iws_whole_region, iws, .by = region_id)
+      stats_iws_whole_regions,
+      calc_stats_t(data_iws_whole_regions, iws, .by = region_id)
     )
   ),
 
