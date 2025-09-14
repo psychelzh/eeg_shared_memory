@@ -84,7 +84,7 @@ tar_cluster_permutation <- function(
       tarchetypes::tar_rep_raw(
         stats_name_permuted,
         bquote(run_rep_df(.(substitute(stats_perm_expr)), .(reps))),
-        pattern = pattern_stats_permuted,
+        pattern = pattern_stats_permuted
       )
     },
     tar_target_raw(clusters_stats_name, clusters_stats_expr)
