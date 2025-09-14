@@ -810,12 +810,12 @@ list(
   # control for semantic representation
   tar_target(
     data_isps_partial_semantic_whole,
-    regress_patterns(patterns_indiv_whole, pattern_semantics) |>
+    regress_patterns_1(patterns_indiv_whole, pattern_semantics) |>
       calc_isps()
   ),
   tar_target(
     data_isps_partial_semantic_dynamic,
-    regress_patterns(patterns_indiv_dynamic, pattern_semantics) |>
+    regress_patterns_1(patterns_indiv_dynamic, pattern_semantics) |>
       calc_isps()
   ),
   tar_mantel(
