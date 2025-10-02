@@ -74,7 +74,7 @@ list(
   tarchetypes::tar_file_read(
     events_retrieval,
     "data/behav/retrieval.tsv",
-    read = clean_events(!!.x, subjs)
+    read = read_events_retrieval(!!.x, subjs)
   ),
   tar_target(mem_perf, calc_mem_perf(events_retrieval)),
   tar_target(mem_perf_precise, calc_mem_perf_precise(events_retrieval)),
@@ -88,6 +88,13 @@ list(
   tar_target(
     memorability_content,
     calc_mem_content(events_retrieval, memorability)
+  ),
+
+  # get encoding mean action times ----
+  tarchetypes::tar_file_read(
+    events_encoding,
+    "data/behav/encoding.tsv",
+    read = read_events_encoding(!!.x, subjs)
   ),
 
   # representations (patterns) calculation ----

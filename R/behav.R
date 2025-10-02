@@ -1,10 +1,22 @@
-clean_events <- function(file, subjs) {
+read_events_retrieval <- function(file, subjs) {
   read_tsv(file, show_col_types = FALSE) |>
-    mutate(subj_id = match(subj, subjs)) |>
+    match_subj_id(subjs) |>
     # drop trials without response
-    filter(resp != 0, !is.na(subj_id)) |>
+    filter(resp != 0) |>
     # correct memory score
     mutate(score = as.double(xor(old_new == 1, resp >= 3)))
+}
+
+read_events_encoding <- function(file, subjs) {
+  read_tsv(file, show_col_types = FALSE) |>
+    match_subj_id(subjs) |>
+    filter(word_id <= 150)
+}
+
+match_subj_id <- function(events, subjs) {
+  events |>
+    mutate(subj_id = match(subj, subjs)) |>
+    filter(!is.na(subj_id))
 }
 
 calc_mem_perf <- function(data) {
