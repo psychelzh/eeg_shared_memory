@@ -28,6 +28,15 @@ match_subj_id <- function(events, subjs) {
     filter(!is.na(subj_id))
 }
 
+calc_medrt_encoding <- function(data) {
+  data |>
+    summarise(
+      medrt = median(rt[acc == 1], na.rm = TRUE),
+      .by = subj_id
+    ) |>
+    mutate(time_id_rt = index_time_id(medrt))
+}
+
 calc_mem_perf <- function(data) {
   data |>
     preproc.iquizoo:::calc_sdt(

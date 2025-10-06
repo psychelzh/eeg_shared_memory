@@ -84,3 +84,8 @@ order_by_trial <- function(pattern, mapping) {
   order <- with(mapping, word_id[trial_id > 0])
   as.dist(pattern[order, order])
 }
+
+index_time_id <- function(time, onset = 51, sampling_rate = 256) {
+  # here time is in seconds
+  round(time * sampling_rate) + onset
+}

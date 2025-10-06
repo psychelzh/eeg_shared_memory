@@ -90,21 +90,6 @@ list(
     calc_mem_content(events_retrieval, memorability)
   ),
 
-  # get encoding median action times ----
-  tarchetypes::tar_file_read(
-    events_encoding,
-    "data/behav/encoding.tsv",
-    read = read_events_encoding(!!.x, subjs)
-  ),
-  tar_target(
-    medrts_encoding,
-    events_encoding |>
-      summarise(
-        medrt = median(rt[acc == 1], na.rm = TRUE),
-        .by = subj_id
-      )
-  ),
-
   # representations (patterns) calculation ----
   ## configuration common to stimuli patterns ----
   tar_target(file_seq, "config/sem_sequence.mat", format = "file"),
@@ -845,5 +830,14 @@ list(
     data_isps_partial_semantic_dynamic,
     smc,
     simil_mem
-  )
+  ),
+
+  # lock time points to response (reaction time) ----
+  # get encoding median action times ----
+  tarchetypes::tar_file_read(
+    events_encoding,
+    "data/behav/encoding.tsv",
+    read = read_events_encoding(!!.x, subjs)
+  ),
+  tar_target(medrts_encoding, calc_medrt_encoding(events_encoding))
 )
