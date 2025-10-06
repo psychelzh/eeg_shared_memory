@@ -10,6 +10,15 @@ read_events_retrieval <- function(file, subjs) {
 read_events_encoding <- function(file, subjs) {
   read_tsv(file, show_col_types = FALSE) |>
     match_subj_id(subjs) |>
+    # subj 39, 57, 65, 95, 132 switched response buttons
+    mutate(
+      resp = if_else(
+        subj_id %in% c(39, 57, 65, 95, 132),
+        3 - resp,
+        resp
+      ),
+      acc = as.double(word_category == resp)
+    ) |>
     filter(word_id <= 150)
 }
 

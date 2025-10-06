@@ -90,11 +90,19 @@ list(
     calc_mem_content(events_retrieval, memorability)
   ),
 
-  # get encoding mean action times ----
+  # get encoding median action times ----
   tarchetypes::tar_file_read(
     events_encoding,
     "data/behav/encoding.tsv",
     read = read_events_encoding(!!.x, subjs)
+  ),
+  tar_target(
+    medrts_encoding,
+    events_encoding |>
+      summarise(
+        medrt = median(rt[acc == 1], na.rm = TRUE),
+        .by = subj_id
+      )
   ),
 
   # representations (patterns) calculation ----
