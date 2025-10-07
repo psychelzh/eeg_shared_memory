@@ -411,29 +411,24 @@ list(
 
   # mediation analysis ----
   tar_target(
-    data_med,
+    data_combined,
     data_igs_whole |>
       inner_join(data_iss_whole, by = c("subj_id", "cca_id")) |>
       inner_join(mem_perf, by = "subj_id")
-  ),
-  tar_target(
-    cor_igs_iss_whole,
-    data_med |>
-      summarise(broom::tidy(cor.test(iss, igs)), .by = cca_id)
   ),
   tarchetypes::tar_file_read(
     model_med,
     "config/mediation.lav",
     read = readr::read_lines(!!.x)
   ),
-  tar_target(data_combined, combine_data_ccas(data_med)),
+  tar_target(data_med, prepare_data_med(data_combined)),
   tar_target(
     fit_med_iss_igs_dprime,
-    fit_med(model_med, data_combined, X = "iss", Y = "dprime", M = "igs")
+    fit_med(model_med, data_med, X = "iss", Y = "dprime", M = "igs")
   ),
   tar_target(
     fit_med_igs_iss_dprime,
-    fit_med(model_med, data_combined, X = "igs", Y = "dprime", M = "iss")
+    fit_med(model_med, data_med, X = "igs", Y = "dprime", M = "iss")
   ),
 
   # control analyses ----

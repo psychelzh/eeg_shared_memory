@@ -2,7 +2,7 @@ fit_med <- function(model, data, ..., X = "X", Y = "Y", M = "M") {
   lavaan::sem(str_glue(str_c(model, collapse = "\n")), data)
 }
 
-combine_data_ccas <- function(data) {
+prepare_data_med <- function(data) {
   data_wider <- data |>
     pivot_wider(names_from = cca_id, values_from = c(igs, iss))
   params_iss <- lm(dprime ~ iss_1 + iss_2 + iss_3, data_wider) |>
