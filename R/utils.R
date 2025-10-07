@@ -71,7 +71,7 @@ calc_slide_window <- function(data, ...) {
       .step = 5,
       .complete = TRUE
     ) |>
-    enframe(name = "time_id", value = "pattern") |>
+    enframe(name = "index", value = "pattern") |>
     filter(!map_lgl(pattern, is.null))
 }
 
@@ -88,4 +88,26 @@ order_by_trial <- function(pattern, mapping) {
 index_time_id <- function(time, onset = 51, sampling_rate = 256) {
   # here time is in seconds
   round(time * sampling_rate) + onset
+}
+
+calc_common_time_id_rt_locked <- function(
+  medrts_encoding,
+  time_id_range = c(1, 307)
+) {
+  range_time_id_rt <- range(medrts_encoding$time_id_rt)
+  left_bound <- time_id_range[1] - range_time_id_rt[1]
+  right_bound <- time_id_range[2] - range_time_id_rt[2]
+  seq(left_bound, right_bound)
+}
+
+shift_time_id_rt_locked <- function(
+  data,
+  medrts_encoding,
+  common_time_id_rt_locked
+) {
+  data |>
+    inner_join(medrts_encoding, by = "subj_id") |>
+    mutate(time_id = time_id - time_id_rt) |>
+    filter(time_id %in% common_time_id_rt_locked) |>
+    select(-time_id_rt, -medrt)
 }

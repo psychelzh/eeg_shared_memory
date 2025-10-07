@@ -833,11 +833,189 @@ list(
   ),
 
   # lock time points to response (reaction time) ----
-  # get encoding median action times ----
+  ## get cca signals locked to response ----
   tarchetypes::tar_file_read(
     events_encoding,
     "data/behav/encoding.tsv",
     read = read_events_encoding(!!.x, subjs)
   ),
-  tar_target(medrts_encoding, calc_medrt_encoding(events_encoding))
+  tar_target(medrts_encoding, calc_medrt_encoding(events_encoding)),
+  tar_target(
+    common_time_id_rt_locked,
+    calc_common_time_id_rt_locked(medrts_encoding)
+  ),
+  tar_target(
+    cca_y_rt_locked,
+    arrow::read_parquet(file_cca_y) |>
+      shift_time_id_rt_locked(medrts_encoding, common_time_id_rt_locked)
+  ),
+
+  ## re-calculate patterns ----
+  tar_target(
+    patterns_indiv_dynamic_rt_locked,
+    calc_indiv_pattern_dynamic(cca_y_rt_locked)
+  ),
+  tar_target(
+    patterns_indiv_whole_rt_locked,
+    calc_indiv_pattern(cca_y_rt_locked)
+  ),
+  tar_target(
+    patterns_group_dynamic_rt_locked,
+    calc_group_pattern_dynamic(cca_y_rt_locked)
+  ),
+  tar_target(
+    patterns_group_whole_rt_locked,
+    calc_group_pattern(cca_y_rt_locked)
+  ),
+
+  ## re-calculate IGS ----
+  tar_target(
+    patterns_group_whole_loo_rt_locked,
+    cca_y_rt_locked |>
+      filter(subj_id != subj_id_loop) |>
+      calc_group_pattern() |>
+      add_column(subj_id = subj_id_loop, .before = 1L),
+    pattern = map(subj_id_loop)
+  ),
+  tar_target(
+    data_igs_whole_rt_locked,
+    corr_patterns(
+      patterns_indiv_whole_rt_locked,
+      patterns_group_whole_loo_rt_locked,
+      name = "igs"
+    )
+  ),
+  tar_target(
+    stats_igs_whole_rt_locked,
+    calc_stats_t(data_igs_whole_rt_locked, igs, .by = cca_id)
+  ),
+  tar_cluster_permutation(
+    "igs_dynamic_rt_locked",
+    data_expr = corr_patterns(
+      patterns_indiv_dynamic_rt_locked,
+      patterns_group_whole_loo_rt_locked,
+      name = "igs"
+    ),
+    data_perm_expr = corr_patterns(
+      patterns_indiv_dynamic_rt_locked,
+      patterns_group_whole_loo_rt_locked |>
+        mutate(pattern = map(pattern, permute_dist)),
+      name = "igs"
+    ),
+    stats_expr = calc_stats_t(!!.x, igs),
+    stats_perm_expr = calc_stats_t(!!.x, igs, alternative = "greater"),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y
+    )
+  ),
+  tar_target(
+    igs_comparison_rt_locked,
+    compare_corr_patterns(data_igs_whole_rt_locked)
+  ),
+  # IGS predicts memory
+  tar_target(
+    stats_igs_mem_whole_rt_locked,
+    corr_mem(data_igs_whole_rt_locked, mem_perf)
+  ),
+  tar_cluster_permutation(
+    "igs_mem_dynamic_rt_locked",
+    corr_mem(
+      corr_patterns(
+        patterns_indiv_dynamic_rt_locked,
+        patterns_group_whole_loo_rt_locked,
+        name = "igs"
+      ),
+      mem_perf
+    ),
+    corr_mem(
+      corr_patterns(
+        patterns_indiv_dynamic_rt_locked,
+        patterns_group_whole_loo_rt_locked,
+        name = "igs"
+      ),
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y
+    )
+  ),
+  tar_target(
+    igs_mem_combine_rt_locked,
+    fit_mem_pred(mem_perf, data_igs_whole_rt_locked)
+  ),
+
+  ## re-calculate ISS ----
+  tar_cluster_permutation(
+    "iss_dynamic_rt_locked",
+    data_expr = corr_patterns_1(
+      patterns_indiv_dynamic_rt_locked,
+      pattern_semantics,
+      name = "iss"
+    ),
+    data_perm_expr = corr_patterns_1(
+      patterns_indiv_dynamic_rt_locked,
+      permute_dist(pattern_semantics),
+      name = "iss"
+    ),
+    stats_expr = calc_stats_t(!!.x, iss),
+    stats_perm_expr = calc_stats_t(!!.x, iss, alternative = "greater"),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y
+    ),
+    reps = 100,
+    batches = 10
+  ),
+  tar_target(
+    data_iss_whole_rt_locked,
+    corr_patterns_1(
+      patterns_indiv_whole_rt_locked,
+      pattern_semantics,
+      name = "iss"
+    )
+  ),
+  tar_target(
+    stats_iss_whole_rt_locked,
+    calc_stats_t(data_iss_whole_rt_locked, iss, .by = cca_id)
+  ),
+  tar_target(
+    iss_comparison_rt_locked,
+    compare_corr_patterns(data_iss_whole_rt_locked)
+  ),
+  # ISS predicts memory
+  tar_target(
+    stats_iss_mem_whole_rt_locked,
+    corr_mem(data_iss_whole_rt_locked, mem_perf)
+  ),
+  tar_target(
+    comparison_iss_mem_rt_locked,
+    compare_corr_mem(stats_iss_mem_whole_rt_locked)
+  ),
+  tar_cluster_permutation(
+    "iss_mem_dynamic_rt_locked",
+    corr_mem(
+      corr_patterns_1(
+        patterns_indiv_dynamic_rt_locked,
+        pattern_semantics,
+        name = "iss"
+      ),
+      mem_perf
+    ),
+    corr_mem(
+      corr_patterns_1(
+        patterns_indiv_dynamic_rt_locked,
+        pattern_semantics,
+        name = "iss"
+      ),
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y
+    )
+  )
 )

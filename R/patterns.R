@@ -17,7 +17,7 @@ calc_group_pattern <- function(data) {
 }
 
 calc_group_pattern_dynamic <- function(data) {
-  data |>
+  data_avg_wider <- data |>
     summarise(
       y_avg = mean(y, na.rm = TRUE),
       .by = c(cca_id, trial_id, time_id)
@@ -26,11 +26,22 @@ calc_group_pattern_dynamic <- function(data) {
       names_from = trial_id,
       values_from = y_avg,
       names_sort = TRUE
-    ) |>
+    )
+  res <- data_avg_wider |>
     reframe(
       calc_slide_window(pick(!time_id)),
       .by = cca_id
     )
+  data_avg_wider |>
+    select(cca_id, time_id) |>
+    # ensure the original time_id is kept
+    mutate(
+      index = row_number(time_id),
+      .before = time_id,
+      .by = cca_id
+    ) |>
+    inner_join(res, by = c("cca_id", "index")) |>
+    select(-index)
 }
 
 # individualized representations ----
@@ -58,16 +69,27 @@ calc_indiv_pattern_region <- function(data) {
 }
 
 calc_indiv_pattern_dynamic <- function(data) {
-  data |>
+  data_wider <- data |>
     pivot_wider(
       names_from = trial_id,
       values_from = y,
       names_sort = TRUE
-    ) |>
+    )
+  res <- data_wider |>
     reframe(
       calc_slide_window(pick(!time_id)),
       .by = c(subj_id, cca_id)
     )
+  data_wider |>
+    select(subj_id, cca_id, time_id) |>
+    # ensure the original time_id is kept
+    mutate(
+      index = row_number(time_id),
+      .before = time_id,
+      .by = c(subj_id, cca_id)
+    ) |>
+    inner_join(res, by = c("subj_id", "cca_id", "index")) |>
+    select(-index)
 }
 
 calc_indiv_pattern_dynamic_region <- function(data) {
