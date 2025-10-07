@@ -253,6 +253,52 @@ if (!interactive()) {
 }
 ```
 
+```{r}
+#| label: fig-2-iss-igs-pred-mem-rt-locked
+#| fig-width: 13
+#| fig-height: 8
+
+# ISS predicts memory
+# show legend because this the first panel of the figure
+p_iss_mem_scatter <- visualize_scatter(
+  targets::tar_read(data_iss_whole_rt_locked),
+  targets::tar_read(mem_perf),
+  show_legend = TRUE
+)
+
+p_iss_mem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iss_mem_dynamic_rt_locked),
+  targets::tar_read(clusters_stats_iss_mem_dynamic_rt_locked),
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)[ISS - "d'"]),
+  onset = 1
+)
+
+# IGS predicts memory
+p_igs_mem_scatter <- visualize_scatter(
+  targets::tar_read(data_igs_whole_rt_locked),
+  targets::tar_read(mem_perf)
+)
+
+p_igs_mem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_igs_mem_dynamic_rt_locked),
+  targets::tar_read(clusters_stats_igs_mem_dynamic_rt_locked),
+  lab_stat = expression(italic(r)[IGS - "d'"]),
+  onset = 1
+)
+
+(p_iss_mem_scatter | p_iss_mem_dynamic) /
+  (p_igs_mem_scatter | p_igs_mem_dynamic) +
+  plot_layout(guides = "collect") &
+  # tags are added in Adobe Illustrator
+  # plot_annotation(tag_levels = "A") &
+  theme(legend.position = "top")
+
+if (!interactive()) {
+  ggsave_default(width = 13, height = 5)
+}
+```
+
 ## Predictive power of ISS and IGS (precise d')
 
 ```{r}
@@ -481,6 +527,7 @@ if (!interactive()) {
 #| column: page
 #| fig-width: 12
 #| fig-height: 6
+#| eval: false
 
 p_gfs_whole <- visualize_mantel(
   targets::tar_read(patterns_group_whole),
@@ -671,6 +718,7 @@ if (!interactive()) {
 #| column: page
 #| fig-width: 13
 #| fig-height: 6.5
+#| eval: false
 
 targets::tar_load(sync_inter_intra)
 summary_sync <- sync_inter_intra |>

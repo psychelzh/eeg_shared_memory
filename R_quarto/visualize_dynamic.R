@@ -5,7 +5,9 @@ visualize_dynamic <- function(
   lab_stat = "Estimate",
   col_cis = c("conf.low", "conf.high"),
   limits = NULL,
-  show_legend = FALSE
+  show_legend = FALSE,
+  onset = 51,
+  sampling_rate = 256
 ) {
   if (!is.null(clusters_stats)) {
     clusters_stats <- clusters_stats |>
@@ -27,7 +29,7 @@ visualize_dynamic <- function(
   stats |>
     mutate(
       cca_id = factor(cca_id),
-      time = index_time(time_id)
+      time = index_time(time_id, onset, sampling_rate)
     ) |>
     ggplot(aes(time, .data[[col_stat]])) +
     geom_line(
@@ -56,8 +58,8 @@ visualize_dynamic <- function(
           geom_rect(
             data = clusters_stats,
             mapping = aes(
-              xmin = index_time(start),
-              xmax = index_time(end),
+              xmin = index_time(start, onset, sampling_rate),
+              xmax = index_time(end, onset, sampling_rate),
               ymin = limits_rect[1],
               ymax = limits_rect[2]
             ),
@@ -67,7 +69,7 @@ visualize_dynamic <- function(
           geom_text(
             data = clusters_stats,
             mapping = aes(
-              x = index_time((start + end) / 2),
+              x = index_time((start + end) / 2, onset, sampling_rate),
               y = limits_rect[2],
               label = p_perm.adj.signif
             ),
