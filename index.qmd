@@ -254,7 +254,7 @@ if (!interactive()) {
 ```
 
 ```{r}
-#| label: fig-2-iss-igs-pred-mem-rt-locked
+#| label: fig-supp-X-iss-igs-pred-mem-rt-locked
 #| fig-width: 13
 #| fig-height: 8
 
@@ -289,7 +289,7 @@ p_igs_mem_dynamic <- visualize_dynamic(
 
 (p_iss_mem_scatter | p_iss_mem_dynamic) /
   (p_igs_mem_scatter | p_igs_mem_dynamic) +
-  plot_layout(guides = "collect") &
+  plot_layout(guides = "collect") +
   # tags are added in Adobe Illustrator
   # plot_annotation(tag_levels = "A") &
   theme(legend.position = "top")
@@ -444,10 +444,10 @@ if (!interactive()) {
 
 ## Mediation analysis of ISS and IGS on memory performance
 
-First, we investigate the predictive power of ISS on memory performance after controlling for the effect of IGS. We use linear regression to model the relationship between ISS and memory performance, and we compare the models with and without IGS as a covariate.
+First, we investigate the predictive power of ISS on memory performance after controlling for the group averaged representation. We use linear regression to model the relationship between ISS and memory performance, and we compare the models with and without IGS as a covariate.
 
 ```{r}
-#| label: fig-3-part-1-iss-igs-partial
+#| label: fig-3-part-1-iss-partial-group
 
 p_compare_iss_partial <- visualize_comp_partial(
   targets::tar_read(iss_comp_partial),
@@ -480,6 +480,7 @@ Second, we investigate the mediation effect of IGS on the relationship between I
 ```{r}
 #| label: fig-3-part-2-iss-igs-med
 
+path_med_diagram <- fs::path("figures", "mediation_iss_igs_mem.png")
 diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
   visualize_mediation(
     lab_x = LAB_ISS_MED,
@@ -489,8 +490,8 @@ diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
 diagram_iss_igs |>
   DiagrammeRsvg::export_svg() |>
   charToRaw() |>
-  rsvg::rsvg_png("figures/mediation_iss_igs_mem.png", width = 1000)
-p_mediation <- png::readPNG("figures/mediation_iss_igs_mem.png", native = TRUE)
+  rsvg::rsvg_png(path_med_diagram, width = 1000)
+p_mediation <- png::readPNG(path_med_diagram, native = TRUE)
 ```
 
 ```{r}
@@ -520,6 +521,81 @@ if (!interactive()) {
 }
 ```
 
+For comparison, we also investigate the predictive power of IGS on memory performance after controlling for the semantic representation, and the mediation effect of ISS on the relationship between IGS and memory performance.
+
+```{r}
+#| label: fig-supp-X-part-1-igs-partial-semantic
+
+p_compare_igs_partial <- visualize_comp_partial(
+  targets::tar_read(igs_comp_partial),
+  comp_labels = c("IGS", "IGS|S")
+)
+
+p_igs_partial_scatter <- visualize_scatter(
+  targets::tar_read(data_igs_partial_whole),
+  targets::tar_read(mem_perf),
+  lab_stat = "IGS|S",
+  col_stat = "igs",
+  show_legend = TRUE
+)
+
+p_igs_partial_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_igs_partial_mem_dynamic),
+  targets::tar_read(clusters_stats_igs_partial_mem_dynamic),
+  col_stat = "estimate",
+  lab_stat = expression(italic(r)["IGS|S" - "d'"])
+)
+
+p_compare_predictions <- visualize_comp_preds(
+  `ISS + IGS|S` = targets::tar_read(lm_mem_iss_igs_partial),
+  `IGS|S` = targets::tar_read(lm_mem_igs_partial)
+)
+```
+
+```{r}
+#| label: fig-supp-X-part-2-igs-iss-med
+
+path_med_diagram <- fs::path("figures", "mediation_igs_iss_mem.png")
+diagram_igs_iss <- targets::tar_read(fit_med_igs_iss_dprime) |>
+  visualize_mediation(
+    lab_x = LAB_IGS_MED,
+    lab_m = LAB_ISS_MED,
+    lab_y = LAB_MEM_MED
+  )
+diagram_igs_iss |>
+  DiagrammeRsvg::export_svg() |>
+  charToRaw() |>
+  rsvg::rsvg_png(path_med_diagram, width = 1000)
+p_mediation <- png::readPNG(path_med_diagram, native = TRUE)
+```
+
+```{r}
+#| label: fig-supp-X-igs-iss-mem
+#| column: page
+#| fig-width: 13
+#| fig-height: 8
+
+design <- "
+AAAAABBBBBBBBEEE
+AAAAABBBBBBBBEEE
+AAAAABBBBBBBBEEE
+CCCCCCCCDDDDDDDD
+CCCCCCCCDDDDDDDD
+CCCCCCCCDDDDDDDD
+"
+wrap_elements(p_mediation) +
+  p_compare_igs_partial +
+  p_igs_partial_scatter +
+  p_igs_partial_dynamic +
+  p_compare_predictions +
+  plot_layout(design = design, guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom")
+if (!interactive()) {
+  ggsave_default(width = 13, height = 6)
+}
+```
+
 # Control analysis: word shape similarity pattern
 
 ```{r}
@@ -527,40 +603,38 @@ if (!interactive()) {
 #| column: page
 #| fig-width: 12
 #| fig-height: 6
-#| eval: false
 
-p_gfs_whole <- visualize_mantel(
+p_gws_whole <- visualize_mantel(
   targets::tar_read(patterns_group_whole),
-  targets::tar_read(pattern_shapes),
-  targets::tar_read(stats_gfs_whole),
+  targets::tar_read(pattern_shapes_charsim_none),
+  targets::tar_read(stats_gws_whole_charsim_none),
   "Group Averaged Neural Representation",
   "Word Shape Similarity"
 )
 
-p_gfs_dynamic <- visualize_dynamic(
-  targets::tar_read(stats_gfs_dynamic),
-  targets::tar_read(clusters_stats_gfs_dynamic),
+p_gws_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_gws_dynamic_charsim_none),
+  targets::tar_read(clusters_stats_gws_dynamic_charsim_none),
   col_stat = "statistic",
   lab_stat = "GWS",
   show_legend = TRUE
 )
 
-p_ifs_mem_whole <- visualize_scatter(
-  targets::tar_read(data_ifs_whole),
+p_iws_mem_whole <- visualize_scatter(
+  targets::tar_read(data_iws_whole_charsim_none),
   targets::tar_read(mem_perf),
-  lab_stat = "IWS",
-  col_stat = "iss"
+  col_stat = "iws"
 )
 
-p_ifs_mem_dynamic <- visualize_dynamic(
-  targets::tar_read(stats_ifs_mem_dynamic),
-  targets::tar_read(clusters_stats_less_ifs_mem_dynamic),
+p_iws_mem_dynamic <- visualize_dynamic(
+  targets::tar_read(stats_iws_mem_dynamic_charsim_none),
+  targets::tar_read(clusters_stats_less_iws_mem_dynamic_charsim_none),
   col_stat = "estimate",
   lab_stat = expression(italic(r)[IWS - "d'"])
 )
 
-(p_gfs_whole | p_gfs_dynamic) /
-  (p_ifs_mem_whole | p_ifs_mem_dynamic) +
+(p_gws_whole | p_gws_dynamic) /
+  (p_iws_mem_whole | p_iws_mem_dynamic) +
   plot_layout(guides = "collect") &
   plot_annotation(tag_levels = "A") &
   theme(legend.position = "bottom")
