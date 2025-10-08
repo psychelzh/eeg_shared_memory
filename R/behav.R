@@ -1,42 +1,3 @@
-read_events_retrieval <- function(file, subjs) {
-  read_tsv(file, show_col_types = FALSE) |>
-    match_subj_id(subjs) |>
-    # drop trials without response
-    filter(resp != 0) |>
-    # correct memory score
-    mutate(score = as.double(xor(old_new == 1, resp >= 3)))
-}
-
-read_events_encoding <- function(file, subjs) {
-  read_tsv(file, show_col_types = FALSE) |>
-    match_subj_id(subjs) |>
-    # subj 39, 57, 65, 95, 132 switched response buttons
-    mutate(
-      resp = if_else(
-        subj_id %in% c(39, 57, 65, 95, 132),
-        3 - resp,
-        resp
-      ),
-      acc = as.double(word_category == resp)
-    ) |>
-    filter(word_id <= 150)
-}
-
-match_subj_id <- function(events, subjs) {
-  events |>
-    mutate(subj_id = match(subj, subjs)) |>
-    filter(!is.na(subj_id))
-}
-
-calc_medrt_encoding <- function(data) {
-  data |>
-    summarise(
-      medrt = median(rt[acc == 1], na.rm = TRUE),
-      .by = subj_id
-    ) |>
-    mutate(time_id_rt = index_time_id(medrt))
-}
-
 calc_mem_perf <- function(data) {
   data |>
     preproc.iquizoo:::calc_sdt(
@@ -96,4 +57,13 @@ calc_mem_perf_precise <- function(data) {
       ),
       .by = subj_id
     )
+}
+
+calc_medrt_encoding <- function(data) {
+  data |>
+    summarise(
+      medrt = median(rt[acc == 1], na.rm = TRUE),
+      .by = subj_id
+    ) |>
+    mutate(time_id_rt = index_time_id(medrt))
 }
