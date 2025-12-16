@@ -409,26 +409,26 @@ list(
     )
   ),
 
-  # mediation analysis ----
+  # IGS and ISS synthesis ----
   tar_target(
     data_combined,
     data_igs_whole |>
       inner_join(data_iss_whole, by = c("subj_id", "cca_id")) |>
-      inner_join(mem_perf, by = "subj_id")
+      inner_join(mem_perf, by = "subj_id") |>
+      combine_ccas()
   ),
   tarchetypes::tar_file_read(
     model_med,
     "config/mediation.lav",
     read = readr::read_lines(!!.x)
   ),
-  tar_target(data_med, prepare_data_med(data_combined)),
   tar_target(
     fit_med_iss_igs_dprime,
-    fit_med(model_med, data_med, X = "iss", Y = "dprime", M = "igs")
+    fit_med(model_med, data_combined, X = "c_iss", Y = "dprime", M = "c_igs")
   ),
   tar_target(
     fit_med_igs_iss_dprime,
-    fit_med(model_med, data_med, X = "igs", Y = "dprime", M = "iss")
+    fit_med(model_med, data_combined, X = "c_igs", Y = "dprime", M = "c_iss")
   ),
 
   # control analyses ----
