@@ -6437,6 +6437,30 @@
       "Maintainer": "Charlie Gao <charlie.gao@posit.co>",
       "Repository": "CRAN"
     },
+    "miscTools": {
+      "Package": "miscTools",
+      "Version": "0.6-28",
+      "Source": "Repository",
+      "Date": "2023-05-03",
+      "Title": "Miscellaneous Tools and Utilities",
+      "Author": "Arne Henningsen, Ott Toomet",
+      "Maintainer": "Arne Henningsen <arne.henningsen@gmail.com>",
+      "Depends": [
+        "R (>= 2.14.0)"
+      ],
+      "Imports": [
+        "digest"
+      ],
+      "Suggests": [
+        "Ecdat (>= 0.1-5)"
+      ],
+      "Description": "Miscellaneous small tools and utilities. Many of them facilitate the work with matrices, e.g. inserting rows or columns, creating symmetric matrices, or checking for semidefiniteness. Other tools facilitate the work with regression models, e.g. extracting the standard errors, obtaining the number of (estimated) parameters, or calculating R-squared values.",
+      "License": "GPL (>= 2)",
+      "URL": "https://github.com/arne-henningsen/miscTools",
+      "BugReports": "https://github.com/arne-henningsen/miscTools/issues",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
     "mixtools": {
       "Package": "mixtools",
       "Version": "2.0.0.1",
@@ -7550,6 +7574,30 @@
       "Author": "Carson Sievert [aut, cre] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Chris Parmer [aut], Toby Hocking [aut], Scott Chamberlain [aut], Karthik Ram [aut], Marianne Corvellec [aut] (ORCID: <https://orcid.org/0000-0002-1994-3581>), Pedro Despouy [aut], Salim Brüggemann [ctb] (ORCID: <https://orcid.org/0000-0002-5329-5987>), Plotly Technologies Inc. [cph]",
       "Maintainer": "Carson Sievert <cpsievert1@gmail.com>",
       "Repository": "CRAN"
+    },
+    "plotrix": {
+      "Package": "plotrix",
+      "Version": "3.8-13",
+      "Source": "Repository",
+      "Title": "Various Plotting Functions",
+      "Authors@R": "c( person(\"Jim\", \"Lemon\", role = \"aut\"), person(\"Ben\", \"Bolker\", role = \"ctb\"), person(\"Sander\", \"Oom\", role = \"ctb\"), person(\"Eduardo\", \"Klein\", role = \"ctb\"), person(\"Barry\", \"Rowlingson\", role = \"ctb\"), person(\"Hadley\", \"Wickham\", role = \"ctb\"), person(\"Anupam\", \"Tyagi\", role = \"ctb\"), person(\"Olivier\", \"Eterradossi\", role = \"ctb\"), person(\"Gabor\", \"Grothendieck\", role = \"ctb\"), person(\"Michael\", \"Toews\", role = \"ctb\"), person(\"John\", \"Kane\", role = \"ctb\"), person(\"Rolf\", \"Turner\", role = \"ctb\"), person(\"Carl\", \"Witthoft\", role = \"ctb\"), person(\"Julian\", \"Stander\", role = \"ctb\"), person(\"Thomas\", \"Petzoldt\", role = \"ctb\"), person(\"Remko\", \"Duursma\", role = \"ctb\"), person(\"Elisa\", \"Biancotto\", role = \"ctb\"), person(\"Ofir\", \"Levy\", role = \"ctb\"), person(\"Christophe\", \"Dutang\", role = \"ctb\"), person(\"Peter\", \"Solymos\", role = \"ctb\"), person(\"Robby\", \"Engelmann\", role = \"ctb\"), person(\"Michael\", \"Hecker\", role = \"ctb\"), person(\"Felix\", \"Steinbeck\", role = \"ctb\"), person(\"Hans\", \"Borchers\", role = \"ctb\"), person(\"Henrik\", \"Singmann\", role = \"ctb\"), person(\"Ted\", \"Toal\", role = \"ctb\"), person(\"Derek\", \"Ogle\", role = \"ctb\"), person(\"Darshan\", \"Baral\", role = \"ctb\"), person(\"Ulrike\", \"Groemping\", role = \"ctb\"), person(\"Bill\", \"Venables\", role = \"ctb\"), person(family = \"The CRAN Team\", role = \"ctb\"), person(\"Duncan\", \"Murdoch\", email = \"murdoch.duncan@gmail.com\", role = c(\"ctb\", \"cre\")))",
+      "Imports": [
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Description": "Lots of plots, various labeling, axis and color scaling functions. The author/maintainer died in September 2023.",
+      "License": "GPL (>= 2)",
+      "NeedsCompilation": "no",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Repository": "CRAN",
+      "URL": "https://plotrix.github.io/plotrix/, https://github.com/plotrix/plotrix",
+      "BugReports": "https://github.com/plotrix/plotrix/issues",
+      "Author": "Jim Lemon [aut], Ben Bolker [ctb], Sander Oom [ctb], Eduardo Klein [ctb], Barry Rowlingson [ctb], Hadley Wickham [ctb], Anupam Tyagi [ctb], Olivier Eterradossi [ctb], Gabor Grothendieck [ctb], Michael Toews [ctb], John Kane [ctb], Rolf Turner [ctb], Carl Witthoft [ctb], Julian Stander [ctb], Thomas Petzoldt [ctb], Remko Duursma [ctb], Elisa Biancotto [ctb], Ofir Levy [ctb], Christophe Dutang [ctb], Peter Solymos [ctb], Robby Engelmann [ctb], Michael Hecker [ctb], Felix Steinbeck [ctb], Hans Borchers [ctb], Henrik Singmann [ctb], Ted Toal [ctb], Derek Ogle [ctb], Darshan Baral [ctb], Ulrike Groemping [ctb], Bill Venables [ctb], The CRAN Team [ctb], Duncan Murdoch [ctb, cre]",
+      "Maintainer": "Duncan Murdoch <murdoch.duncan@gmail.com>"
     },
     "plyr": {
       "Package": "plyr",
@@ -11293,6 +11341,28 @@
       "Maintainer": "Joshua M. Ulrich <josh.m.ulrich@gmail.com>",
       "Repository": "CRAN"
     },
+    "yacca": {
+      "Package": "yacca",
+      "Version": "1.4-2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Yet Another Canonical Correlation Analysis Package",
+      "Date": "2022-03-08",
+      "Depends": [
+        "R (>= 1.8.0)",
+        "utils"
+      ],
+      "Suggests": [
+        "RSpectra"
+      ],
+      "Author": "Carter T. Butts <buttsc@uci.edu>",
+      "Maintainer": "Carter T. Butts <buttsc@uci.edu>",
+      "Description": "An alternative canonical correlation/redundancy analysis function, with associated print, plot, and summary methods.  A method for generating helio plots is also included.",
+      "License": "GPL (>= 3)",
+      "LazyLoad": "yes",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
     "yaml": {
       "Package": "yaml",
       "Version": "2.3.11",
@@ -11311,6 +11381,33 @@
       "BugReports": "https://github.com/vubiostat/r-yaml/issues",
       "NeedsCompilation": "yes",
       "Author": "Shawn Garbett [cre, ctb] (ORCID: <https://orcid.org/0000-0003-4079-5621>), Jeremy Stephens [aut, ctb], Kirill Simonov [aut], Yihui Xie [ctb] (ORCID: <https://orcid.org/0000-0003-0645-5666>), Zhuoer Dong [ctb], Hadley Wickham [ctb] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Jeffrey Horner [ctb], reikoch [ctb], Will Beasley [ctb] (ORCID: <https://orcid.org/0000-0002-5613-5006>), Brendan O'Connor [ctb], Michael Quinn [ctb], Charlie Gao [ctb], Gregory R. Warnes [ctb], Zhian N. Kamvar [ctb]",
+      "Repository": "CRAN"
+    },
+    "yhat": {
+      "Package": "yhat",
+      "Version": "2.0-5",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Interpreting Regression Effects",
+      "Date": "2025-07-03",
+      "Author": "Kim Nimon [aut, cre], Fred Oswald [aut], J. Kyle Roberts [aut]",
+      "Authors@R": "c(person(given = \"Kim\", family = \"Nimon\", role = c(\"aut\", \"cre\"), email = \"kim.nimon@gmail.com\"), person(given = \"Fred\", family = \"Oswald\", role = \"aut\"), person(given = c(\"J.\", \"Kyle\"), family = \"Roberts\", role = \"aut\"))",
+      "Maintainer": "Kim Nimon <kim.nimon@gmail.com>",
+      "Depends": [
+        "R (>= 2.7.0)"
+      ],
+      "Imports": [
+        "yacca",
+        "miscTools",
+        "plotrix",
+        "boot"
+      ],
+      "Suggests": [
+        "MBESS"
+      ],
+      "Description": "The purpose of this package is to provide methods to interpret multiple linear regression and canonical correlation results including beta weights,structure coefficients,  validity coefficients, product measures, relative weights, all-possible-subsets regression, dominance analysis, commonality analysis, and adjusted effect sizes.",
+      "License": "GPL (>= 2)",
+      "NeedsCompilation": "no",
       "Repository": "CRAN"
     },
     "zip": {

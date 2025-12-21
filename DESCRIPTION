@@ -36,6 +36,7 @@ Imports:
     tarchetypes,
     targets,
     vegan,
+    yhat,
     zutils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
