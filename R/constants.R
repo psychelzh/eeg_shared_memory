@@ -29,3 +29,8 @@ word_shape_methods <- dplyr::bind_rows(
       paste("pattern_shapes", model, layer, sep = "_")
     )
   )
+
+config_pattern_corr_summary <- tibble::tibble(
+  method = c("supervised", "standardized", "pca"),
+  fun = rlang::syms(paste0("summarise_pattern_", method))
+)

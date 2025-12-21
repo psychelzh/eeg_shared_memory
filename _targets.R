@@ -64,6 +64,27 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
   )
 )
 
+targets_combine_igs_iss <- tarchetypes::tar_map(
+  config_pattern_corr_summary,
+  names = method,
+  tar_target(data_igs_summary, fun(data_igs_whole, outcome = mem_perf)),
+  tar_target(data_iss_summary, fun(data_iss_whole, outcome = mem_perf)),
+  tar_target(
+    data_combined_summary,
+    data_igs_summary |>
+      inner_join(data_iss_summary, by = "subj_id") |>
+      inner_join(mem_perf, by = "subj_id")
+  ),
+  tar_target(
+    ctb_model_iss_igs_dprime,
+    yhat::commonalityCoefficients(
+      data_combined_summary,
+      dv = "dprime",
+      ivlist = list("c_igs", "c_iss")
+    )
+  )
+)
+
 list(
   # behavioral data ----
   tarchetypes::tar_file_read(
@@ -410,6 +431,9 @@ list(
   ),
 
   # IGS and ISS synthesis ----
+  targets_combine_igs_iss,
+
+  ## DEPRECATED (obsolete): mediation analysis ----
   tar_target(
     data_combined,
     data_igs_whole |>

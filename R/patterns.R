@@ -165,6 +165,42 @@ corr_patterns_r2 <- function(patterns_x, pattern_y) {
     )
 }
 
+## summarize patterns across CCA components ----
+summarise_pattern_supervised <- function(data, outcome, ..., col = last_col()) {
+  col_name <- names(select(data, {{ col }}))
+  data_fit <- data |>
+    mutate(z = scale(.data[[col_name]])[, 1], .keep = "unused") |>
+    pivot_wider(names_from = cca_id, values_from = z) |>
+    left_join(outcome, by = "subj_id") |>
+    select(-subj_id)
+  preds <- predict(lm(dprime ~ ., data_fit), newdata = data_fit)
+  data |>
+    distinct(subj_id) |>
+    mutate("c_{col_name}" := preds)
+}
+
+summarise_pattern_standardized <- function(data, ..., col = last_col()) {
+  col_name <- names(select(data, {{ col }}))
+  data |>
+    mutate(z = scale(.data[[col_name]])[, 1], .keep = "unused") |>
+    summarise(
+      "c_{col_name}" := mean(z),
+      .by = subj_id
+    )
+}
+
+summarise_pattern_pca <- function(data, ..., col = last_col()) {
+  col_name <- names(select(data, {{ col }}))
+  data_wide <- data |>
+    pivot_wider(names_from = cca_id, values_from = {{ col }}) |>
+    select(-subj_id)
+  pca <- prcomp(data_wide, center = TRUE, scale. = TRUE)
+  scores <- pca$x[, 1]
+  data |>
+    distinct(subj_id) |>
+    mutate("c_{col_name}" := scores)
+}
+
 ## comparisons ----
 compare_corr_patterns <- function(data, col = last_col()) {
   name_resp <- names(select(data, {{ col }}))
