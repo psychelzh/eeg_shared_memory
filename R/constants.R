@@ -31,6 +31,7 @@ word_shape_methods <- dplyr::bind_rows(
   )
 
 config_pattern_corr_summary <- tibble::tibble(
-  method = c("supervised", "standardized", "pca"),
+  # we might prefer `"sum"` now, but we keep all the methods for future reference
+  method = c("supervised", "standardized", "pca", "sum"),
   fun = rlang::syms(paste0("summarise_pattern_", method))
 )

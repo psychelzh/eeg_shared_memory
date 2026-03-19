@@ -201,6 +201,15 @@ summarise_pattern_pca <- function(data, ..., col = last_col()) {
     mutate("c_{col_name}" := scores)
 }
 
+summarise_pattern_sum <- function(data, ..., col = last_col()) {
+  col_name <- names(select(data, {{ col }}))
+  data |>
+    summarise(
+      "c_{col_name}" := sum(.data[[col_name]]),
+      .by = subj_id
+    )
+}
+
 ## comparisons ----
 compare_corr_patterns <- function(data, col = last_col()) {
   name_resp <- names(select(data, {{ col }}))

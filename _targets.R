@@ -432,6 +432,18 @@ list(
 
   # IGS and ISS synthesis ----
   targets_combine_igs_iss,
+  tarchetypes::tar_combine(
+    ctb_model_iss_igs_dprime,
+    targets_combine_igs_iss$ctb_model_iss_igs_dprime,
+    command = list(!!!.x) |>
+      lapply(tidy_ctb) |>
+      list_rbind(names_to = ".id") |>
+      zutils::separate_wider_dsv(
+        .id,
+        "method",
+        prefix = "ctb_model_iss_igs_dprime"
+      )
+  ),
 
   ## DEPRECATED (obsolete): mediation analysis ----
   tar_target(

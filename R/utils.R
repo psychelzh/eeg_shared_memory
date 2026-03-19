@@ -75,6 +75,55 @@ calc_slide_window <- function(data, ...) {
     filter(!map_lgl(pattern, is.null))
 }
 
+# tidier functions ----
+tidy_ctb <- function(x, component = c("cc", "by_var")) {
+  component <- match.arg(component)
+
+  stopifnot(is.list(x))
+  stopifnot(all(c("CC", "CCTotalbyVar") %in% names(x)))
+
+  clean_term <- function(z) {
+    z <- trimws(z)
+    z <- gsub('^"|"$', "", z)
+    z <- gsub("^Unique to (.+)$", "U[\\1]", z)
+    z <- gsub("^Common to (.+), and (.+)$", "C[\\1, \\2]", z)
+    z <- gsub("^Total$", "Total", z)
+    z
+  }
+
+  if (component == "cc") {
+    out <- tibble::as_tibble(
+      x$CC,
+      rownames = "term",
+      .name_repair = "minimal"
+    )
+
+    if (ncol(out) != 3) {
+      stop("x$CC should contain 2 columns plus row names.")
+    }
+
+    names(out) <- c("term", "estimate", "percent")
+    out$term <- clean_term(out$term)
+
+    return(out)
+  }
+
+  out <- tibble::as_tibble(
+    x$CCTotalbyVar,
+    rownames = "term",
+    .name_repair = "minimal"
+  )
+
+  if (ncol(out) != 4) {
+    stop("x$CCTotalbyVar should contain 3 columns plus row names.")
+  }
+
+  names(out) <- c("term", "unique", "common", "total")
+  out$term <- trimws(gsub('^"|"$', "", out$term))
+
+  out
+}
+
 # misc ----
 permute_dist <- function(dist) {
   seriation::permute(dist, sample.int(attr(dist, "Size")))
