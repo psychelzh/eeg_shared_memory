@@ -205,7 +205,7 @@ if (!interactive()) {
 
 # Semantic transformation, representation fidelity, and memory
 
-Here we use individual to semantic representation similarity (ISS), indicating *semantic transformation*, and individual to group representation similarity (IGS), indicating *representation fidelity*, to predict memory performance. We also compare the predictive power of ISS and IGS, and we explore the mediation effect of representation fidelity on the effect of semantic transformation on memory performance.
+Here we use individual to semantic representation similarity (ISS), indicating *semantic transformation*, and individual to group representation similarity (IGS), indicating *representation fidelity*, to predict memory performance. We also compare the predictive power of ISS and IGS, retain the mediation analysis for reference, and quantify their unique and shared contributions to memory performance.
 
 ## Predictive power of ISS and IGS (overall d')
 
@@ -448,6 +448,7 @@ First, we investigate the predictive power of ISS on memory performance after co
 
 ```{r}
 #| label: fig-3-part-1-iss-partial-group
+#| eval: false
 
 p_compare_iss_partial <- visualize_comp_partial(
   targets::tar_read(iss_comp_partial),
@@ -479,6 +480,7 @@ Second, we investigate the mediation effect of IGS on the relationship between I
 
 ```{r}
 #| label: fig-3-part-2-iss-igs-med
+#| eval: false
 
 path_med_diagram <- fs::path("figures", "mediation_iss_igs_mem.png")
 diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
@@ -496,6 +498,7 @@ p_mediation <- png::readPNG(path_med_diagram, native = TRUE)
 
 ```{r}
 #| label: fig-3-iss-igs-mem
+#| eval: false
 #| column: page
 #| fig-width: 13
 #| fig-height: 8
@@ -554,6 +557,7 @@ p_compare_predictions <- visualize_comp_preds(
 
 ```{r}
 #| label: fig-supp-X-part-2-igs-iss-med
+#| eval: false
 
 path_med_diagram <- fs::path("figures", "mediation_igs_iss_mem.png")
 diagram_igs_iss <- targets::tar_read(fit_med_igs_iss_dprime) |>
@@ -571,6 +575,7 @@ p_mediation <- png::readPNG(path_med_diagram, native = TRUE)
 
 ```{r}
 #| label: fig-supp-X-igs-iss-mem
+#| eval: false
 #| column: page
 #| fig-width: 13
 #| fig-height: 8
@@ -593,6 +598,277 @@ wrap_elements(p_mediation) +
   theme(legend.position = "bottom")
 if (!interactive()) {
   ggsave_default(width = 13, height = 6)
+}
+```
+
+## Unique and shared contributions of ISS and IGS to memory performance
+
+Here we complement the mediation analysis with a direct variance-decomposition view. We quantify the joint, unique, and shared contributions of ISS and IGS to memory using the subject-level summaries generated with the `sum` aggregation method (`data_combined_summary_sum`) together with the corresponding precomputed commonality analysis (`ctb_model_iss_igs_dprime`, `method == "sum"`). For comparison, the partial representational measures `ISS|G` and `IGS|S` are shown in the supplementary figure below.
+
+```{r}
+#| label: fig-X-iss-igs-commonality-prepare
+
+data_joint_sum <- targets::tar_read(data_combined_summary_sum)
+
+fit_joint_sum <- data_joint_sum |>
+  transmute(
+    dprime = as.numeric(scale(dprime)),
+    c_iss = as.numeric(scale(c_iss)),
+    c_igs = as.numeric(scale(c_igs))
+  ) |>
+  lm(dprime ~ c_iss + c_igs, data = _)
+
+stats_joint_sum <- broom::glance(fit_joint_sum) |>
+  select(r.squared, adj.r.squared, statistic, p.value)
+
+data_pred_joint_sum <- data_joint_sum |>
+  mutate(
+    pred_dprime = predict(lm(dprime ~ c_iss + c_igs, data = data_joint_sum))
+  )
+
+stats_pred_joint_sum <- cor.test(
+  data_pred_joint_sum$pred_dprime,
+  data_pred_joint_sum$dprime
+) |>
+  broom::tidy() |>
+  prepare_corr_plotmath(name_p = "italic(p)")
+
+params_joint_sum <- broom::tidy(fit_joint_sum, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  mutate(
+    term = recode(term, c_iss = "ISS unique", c_igs = "IGS unique"),
+    term = factor(term, levels = c("ISS unique", "IGS unique")),
+    p.value.signif = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      TRUE ~ ""
+    )
+  )
+
+data_commonality <- targets::tar_read(ctb_model_iss_igs_dprime) |>
+  mutate(
+    term = recode(
+      term,
+      `U[c_iss]` = "ISS unique",
+      `U[c_igs]` = "IGS unique",
+      `C[c_igs, c_iss]` = "Shared",
+      `C[c_iss, c_igs]` = "Shared"
+    )
+  )
+
+data_commonality_sum <- data_commonality |>
+  filter(method == "sum", term != "Total") |>
+  mutate(
+    term = factor(term, levels = c("ISS unique", "IGS unique", "Shared")),
+    label_percent = sprintf("%.1f%%", percent),
+    label_r2 = sprintf("R² = %.3f", estimate)
+  )
+
+total_r2_sum <- data_commonality |>
+  filter(method == "sum", term == "Total") |>
+  pull(estimate)
+```
+
+```{r}
+#| label: fig-3-iss-igs-unique-shared
+#| column: page
+#| fig-width: 13
+#| fig-height: 4.5
+
+p_joint_pred <- data_pred_joint_sum |>
+  ggplot(aes(pred_dprime, dprime)) +
+  geom_point(size = 2.2, alpha = 0.75, color = "#4D4D4D", show.legend = FALSE) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    linewidth = 0.9,
+    color = "black",
+    fill = "grey80",
+    show.legend = FALSE
+  ) +
+  geom_text(
+    data = stats_pred_joint_sum,
+    aes(x = -Inf, y = Inf, label = label),
+    hjust = -0.05,
+    vjust = 1.15,
+    parse = TRUE,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(name = "Predicted memory performance") +
+  scale_y_continuous(name = "Observed memory performance")
+
+p_joint_unique <- params_joint_sum |>
+  mutate(y = conf.high + max(conf.high, na.rm = TRUE) * 0.06) |>
+  ggplot(aes(term, estimate, ymin = conf.low, ymax = conf.high)) +
+  geom_linerange(
+    linewidth = 1.2,
+    color = "#4D4D4D",
+    show.legend = FALSE
+  ) +
+  geom_point(
+    size = 3.6,
+    color = "black",
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(y = y, label = p.value.signif),
+    vjust = -0.3,
+    size = SIZE_LABEL
+  ) +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(
+    name = expression("Unique effect (" * beta * ")"),
+    expand = expansion(mult = c(0, 0.12))
+  ) +
+  coord_cartesian(ylim = c(0, NA))
+
+max_commonality <- max(data_commonality_sum$percent, na.rm = TRUE)
+padding_commonality <- max_commonality * 0.2
+if (!is.finite(padding_commonality) || padding_commonality == 0) {
+  padding_commonality <- 5
+}
+
+p_joint_common <- data_commonality_sum |>
+  ggplot(aes(term, percent, fill = term)) +
+  geom_col(
+    width = 0.65,
+    color = "black",
+    linewidth = 0.4,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(y = percent + padding_commonality * 0.12, label = label_percent),
+    vjust = 0,
+    size = SIZE_LABEL,
+    color = "black",
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(y = percent / 2, label = label_r2),
+    size = SIZE_LABEL * 0.78,
+    color = "black",
+    show.legend = FALSE
+  ) +
+  annotate(
+    "text",
+    x = 2,
+    y = max_commonality + padding_commonality * 0.9,
+    label = sprintf("Total R² = %.2f", total_r2_sum[[1]]),
+    hjust = 0.5
+  ) +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(
+    name = "Contribution to explained variance (%)",
+    limits = c(0, max_commonality + padding_commonality),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_fill_manual(values = c(
+    "ISS unique" = "#808080",
+    "IGS unique" = "#BDBDBD",
+    "Shared" = "#D9D9D9"
+  )) +
+  coord_cartesian(clip = "off") +
+  theme(
+    panel.grid.major.x = element_blank(),
+    strip.background = element_blank()
+  )
+
+(p_joint_pred | p_joint_unique | p_joint_common) +
+  plot_layout(widths = c(1.15, 1, 1.1)) +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+if (!interactive()) {
+  ggsave_default(width = 13, height = 4.5)
+}
+```
+
+```{r}
+#| label: fig-supp-X-iss-igs-unique-partial
+#| eval: false
+#| fig-width: 13
+#| fig-height: 8
+
+(p_iss_partial_scatter | p_igs_partial_scatter) /
+  (p_iss_partial_dynamic | p_igs_partial_dynamic) +
+  plot_annotation(tag_levels = "A")
+
+if (!interactive()) {
+  ggsave_default(width = 13, height = 8)
+}
+```
+
+```{r}
+#| label: fig-supp-X-iss-igs-commonality-robust
+#| fig-width: 11
+#| fig-height: 4
+
+robust_commonality <- data_commonality |>
+  filter(term != "Total") |>
+  mutate(
+    term = factor(term, levels = c("ISS unique", "IGS unique", "Shared")),
+    label = sprintf("%.1f%%", percent)
+  )
+
+max_commonality_robust <- max(robust_commonality$estimate, na.rm = TRUE)
+padding_commonality_robust <- max_commonality_robust * 0.2
+if (!is.finite(padding_commonality_robust) || padding_commonality_robust == 0) {
+  padding_commonality_robust <- 0.02
+}
+
+totals_commonality <- data_commonality |>
+  filter(term == "Total") |>
+  transmute(
+    method,
+    term = factor("ISS unique", levels = c("ISS unique", "IGS unique", "Shared")),
+    y = max_commonality_robust + padding_commonality_robust * 0.9,
+    label = sprintf("Total R² = %.2f", estimate)
+  )
+
+robust_commonality |>
+  ggplot(aes(term, estimate)) +
+  geom_segment(
+    aes(xend = term, y = 0, yend = estimate),
+    linewidth = 1.2,
+    lineend = "round",
+    color = "#595959",
+    show.legend = FALSE
+  ) +
+  geom_point(size = 3.5, color = "#595959", show.legend = FALSE) +
+  geom_text(
+    aes(y = estimate + padding_commonality_robust * 0.12, label = label),
+    vjust = 0,
+    size = SIZE_LABEL,
+    color = "black",
+    show.legend = FALSE
+  ) +
+  geom_text(
+    data = totals_commonality,
+    aes(x = term, y = y, label = label),
+    hjust = 0,
+    vjust = 0,
+    inherit.aes = FALSE,
+    show.legend = FALSE
+  ) +
+  facet_grid(cols = vars(method)) +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(
+    name = expression("Contribution to " * R^2),
+    limits = c(0, max_commonality_robust + padding_commonality_robust),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(
+    panel.grid.major.x = element_blank(),
+    strip.background = element_blank()
+  )
+
+if (!interactive()) {
+  ggsave_default(width = 11, height = 4)
 }
 ```
 
