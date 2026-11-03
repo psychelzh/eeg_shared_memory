@@ -1,12 +1,12 @@
 calc_mem_perf <- function(data) {
   data |>
-    preproc.iquizoo:::calc_sdt(
-      type_signal = 1,
-      by = "subj_id",
-      name_acc = "score",
-      name_type = "old_new"
+    # Binary log-linear correction: (count + 0.5) / (N + 1).
+    summarise(
+      hit = (sum(old_new == 1 & score == 1) + 0.5) / (sum(old_new == 1) + 1),
+      fa = (sum(old_new == 2 & score == 0) + 0.5) / (sum(old_new == 2) + 1),
+      .by = subj_id
     ) |>
-    select(subj_id, dprime)
+    transmute(subj_id, dprime = qnorm(hit) - qnorm(fa))
 }
 
 calc_simil_mem <- function(mem_perf) {

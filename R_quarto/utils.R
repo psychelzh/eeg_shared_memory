@@ -52,6 +52,18 @@ prepare_corr_plotmath <- function(
     )
 }
 
+prepare_cluster_plot_data <- function(clusters) {
+  clusters |>
+    rstatix::adjust_pvalue("p_perm", "p_perm.adj") |>
+    rstatix::add_significance(
+      "p_perm.adj",
+      "p_perm.adj.signif",
+      cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+      symbols = c("***", "**", "*", "")
+    ) |>
+    filter(!is.na(start), !is.na(end), p_perm.adj < 0.05)
+}
+
 format_r_plotmath <- function(
   r,
   p,

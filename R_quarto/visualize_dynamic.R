@@ -11,14 +11,8 @@ visualize_dynamic <- function(
 ) {
   if (!is.null(clusters_stats)) {
     clusters_stats <- clusters_stats |>
-      mutate(cca_id = factor(cca_id)) |>
-      rstatix::adjust_pvalue("p_perm") |>
-      rstatix::add_significance(
-        "p_perm.adj",
-        cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-        symbols = c("***", "**", "*", "")
-      ) |>
-      filter(p_perm < 0.05)
+      prepare_cluster_plot_data() |>
+      mutate(cca_id = factor(cca_id))
   }
   show_cis <- !is.null(col_cis) && all(has_name(stats, col_cis))
   limits_rect <- if (show_cis) {

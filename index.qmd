@@ -205,7 +205,7 @@ if (!interactive()) {
 
 # Semantic transformation, representation fidelity, and memory
 
-Here we use individual to semantic representation similarity (ISS), indicating *semantic transformation*, and individual to group representation similarity (IGS), indicating *representation fidelity*, to predict memory performance. We also compare the predictive power of ISS and IGS, retain the mediation analysis for reference, and quantify their unique and shared contributions to memory performance.
+Here we use individual to semantic representation similarity (ISS), indicating *semantic transformation*, and individual to group representation similarity (IGS), indicating *representation fidelity*, to predict memory performance. We compare the predictive power of ISS and IGS and quantify their unique and shared contributions to memory performance.
 
 ## Predictive power of ISS and IGS (overall d')
 
@@ -250,6 +250,30 @@ p_igs_mem_dynamic <- visualize_dynamic(
 
 if (!interactive()) {
   ggsave_default(width = 13, height = 5)
+}
+```
+
+## Six-region ISS and IGS analysis
+
+```{r}
+#| label: fig-supp-X-iss-mem-regions
+#| fig-width: 16
+#| fig-height: 10
+
+visualize_region_mem(
+  data_iss = targets::tar_read(data_iss_whole_regions),
+  data_igs = targets::tar_read(data_igs_whole_regions),
+  mem_perf = targets::tar_read(mem_perf),
+  stats_iss = targets::tar_read(stats_iss_mem_whole_regions),
+  stats_igs = targets::tar_read(stats_igs_mem_whole_regions),
+  stats_iss_dynamic = targets::tar_read(stats_iss_mem_dynamic_regions),
+  stats_igs_dynamic = targets::tar_read(stats_igs_mem_dynamic_regions),
+  clusters_iss_dynamic = targets::tar_read(clusters_stats_iss_mem_dynamic_regions),
+  clusters_igs_dynamic = targets::tar_read(clusters_stats_igs_mem_dynamic_regions)
+)
+
+if (!interactive()) {
+  ggsave_default(width = 16, height = 10)
 }
 ```
 
@@ -377,6 +401,72 @@ if (!interactive()) {
 }
 ```
 
+## Six-region ISS and IGS analysis (precise memory)
+
+```{r}
+#| label: fig-supp-X-iss-igs-regions-recollection
+#| fig-width: 16
+#| fig-height: 10
+
+visualize_region_mem(
+  data_iss = targets::tar_read(data_iss_whole_regions),
+  data_igs = targets::tar_read(data_igs_whole_regions),
+  mem_perf = targets::tar_read(mem_perf_precise) |>
+    select(subj_id, dprime = dprime_rem),
+  stats_iss = targets::tar_read(stats_iss_mem_whole_regions_dprime_rem),
+  stats_igs = targets::tar_read(stats_igs_mem_whole_regions_dprime_rem),
+  stats_iss_dynamic = targets::tar_read(
+    stats_iss_mem_dynamic_regions_dprime_rem
+  ),
+  stats_igs_dynamic = targets::tar_read(
+    stats_igs_mem_dynamic_regions_dprime_rem
+  ),
+  clusters_iss_dynamic = targets::tar_read(
+    clusters_stats_iss_mem_dynamic_regions_dprime_rem
+  ),
+  clusters_igs_dynamic = targets::tar_read(
+    clusters_stats_igs_mem_dynamic_regions_dprime_rem
+  ),
+  lab_perf = "Recollection"
+)
+
+if (!interactive()) {
+  ggsave_default(width = 16, height = 10)
+}
+```
+
+```{r}
+#| label: fig-supp-X-iss-igs-regions-familiarity
+#| fig-width: 16
+#| fig-height: 10
+
+visualize_region_mem(
+  data_iss = targets::tar_read(data_iss_whole_regions),
+  data_igs = targets::tar_read(data_igs_whole_regions),
+  mem_perf = targets::tar_read(mem_perf_precise) |>
+    select(subj_id, dprime = dprime_know),
+  stats_iss = targets::tar_read(stats_iss_mem_whole_regions_dprime_know),
+  stats_igs = targets::tar_read(stats_igs_mem_whole_regions_dprime_know),
+  stats_iss_dynamic = targets::tar_read(
+    stats_iss_mem_dynamic_regions_dprime_know
+  ),
+  stats_igs_dynamic = targets::tar_read(
+    stats_igs_mem_dynamic_regions_dprime_know
+  ),
+  clusters_iss_dynamic = targets::tar_read(
+    clusters_stats_iss_mem_dynamic_regions_dprime_know
+  ),
+  clusters_igs_dynamic = targets::tar_read(
+    clusters_stats_igs_mem_dynamic_regions_dprime_know
+  ),
+  lab_perf = "Familiarity"
+)
+
+if (!interactive()) {
+  ggsave_default(width = 16, height = 10)
+}
+```
+
 ## Comparison of ISS and IGS
 
 Here we compare the predictive power of ISS and IGS on memory performance. We use linear regression to model the relationship between ISS/IGS and memory performance, and we compare the models using adjusted R-squared.
@@ -442,18 +532,13 @@ if (!interactive()) {
 }
 ```
 
-## Mediation analysis of ISS and IGS on memory performance
+## Partial representational measures
 
-First, we investigate the predictive power of ISS on memory performance after controlling for the group averaged representation. We use linear regression to model the relationship between ISS and memory performance, and we compare the models with and without IGS as a covariate.
+We examine ISS after controlling for the group-averaged representation (`ISS|G`) and IGS after controlling for the semantic representation (`IGS|S`), and relate each measure to memory performance.
 
 ```{r}
-#| label: fig-3-part-1-iss-partial-group
-#| eval: false
-
-p_compare_iss_partial <- visualize_comp_partial(
-  targets::tar_read(iss_comp_partial),
-  comp_labels = c("ISS", "ISS|G")
-)
+#| label: prepare-iss-igs-partial
+#| include: false
 
 p_iss_partial_scatter <- visualize_scatter(
   targets::tar_read(data_iss_partial_whole),
@@ -470,70 +555,6 @@ p_iss_partial_dynamic <- visualize_dynamic(
   lab_stat = expression(italic(r)["ISS|G" - "d'"])
 )
 
-p_compare_predictions <- visualize_comp_preds(
-  `IGS + ISS|G` = targets::tar_read(lm_mem_igs_iss_partial),
-  `ISS|G` = targets::tar_read(lm_mem_iss_partial)
-)
-```
-
-Second, we investigate the mediation effect of IGS on the relationship between ISS and memory performance. We use structural equation modeling (SEM) to model the mediation effect, and we visualize the mediation diagram.
-
-```{r}
-#| label: fig-3-part-2-iss-igs-med
-#| eval: false
-
-path_med_diagram <- fs::path("figures", "mediation_iss_igs_mem.png")
-diagram_iss_igs <- targets::tar_read(fit_med_iss_igs_dprime) |>
-  visualize_mediation(
-    lab_x = LAB_ISS_MED,
-    lab_m = LAB_IGS_MED,
-    lab_y = LAB_MEM_MED
-  )
-diagram_iss_igs |>
-  DiagrammeRsvg::export_svg() |>
-  charToRaw() |>
-  rsvg::rsvg_png(path_med_diagram, width = 1000)
-p_mediation <- png::readPNG(path_med_diagram, native = TRUE)
-```
-
-```{r}
-#| label: fig-3-iss-igs-mem
-#| eval: false
-#| column: page
-#| fig-width: 13
-#| fig-height: 8
-
-design <- "
-AAAAABBBBBBBBEEE
-AAAAABBBBBBBBEEE
-AAAAABBBBBBBBEEE
-CCCCCCCCDDDDDDDD
-CCCCCCCCDDDDDDDD
-CCCCCCCCDDDDDDDD
-"
-wrap_elements(p_mediation) +
-  p_compare_iss_partial +
-  p_iss_partial_scatter +
-  p_iss_partial_dynamic +
-  p_compare_predictions +
-  plot_layout(design = design, guides = "collect") +
-  plot_annotation(tag_levels = "A") &
-  theme(legend.position = "bottom")
-if (!interactive()) {
-  ggsave_default(width = 13, height = 6)
-}
-```
-
-For comparison, we also investigate the predictive power of IGS on memory performance after controlling for the semantic representation, and the mediation effect of ISS on the relationship between IGS and memory performance.
-
-```{r}
-#| label: fig-supp-X-part-1-igs-partial-semantic
-
-p_compare_igs_partial <- visualize_comp_partial(
-  targets::tar_read(igs_comp_partial),
-  comp_labels = c("IGS", "IGS|S")
-)
-
 p_igs_partial_scatter <- visualize_scatter(
   targets::tar_read(data_igs_partial_whole),
   targets::tar_read(mem_perf),
@@ -548,62 +569,11 @@ p_igs_partial_dynamic <- visualize_dynamic(
   col_stat = "estimate",
   lab_stat = expression(italic(r)["IGS|S" - "d'"])
 )
-
-p_compare_predictions <- visualize_comp_preds(
-  `ISS + IGS|S` = targets::tar_read(lm_mem_iss_igs_partial),
-  `IGS|S` = targets::tar_read(lm_mem_igs_partial)
-)
-```
-
-```{r}
-#| label: fig-supp-X-part-2-igs-iss-med
-#| eval: false
-
-path_med_diagram <- fs::path("figures", "mediation_igs_iss_mem.png")
-diagram_igs_iss <- targets::tar_read(fit_med_igs_iss_dprime) |>
-  visualize_mediation(
-    lab_x = LAB_IGS_MED,
-    lab_m = LAB_ISS_MED,
-    lab_y = LAB_MEM_MED
-  )
-diagram_igs_iss |>
-  DiagrammeRsvg::export_svg() |>
-  charToRaw() |>
-  rsvg::rsvg_png(path_med_diagram, width = 1000)
-p_mediation <- png::readPNG(path_med_diagram, native = TRUE)
-```
-
-```{r}
-#| label: fig-supp-X-igs-iss-mem
-#| eval: false
-#| column: page
-#| fig-width: 13
-#| fig-height: 8
-
-design <- "
-AAAAABBBBBBBBEEE
-AAAAABBBBBBBBEEE
-AAAAABBBBBBBBEEE
-CCCCCCCCDDDDDDDD
-CCCCCCCCDDDDDDDD
-CCCCCCCCDDDDDDDD
-"
-wrap_elements(p_mediation) +
-  p_compare_igs_partial +
-  p_igs_partial_scatter +
-  p_igs_partial_dynamic +
-  p_compare_predictions +
-  plot_layout(design = design, guides = "collect") +
-  plot_annotation(tag_levels = "A") &
-  theme(legend.position = "bottom")
-if (!interactive()) {
-  ggsave_default(width = 13, height = 6)
-}
 ```
 
 ## Unique and shared contributions of ISS and IGS to memory performance
 
-Here we complement the mediation analysis with a direct variance-decomposition view. We quantify the joint, unique, and shared contributions of ISS and IGS to memory using the subject-level summaries generated with the `sum` aggregation method (`data_combined_summary_sum`) together with the corresponding precomputed commonality analysis (`ctb_model_iss_igs_dprime`, `method == "sum"`). For comparison, the partial representational measures `ISS|G` and `IGS|S` are shown in the supplementary figure below.
+We quantify the joint, unique, and shared contributions of ISS and IGS to memory using the subject-level summaries generated with the `sum` aggregation method (`data_combined_summary_sum`) together with the corresponding precomputed commonality analysis (`ctb_model_iss_igs_dprime`, `method == "sum"`). For comparison, the partial representational measures `ISS|G` and `IGS|S` are shown in the supplementary figure below.
 
 ```{r}
 #| label: fig-X-iss-igs-commonality-prepare
@@ -789,7 +759,6 @@ if (!interactive()) {
 
 ```{r}
 #| label: fig-supp-X-iss-igs-unique-partial
-#| eval: false
 #| fig-width: 13
 #| fig-height: 8
 
@@ -952,18 +921,6 @@ p_isps_dist <- targets::tar_read(data_isps_whole) |>
     guide = "none"
   )
 
-# p_isps_dynamic <- visualize_dynamic(
-#   targets::tar_read(stats_isps_dynamic) |>
-#     mutate(
-#       ymax = isps_mean + isps_se,
-#       ymin = isps_mean - isps_se
-#     ),
-#   col_stat = "isps_mean",
-#   lab_stat = "ISPS",
-#   col_cis = c("ymin", "ymax")
-# )
-
-# the cluster based permutation test is not useful (maybe we need TFCE)
 p_isps_clusters <- visualize_dynamic(
   targets::tar_read(stats_isps_dynamic) |>
     mutate(

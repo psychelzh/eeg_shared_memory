@@ -31,8 +31,26 @@ for (argument in c("name_perf", "alernative")) {
   stopifnot(inherits(error, "error"), grepl(argument, conditionMessage(error)))
 }
 
-# Keep the default outcome and supported cor.test arguments working.
-actual <- corr_mem(predictors, outcomes, method = "spearman", exact = FALSE)
+# Overall memory is explicit by default, regardless of column order.
+overall <- mutate(outcomes, dprime = dprime_rem, .after = subj_id)
+actual <- corr_mem(predictors, overall, method = "spearman", exact = FALSE)
+expected <- cor.test(predictors$iss, overall$dprime,
+                     method = "spearman", exact = FALSE)
+stopifnot(isTRUE(all.equal(unname(actual$estimate), unname(expected$estimate))))
+
+# Multi-outcome data require an explicit outcome; joins must not duplicate subjects.
+missing_outcome <- tryCatch(corr_mem(predictors, outcomes), error = identity)
+duplicate_outcomes <- bind_rows(overall, slice(overall, 1))
+duplicate_error <- tryCatch(corr_mem(predictors, duplicate_outcomes), error = identity)
+multiple_error <- tryCatch(
+  corr_mem(predictors, outcomes, col_perf = starts_with("dprime")), error = identity
+)
+stopifnot(inherits(missing_outcome, "error"), inherits(duplicate_error, "error"),
+          inherits(multiple_error, "error"))
+
+# Explicit selection continues to forward supported cor.test arguments.
+actual <- corr_mem(predictors, outcomes, col_perf = dprime_know,
+                   method = "spearman", exact = FALSE)
 expected <- cor.test(predictors$iss, outcomes$dprime_know,
                      method = "spearman", exact = FALSE)
 stopifnot(isTRUE(all.equal(unname(actual$estimate), unname(expected$estimate))))

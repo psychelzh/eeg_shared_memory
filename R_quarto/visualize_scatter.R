@@ -9,7 +9,7 @@ visualize_scatter <- function(
 ) {
   # use the last column as default if col_stat is not provided
   col_stat <- col_stat %||% last(names(data))
-  col_perf <- col_perf %||% last(names(mem_perf))
+  col_perf <- col_perf %||% "dprime"
   lab_stat <- lab_stat %||% str_to_upper(col_stat)
   lab_perf <- lab_perf %||% "d'"
   data_joind <- data |>

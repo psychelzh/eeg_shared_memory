@@ -1,5 +1,6 @@
 # statistics ----
 calc_stats_t <- function(data, col, ..., .by = c(cca_id, time_id)) {
+  rlang::check_dots_used()
   data |>
     summarise(
       broom::tidy(t.test({{ col }}, ...)),
@@ -36,29 +37,13 @@ convert_p2_p1 <- function(
   )
 }
 
-compare_partial <- function(base, partial) {
-  name_resp <- last(names(base))
-  fit <- bind_rows(base = base, partial = partial, .id = "type") |>
-    mutate(cca_id = factor(cca_id)) |>
-    lmerTest::lmer(
-      paste(name_resp, "~ type * cca_id + (1 | subj_id)"),
-      data = _
-    )
-  emm <- emmeans::emmeans(fit, ~ type * cca_id)
-  pairwise <- pairs(emm, simple = "type")
-  list(
-    stats = broom::tidy(emm),
-    htest = broom::tidy(pairwise)
-  )
-}
-
 # pattern related ----
 calc_pattern <- function(x) {
-  atanh(as.dist(cor(x, use = "pairwise")))
+  atanh(as.dist(cor(x, use = "pairwise.complete.obs")))
 }
 
 calc_inter_patterns <- function(pattern_x, pattern_y) {
-  atanh(cor(pattern_x, pattern_y, use = "pairwise"))
+  atanh(cor(pattern_x, pattern_y, use = "pairwise.complete.obs"))
 }
 
 calc_slide_window <- function(data, ...) {

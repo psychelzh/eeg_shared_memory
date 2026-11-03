@@ -33,19 +33,20 @@ read_eeg_regions <- function(file, channel_regions) {
   )
 }
 
-read_charsim <- function(file, mapping, ...) {
+# All word-shape readers share a layer.out argument; only AlexNet uses it.
+read_charsim <- function(file, mapping, layer.out = NULL) {
   read_tsv(file, show_col_types = FALSE) |>
     pull(similarity) |>
     pracma::squareform() |>
     order_by_trial(mapping)
 }
 
-read_rawgray <- function(file, mapping, ...) {
+read_rawgray <- function(file, mapping, layer.out = NULL) {
   qs2::qs_read(file) |>
     order_by_trial(mapping)
 }
 
-read_alexnet <- function(file, mapping, ..., layer.out = NULL) {
+read_alexnet <- function(file, mapping, layer.out = NULL) {
   data <- read_tsv(file, show_col_types = FALSE) |>
     pivot_wider(
       id_cols = c(image_id1, layer),

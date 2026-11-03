@@ -67,8 +67,22 @@ targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
 targets_combine_igs_iss <- tarchetypes::tar_map(
   config_pattern_corr_summary,
   names = method,
-  tar_target(data_igs_summary, fun(data_igs_whole, outcome = mem_perf)),
-  tar_target(data_iss_summary, fun(data_iss_whole, outcome = mem_perf)),
+  tar_target(
+    data_igs_summary,
+    if (method == "supervised") {
+      fun(data_igs_whole, outcome = mem_perf)
+    } else {
+      fun(data_igs_whole)
+    }
+  ),
+  tar_target(
+    data_iss_summary,
+    if (method == "supervised") {
+      fun(data_iss_whole, outcome = mem_perf)
+    } else {
+      fun(data_iss_whole)
+    }
+  ),
   tar_target(
     data_combined_summary,
     data_igs_summary |>
@@ -379,7 +393,6 @@ list(
 
   ## ISS predicts memory ----
   tar_target(stats_iss_mem_whole, corr_mem(data_iss_whole, mem_perf)),
-  tar_target(comparison_iss_mem, compare_corr_mem(stats_iss_mem_whole)),
   tar_cluster_permutation(
     "iss_mem_dynamic",
     corr_mem(data_iss_dynamic, mem_perf),
@@ -445,28 +458,6 @@ list(
       )
   ),
 
-  ## DEPRECATED (obsolete): mediation analysis ----
-  tar_target(
-    data_combined,
-    data_igs_whole |>
-      inner_join(data_iss_whole, by = c("subj_id", "cca_id")) |>
-      inner_join(mem_perf, by = "subj_id") |>
-      combine_ccas()
-  ),
-  tarchetypes::tar_file_read(
-    model_med,
-    "config/mediation.lav",
-    read = readr::read_lines(!!.x)
-  ),
-  tar_target(
-    fit_med_iss_igs_dprime,
-    fit_med(model_med, data_combined, X = "c_iss", Y = "dprime", M = "c_igs")
-  ),
-  tar_target(
-    fit_med_igs_iss_dprime,
-    fit_med(model_med, data_combined, X = "c_igs", Y = "dprime", M = "c_iss")
-  ),
-
   # control analyses ----
   ## IWS: individual patterns and word shape pattern ----
   tarchetypes::tar_map(
@@ -509,7 +500,6 @@ list(
     tar_target(iws_comparison, compare_corr_patterns(data_iws_whole)),
     ### IWS predicts memory ----
     tar_target(stats_iws_mem_whole, corr_mem(data_iws_whole, mem_perf)),
-    tar_target(comparison_iws_mem, compare_corr_mem(stats_iws_mem_whole)),
     tar_cluster_permutation(
       "iws_mem_dynamic",
       corr_mem(data_iws_dynamic, mem_perf),
@@ -556,18 +546,6 @@ list(
     )
   ),
   tar_target(
-    igs_comp_partial,
-    compare_partial(data_igs_whole, data_igs_partial_whole)
-  ),
-  tar_target(
-    lm_mem_igs_partial,
-    fit_mem_pred(mem_perf, data_igs_partial_whole)
-  ),
-  tar_target(
-    lm_mem_iss_igs_partial,
-    fit_mem_pred(mem_perf, data_igs_partial_whole, data_iss_whole)
-  ),
-  tar_target(
     data_igs_partial_dynamic,
     corr_patterns(
       regress_patterns_1(patterns_indiv_dynamic, pattern_semantics),
@@ -597,18 +575,6 @@ list(
       regress_patterns_1r(pattern_semantics, patterns_group_whole_loo),
       name = "iss"
     )
-  ),
-  tar_target(
-    iss_comp_partial,
-    compare_partial(data_iss_whole, data_iss_partial_whole)
-  ),
-  tar_target(
-    lm_mem_iss_partial,
-    fit_mem_pred(mem_perf, data_iss_partial_whole)
-  ),
-  tar_target(
-    lm_mem_igs_iss_partial,
-    fit_mem_pred(mem_perf, data_iss_partial_whole, data_igs_whole)
   ),
   tar_target(
     data_iss_partial_dynamic,
@@ -651,6 +617,37 @@ list(
       mutate(data = map(data, calc_indiv_pattern_region)) |>
       unnest(data)
   ),
+  # IGS: individual to leave-one-out group pattern similarity ----
+  tar_target(
+    data_igs_dynamic_regions,
+    corr_patterns_loo(patterns_indiv_dynamic_regions, name = "igs")
+  ),
+  tar_target(
+    data_igs_whole_regions,
+    corr_patterns_loo(patterns_indiv_whole_regions, name = "igs")
+  ),
+  tar_target(
+    stats_igs_whole_regions,
+    calc_stats_t(data_igs_whole_regions, igs, .by = region_id)
+  ),
+  tar_target(
+    stats_igs_mem_whole_regions,
+    corr_mem(data_igs_whole_regions, mem_perf)
+  ),
+  tar_cluster_permutation(
+    "igs_mem_dynamic_regions",
+    corr_mem(data_igs_dynamic_regions, mem_perf),
+    corr_mem(
+      data_igs_dynamic_regions,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y,
+      by = "region_id"
+    )
+  ),
   tar_cluster_permutation(
     "iss_dynamic_regions",
     data_expr = corr_patterns_1(
@@ -689,6 +686,83 @@ list(
   tar_target(
     stats_iss_whole_regions,
     calc_stats_t(data_iss_whole_regions, iss, .by = region_id)
+  ),
+  tar_target(
+    stats_iss_mem_whole_regions,
+    corr_mem(data_iss_whole_regions, mem_perf)
+  ),
+  tar_cluster_permutation(
+    "iss_mem_dynamic_regions",
+    corr_mem(data_iss_dynamic_regions, mem_perf),
+    corr_mem(
+      data_iss_dynamic_regions,
+      mutate(mem_perf, subj_id = sample(subj_id)),
+      alternative = "greater"
+    ),
+    clusters_stats_expr = calc_clusters_stats(
+      mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+      !!.y,
+      by = "region_id"
+    )
+  ),
+  # more precise memory performance ----
+  tarchetypes::tar_map(
+    config_mem_precise,
+    names = index_name,
+    tar_target(
+      stats_igs_mem_whole_regions,
+      corr_mem(
+        data_igs_whole_regions,
+        mem_perf_precise,
+        col_perf = index_name
+      )
+    ),
+    tar_cluster_permutation(
+      "igs_mem_dynamic_regions",
+      corr_mem(
+        data_igs_dynamic_regions,
+        mem_perf_precise,
+        col_perf = index_name
+      ),
+      corr_mem(
+        data_igs_dynamic_regions,
+        mutate(mem_perf_precise, subj_id = sample(subj_id)),
+        col_perf = index_name,
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y,
+        by = "region_id"
+      )
+    ),
+    tar_target(
+      stats_iss_mem_whole_regions,
+      corr_mem(
+        data_iss_whole_regions,
+        mem_perf_precise,
+        col_perf = index_name
+      )
+    ),
+    tar_cluster_permutation(
+      "iss_mem_dynamic_regions",
+      corr_mem(
+        data_iss_dynamic_regions,
+        mem_perf_precise,
+        col_perf = index_name
+      ),
+      corr_mem(
+        data_iss_dynamic_regions,
+        mutate(mem_perf_precise, subj_id = sample(subj_id)),
+        col_perf = index_name,
+        alternative = "greater"
+      ),
+      clusters_stats_expr = calc_clusters_stats(
+        mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
+        !!.y,
+        by = "region_id"
+      )
+    )
   ),
   tarchetypes::tar_map(
     word_shape_methods,
@@ -1020,10 +1094,6 @@ list(
   tar_target(
     stats_iss_mem_whole_rt_locked,
     corr_mem(data_iss_whole_rt_locked, mem_perf)
-  ),
-  tar_target(
-    comparison_iss_mem_rt_locked,
-    compare_corr_mem(stats_iss_mem_whole_rt_locked)
   ),
   tar_cluster_permutation(
     "iss_mem_dynamic_rt_locked",

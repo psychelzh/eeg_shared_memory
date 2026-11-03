@@ -3,17 +3,24 @@ corr_mem <- function(
   mem_perf,
   ...,
   col_pred = last_col(),
-  col_perf = last_col(),
+  col_perf = dprime,
   by = "subj_id" # no need to support complex joins for now
 ) {
   rlang::check_dots_used()
   name_pred <- names(select(data, {{ col_pred }}))
   name_perf <- names(select(mem_perf, {{ col_perf }}))
+  if (length(name_pred) != 1L || length(name_perf) != 1L) {
+    rlang::abort("Select exactly one predictor and one memory outcome.")
+  }
   # assume `mem_perf` does not contain grouping variables
   # if so, split them out
   vars_grouping <- setdiff(names(data), c(by, name_pred))
   data |>
-    left_join(mem_perf, by = by) |>
+    left_join(
+      select(mem_perf, all_of(c(by, name_perf))),
+      by = by,
+      relationship = "many-to-one"
+    ) |>
     summarise(
       broom::tidy(cor.test(
         .data[[name_pred]],
@@ -21,25 +28,6 @@ corr_mem <- function(
         ...
       )),
       .by = all_of(vars_grouping)
-    )
-}
-
-compare_corr_mem <- function(stats, ..., n = 206) {
-  expand_grid(start = 1:3, end = 1:3) |>
-    filter(start > end) |>
-    mutate(
-      map2(
-        start,
-        end,
-        \(x, y) {
-          with(
-            stats,
-            psych::r.test(n, estimate[[x]], estimate[[y]])[c("z", "p")] |>
-              as_tibble()
-          )
-        }
-      ) |>
-        list_rbind()
     )
 }
 

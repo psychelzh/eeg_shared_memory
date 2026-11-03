@@ -149,6 +149,38 @@ corr_patterns <- function(patterns_x, patterns_y, name) {
     )
 }
 
+## leave-one-out group pattern situation ----
+corr_patterns_loo <- function(patterns, name) {
+  grouping <- setdiff(names(patterns), c("subj_id", "pattern"))
+  patterns |>
+    reframe(
+      subj_id = subj_id,
+      "{name}" := {
+        pattern_matrix <- do.call(cbind, map(pattern, as.numeric))
+        pattern_finite <- is.finite(pattern_matrix)
+        pattern_sum <- rowSums(replace(pattern_matrix, !pattern_finite, 0))
+        pattern_n <- rowSums(pattern_finite)
+        map_dbl(
+          seq_along(pattern),
+          \(pattern_id) {
+            pattern_indiv <- as.numeric(pattern[[pattern_id]])
+            pattern_indiv_finite <- is.finite(pattern_indiv)
+            pattern_n_loo <- pattern_n - pattern_indiv_finite
+            pattern_group_loo <- (
+              pattern_sum - if_else(pattern_indiv_finite, pattern_indiv, 0)
+            ) / pattern_n_loo
+            pattern_group_loo[pattern_n_loo == 0] <- NA_real_
+            calc_inter_patterns(
+              pattern_indiv,
+              pattern_group_loo
+            )
+          }
+        )
+      },
+      .by = all_of(grouping)
+    )
+}
+
 ## bind patterns among CCA components to calculate R2 ----
 corr_patterns_r2 <- function(patterns_x, pattern_y) {
   patterns_x |>
@@ -166,7 +198,7 @@ corr_patterns_r2 <- function(patterns_x, pattern_y) {
 }
 
 ## summarize patterns across CCA components ----
-summarise_pattern_supervised <- function(data, outcome, ..., col = last_col()) {
+summarise_pattern_supervised <- function(data, outcome, col = last_col()) {
   col_name <- names(select(data, {{ col }}))
   data_fit <- data |>
     mutate(z = scale(.data[[col_name]])[, 1], .keep = "unused") |>
@@ -179,7 +211,7 @@ summarise_pattern_supervised <- function(data, outcome, ..., col = last_col()) {
     mutate("c_{col_name}" := preds)
 }
 
-summarise_pattern_standardized <- function(data, ..., col = last_col()) {
+summarise_pattern_standardized <- function(data, col = last_col()) {
   col_name <- names(select(data, {{ col }}))
   data |>
     mutate(z = scale(.data[[col_name]])[, 1], .keep = "unused") |>
@@ -189,7 +221,7 @@ summarise_pattern_standardized <- function(data, ..., col = last_col()) {
     )
 }
 
-summarise_pattern_pca <- function(data, ..., col = last_col()) {
+summarise_pattern_pca <- function(data, col = last_col()) {
   col_name <- names(select(data, {{ col }}))
   data_wide <- data |>
     pivot_wider(names_from = cca_id, values_from = {{ col }}) |>
@@ -201,7 +233,7 @@ summarise_pattern_pca <- function(data, ..., col = last_col()) {
     mutate("c_{col_name}" := scores)
 }
 
-summarise_pattern_sum <- function(data, ..., col = last_col()) {
+summarise_pattern_sum <- function(data, col = last_col()) {
   col_name <- names(select(data, {{ col }}))
   data |>
     summarise(

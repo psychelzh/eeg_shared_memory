@@ -12,4 +12,4 @@ comments:
   hypothesis: true
 
 execute:
-  freeze: true
+  freeze: false
