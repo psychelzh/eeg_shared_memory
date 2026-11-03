@@ -78,7 +78,8 @@ find_cluster <- function(
     clusters$end <- index[clusters$end]
   }
   if (keep == "largest") {
-    clusters <- slice_max(clusters, cluster_mass)
+    # Each permutation contributes exactly one maximum to the null distribution.
+    clusters <- slice_max(clusters, cluster_mass, n = 1, with_ties = FALSE)
   }
   clusters
 }
