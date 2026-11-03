@@ -287,15 +287,15 @@ list(
     config_mem_precise,
     tar_target(
       stats_igs_mem_whole,
-      corr_mem(data_igs_whole, mem_perf_precise, name_perf = index_name)
+      corr_mem(data_igs_whole, mem_perf_precise, col_perf = index_name)
     ),
     tar_cluster_permutation(
       "igs_mem_dynamic",
-      corr_mem(data_igs_dynamic, mem_perf_precise, name_perf = index_name),
+      corr_mem(data_igs_dynamic, mem_perf_precise, col_perf = index_name),
       corr_mem(
         data_igs_dynamic,
         mutate(mem_perf_precise, subj_id = sample(subj_id)),
-        name_perf = index_name,
+        col_perf = index_name,
         alternative = "greater"
       ),
       clusters_stats_expr = calc_clusters_stats(
@@ -412,15 +412,15 @@ list(
     config_mem_precise,
     tar_target(
       stats_iss_mem_whole,
-      corr_mem(data_iss_whole, mem_perf_precise, name_perf = index_name)
+      corr_mem(data_iss_whole, mem_perf_precise, col_perf = index_name)
     ),
     tar_cluster_permutation(
       "iss_mem_dynamic",
-      corr_mem(data_iss_dynamic, mem_perf_precise, name_perf = index_name),
+      corr_mem(data_iss_dynamic, mem_perf_precise, col_perf = index_name),
       corr_mem(
         data_iss_dynamic,
         mutate(mem_perf_precise, subj_id = sample(subj_id)),
-        name_perf = index_name,
+        col_perf = index_name,
         alternative = "greater"
       ),
       clusters_stats_expr = calc_clusters_stats(

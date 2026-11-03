@@ -6,6 +6,7 @@ corr_mem <- function(
   col_perf = last_col(),
   by = "subj_id" # no need to support complex joins for now
 ) {
+  rlang::check_dots_used()
   name_pred <- names(select(data, {{ col_pred }}))
   name_perf <- names(select(mem_perf, {{ col_perf }}))
   # assume `mem_perf` does not contain grouping variables
@@ -17,7 +18,6 @@ corr_mem <- function(
       broom::tidy(cor.test(
         .data[[name_pred]],
         .data[[name_perf]],
-        use = "pairwise",
         ...
       )),
       .by = all_of(vars_grouping)
