@@ -24,6 +24,49 @@ Run the analysis in R:
 targets::tar_make()
 ```
 
+Workers are split into two crew pools. The `heavy` pool has one worker for
+full-data EEG calculations and consumers of multi-GB dynamic pattern tables,
+including their permutations, region construction, and reaction-time controls.
+The `light` pool has 11 local workers (24 on SGE) for participant branches and
+smaller statistics. The total budget remains 12 locally and 25 on SGE. Large
+tasks can run alongside light work without blocking the main scheduler.
+This limits heavy-task concurrency; it is not a machine-wide RAM reservation.
+
+Cluster-permutation tasks now compute the statistic inside each permutation
+replicate, before batching or writing its result. The cache retains statistics
+rather than full permuted subject tables or Mantel model objects. ISPS
+permutations similarly retain their means instead of subject-distance matrices.
+Permutation counts, test formulas, and cluster correction remain unchanged.
+Changed permutation target names change their deterministic RNG seeds: rerun
+p-values can differ by Monte Carlo variation from historical outputs.
+
+Large-data tasks use transient memory and pre-task garbage collection.
+Permutation branches explicitly use `retrieval = "worker"`: workers read
+their dependencies from the cache, avoiding the automatic main-process
+retrieval/transport used for some dynamic branches. This is scoped to the
+permutation factories and ISPS permutations, not a global policy change.
+Local logs are under `logs/crew/light/` and `logs/crew/heavy/`. Default callr
+isolation remains enabled. Full-pipeline speed and peak RAM still need to be
+measured on the complete dataset; worker count alone does not guarantee speed.
+
+An opt-in integration experiment uses tiny generated distances, two actual
+worker pools and an isolated temporary cache. It checks fused Mantel results,
+cluster results and overlapping execution, without running the main analysis:
+
+```sh
+Rscript tests/smoke_worker_pools.R
+```
+
+To isolate the repeatedly crashing GWS task without rerunning the full pipeline:
+
+```r
+targets::tar_make(names = data_gws_dynamic_alexnet_conv2d_5_11, use_crew = FALSE)
+```
+
+Worker crashes may not populate `.Last.error` in the interactive session.
+Keep the printed task name and inspect the newest files under `logs/crew/`.
+Do not increase crash retries as a substitute for diagnosing repeated failures.
+
 Then regenerate the report and exported figures:
 
 ```sh

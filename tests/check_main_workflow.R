@@ -29,8 +29,31 @@ annotations <- prepare_cluster_plot_data(clusters)
 stopifnot(nrow(annotations) == 1L, annotations$start == 1,
           annotations$p_perm.adj < 0.05)
 
-manifest <- targets::tar_manifest(fields = c(name, command), callr_function = NULL)
+manifest <- targets::tar_manifest(fields = c(name, command, deployment, resources, retrieval),
+                                  callr_function = NULL)
 stopifnot(!anyDuplicated(manifest$name))
+full_eeg <- c("patterns_indiv_whole", "patterns_group_whole", "patterns_group_dynamic")
+large_inputs <- c("patterns_indiv_dynamic", "patterns_group_dynamic_loo",
+                  "patterns_indiv_dynamic_regions", "patterns_indiv_dynamic_rt_locked",
+                  "file_eeg_data")
+large_consumers <- vapply(manifest$command, function(command) {
+  any(all.names(parse(text = command)) %in% large_inputs)
+}, logical(1))
+worker_eeg <- c("patterns_indiv_dynamic", "patterns_group_whole_loo",
+                "patterns_group_dynamic_loo", "stats_iss_mem_dynamic_permuted_dprime_rem",
+                "data_gws_dynamic_alexnet_conv2d_5_11")
+pool <- vapply(manifest$resources, function(x) x$crew$controller, character(1))
+stopifnot(all(full_eeg %in% manifest$name),
+          all(pool[manifest$name %in% full_eeg] == "heavy"),
+          all(pool[large_consumers] == "heavy"),
+          all(worker_eeg %in% manifest$name),
+          all(pool[manifest$name %in% worker_eeg] == "light"),
+          all(manifest$deployment[manifest$name %in% c(full_eeg, worker_eeg)] == "worker"))
+permutation_targets <- grepl("_permuted", manifest$name) &
+  !grepl("_batch", manifest$name) &
+  grepl("^(stats_|summary_isps_)", manifest$name) &
+  manifest$name != "stats_isps_dynamic_permuted"
+stopifnot(any(permutation_targets), all(manifest$retrieval[permutation_targets] == "worker"))
 retired <- c("data_combined", "model_med", "fit_med_iss_igs_dprime",
              "fit_med_igs_iss_dprime", "comparison_iss_mem",
              "comparison_iws_mem_charsim_none", "comparison_iss_mem_rt_locked",

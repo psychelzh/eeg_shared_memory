@@ -9,7 +9,9 @@ tar_cluster_permutation <- function(
   data_name = NULL,
   clusters_stats_name = NULL,
   reps = 10,
-  batches = 100
+  batches = 100,
+  data_resources = tar_option_get("resources"),
+  stats_resources = tar_option_get("resources")
 ) {
   if (!missing(name)) {
     stats_name <- paste0("stats_", name)
@@ -17,7 +19,6 @@ tar_cluster_permutation <- function(
     clusters_stats_name <- paste0("clusters_stats_", name)
   }
   stats_name_permuted <- paste0(stats_name, "_permuted")
-  data_name_permuted <- paste0(data_name, "_permuted")
   if (!is.null(substitute(data_expr))) {
     stats_expr <- tar_tidy_eval(
       as.expression(substitute(stats_expr)),
@@ -26,7 +27,7 @@ tar_cluster_permutation <- function(
     )
     stats_perm_expr <- tar_tidy_eval(
       as.expression(substitute(stats_perm_expr)),
-      envir = list(.x = rlang::sym(data_name_permuted)),
+      envir = list(.x = rlang::sym(".permuted")),
       tidy_eval = TRUE
     )
   }
@@ -47,20 +48,31 @@ tar_cluster_permutation <- function(
     )
   }
   list(
-    tar_target_raw(stats_name, substitute(stats_expr)),
+    tar_target_raw(
+      stats_name, substitute(stats_expr), resources = stats_resources,
+      garbage_collection = identical(stats_resources$crew$controller, "heavy")
+    ),
     if (!is.null(substitute(data_expr))) {
       list(
-        tar_target_raw(data_name, substitute(data_expr)),
-        tarchetypes::tar_rep_raw(
-          data_name_permuted,
-          substitute(data_perm_expr),
-          reps = reps,
-          batches = batches
+        tar_target_raw(
+          data_name, substitute(data_expr), resources = data_resources,
+          memory = "transient",
+          garbage_collection = identical(data_resources$crew$controller, "heavy")
         ),
-        tarchetypes::tar_rep2_raw(
+        tarchetypes::tar_rep_raw(
           stats_name_permuted,
-          substitute(stats_perm_expr),
-          data_name_permuted
+          # Reduce each replicate before tar_rep binds its batch. Full permuted
+          # tables and Mantel permutation vectors never become cached outputs.
+          bquote(local({
+            .permuted <- .(substitute(data_perm_expr))
+            .(stats_perm_expr)
+          })),
+          reps = reps,
+          batches = batches,
+          resources = data_resources,
+          memory = "transient",
+          retrieval = "worker",
+          garbage_collection = identical(data_resources$crew$controller, "heavy")
         )
       )
     } else {
@@ -68,7 +80,11 @@ tar_cluster_permutation <- function(
         stats_name_permuted,
         substitute(stats_perm_expr),
         reps = reps,
-        batches = batches
+        batches = batches,
+        resources = stats_resources,
+        memory = "transient",
+        retrieval = "worker",
+        garbage_collection = identical(stats_resources$crew$controller, "heavy")
       )
     },
     tar_target_raw(clusters_stats_name, clusters_stats_expr)
