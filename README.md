@@ -24,37 +24,51 @@ Run the analysis in R:
 targets::tar_make()
 ```
 
-Workers are split into two crew pools. The `heavy` pool has one worker for
-full-data EEG calculations and consumers of multi-GB dynamic pattern tables,
-including their permutations, region construction, and reaction-time controls.
-The `light` pool has 11 local workers (24 on SGE) for participant branches and
-smaller statistics. The total budget remains 12 locally and 25 on SGE. Large
-tasks can run alongside light work without blocking the main scheduler.
-This limits heavy-task concurrency; it is not a machine-wide RAM reservation.
+The pipeline uses shared partition files and a common task-building framework.
+Pattern tables are split once by CCA component or brain region and reused by
+IGS, ISS/IWS, ISPS, GSS/GWS, SMC/partial Mantel, region and RT analyses. A single
+worker prepares full-source files; calculations share 11 local workers (24 on
+SGE). Total worker budgets remain 12 locally and 25 on SGE.
 
-Cluster-permutation tasks now compute the statistic inside each permutation
-replicate, before batching or writing its result. The cache retains statistics
-rather than full permuted subject tables or Mantel model objects. ISPS
-permutations similarly retain their means instead of subject-distance matrices.
-Permutation counts, test formulas, and cluster correction remain unchanged.
-Changed permutation target names change their deterministic RNG seeds: rerun
-p-values can differ by Monte Carlo variation from historical outputs.
+Workers read only their partition, once per batch, and compute complete-subject
+time windows sequentially within that job. Parallelism is across partitions
+and batches. The cache retains permutation statistics or ISPS means. Full time
+series are combined before cluster inference. Raw EEG regions and full CCA
+pattern construction are now separate computation branches. RT memory-label
+permutations reuse cached numeric IGS/ISS tables. Small numeric tables keep
+whole-table batch parallelism; joint prediction models keep all components.
 
-Large-data tasks use transient memory and pre-task garbage collection.
-Permutation branches explicitly use `retrieval = "worker"`: workers read
-their dependencies from the cache, avoiding the automatic main-process
-retrieval/transport used for some dynamic branches. This is scoped to the
-permutation factories and ISPS permutations, not a global policy change.
-Local logs are under `logs/crew/light/` and `logs/crew/heavy/`. Default callr
-isolation remains enabled. Full-pipeline speed and peak RAM still need to be
-measured on the complete dataset; worker count alone does not guarantee speed.
+The shared seed plan preserves cross-window memory/target shuffles and
+independent subject/window pattern shuffles. Draws are stable across batching
+and worker assignment. This establishes new Monte Carlo draws relative to
+historical caches, so affected p-values can change. Outer counts remain 1,000;
+Mantel inner counts remain 9,999 with no nested process parallelism. Mantel
+batches use two outer replicates, reducing the work lost on a worker crash.
 
-An opt-in integration experiment uses tiny generated distances, two actual
-worker pools and an isolated temporary cache. It checks fused Mantel results,
-cluster results and overlapping execution, without running the main analysis:
+Read the [architecture and reuse guide](docs/partitioned-pipeline.md) for the
+registry, builders, randomisation rules and resource policy. Only preparation
+uses the single-worker pool; this is not a machine-wide RAM reservation.
+Partition files require additional disk space and initial preparation.
+No full-pipeline speed or peak-memory guarantee is implied by the small tests.
+
+The following opt-in checks use isolated temporary stores:
 
 ```sh
-Rscript tests/smoke_worker_pools.R
+Rscript tests/smoke_partitioned_pipeline.R
+Rscript tests/smoke_real_partitions.R
+```
+
+The first uses generated inputs and checks actual workers, old-cache migration,
+reused files, mapped outcomes and all major calculation families. The second
+requires cached project data and checks actual GWS distances with 9,999 inner
+permutations. The earlier [ISPS pilot](docs/isps-chunk-experiment.md) records the
+initial design and its benchmark limits.
+
+Default callr isolation remains enabled. Worker logs are under
+`logs/crew/light/` and `logs/crew/heavy/`. To run one analysis first:
+
+```r
+targets::tar_make(names = clusters_stats_isps_dynamic)
 ```
 
 To isolate the repeatedly crashing GWS task without rerunning the full pipeline:

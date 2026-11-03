@@ -1,21 +1,28 @@
 library(targets)
 
 on_sge <- Sys.info()["nodename"] %in% c("shadow", "hippocampus")
-# A dedicated heavy worker prevents simultaneous copies of multi-GB tables.
-# Keep the total worker budget, while allowing light work to proceed alongside it.
+# Reserve one worker for full-source file preparation.
+# All partition calculations share the remaining workers.
 controller_pool <- function(name, workers) {
   if (on_sge) {
-    crew.cluster::crew_controller_sge(name = name, workers = workers, seconds_idle = 30)
+    crew.cluster::crew_controller_sge(
+      name = name,
+      workers = workers,
+      seconds_idle = 30
+    )
   } else {
     crew::crew_controller_local(
-      name = name, workers = workers,
+      name = name,
+      workers = workers,
       options_local = crew::crew_options_local(
         log_directory = file.path(getwd(), "logs", "crew", name)
       )
     )
   }
 }
-resources_eeg_full <- tar_resources(crew = tar_resources_crew(controller = "heavy"))
+resources_prepare <- tar_resources(
+  crew = tar_resources_crew(controller = "heavy")
+)
 
 tar_option_set(
   packages = c("tidyverse"),
@@ -26,8 +33,28 @@ tar_option_set(
     controller_pool("heavy", 1)
   )
 )
-future::plan(future.callr::callr)
 tar_source()
+
+# Reused file bundles; shared by every analysis consuming the same patterns.
+partition_sources <- c(
+  patterns_indiv_dynamic = "partitions_patterns_indiv_dynamic",
+  patterns_group_dynamic_loo = "partitions_patterns_group_dynamic_loo",
+  patterns_indiv_whole = "partitions_patterns_indiv_whole",
+  patterns_group_whole_loo = "partitions_patterns_group_whole_loo",
+  patterns_group_dynamic = "partitions_patterns_group_dynamic",
+  patterns_group_whole = "partitions_patterns_group_whole",
+  patterns_indiv_dynamic_regions = "partitions_patterns_indiv_dynamic_regions",
+  patterns_indiv_whole_regions = "partitions_patterns_indiv_whole_regions",
+  patterns_indiv_dynamic_rt_locked = "partitions_patterns_indiv_dynamic_rt_locked",
+  patterns_indiv_whole_rt_locked = "partitions_patterns_indiv_whole_rt_locked",
+  patterns_group_whole_loo_rt_locked = "partitions_patterns_group_whole_loo_rt_locked",
+  data_isps_dynamic = "partitions_data_isps_dynamic",
+  data_isps_whole = "partitions_data_isps_whole",
+  data_isps_partial_group_dynamic = "partitions_data_isps_partial_group_dynamic",
+  data_isps_partial_group_whole = "partitions_data_isps_partial_group_whole",
+  data_isps_partial_semantic_dynamic = "partitions_data_isps_partial_semantic_dynamic",
+  data_isps_partial_semantic_whole = "partitions_data_isps_partial_semantic_whole"
+)
 
 targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
   config_num_subjs,
@@ -110,6 +137,14 @@ targets_combine_igs_iss <- tarchetypes::tar_map(
 )
 
 list(
+  tar_partition_registry(
+    partition_sources,
+    by = list(
+      patterns_indiv_dynamic_regions = "region_id",
+      patterns_indiv_whole_regions = "region_id"
+    ),
+    resources = resources_prepare
+  ),
   # behavioral data ----
   tarchetypes::tar_file_read(
     subjs,
@@ -147,6 +182,14 @@ list(
     file_cca_y,
     "data/CorCAExtra/cca_y_subjs206.parquet",
     format = "file"
+  ),
+  tar_target(
+    cca_id_loop,
+    arrow::open_dataset(file_cca_y) |>
+      distinct(cca_id) |>
+      collect() |>
+      arrange(cca_id) |>
+      pull(cca_id)
   ),
   # used for dynamic branches to save memory
   tar_target(subj_id_loop, seq_len(num_subj)),
@@ -204,10 +247,11 @@ list(
   tar_target(
     patterns_indiv_whole,
     arrow::open_dataset(file_cca_y) |>
-      filter(time_id >= index_onset) |>
+      filter(time_id >= index_onset, cca_id == cca_id_loop) |>
       collect() |>
       calc_indiv_pattern(),
-    resources = resources_eeg_full,
+    pattern = map(cca_id_loop),
+    retrieval = "worker",
     memory = "transient",
     garbage_collection = TRUE
   ),
@@ -236,19 +280,23 @@ list(
   ),
   tar_target(
     patterns_group_dynamic,
-    arrow::read_parquet(file_cca_y) |>
+    arrow::open_dataset(file_cca_y) |>
+      filter(cca_id == cca_id_loop) |>
+      collect() |>
       calc_group_pattern_dynamic(),
-    resources = resources_eeg_full,
+    pattern = map(cca_id_loop),
+    retrieval = "worker",
     memory = "transient",
     garbage_collection = TRUE
   ),
   tar_target(
     patterns_group_whole,
     arrow::open_dataset(file_cca_y) |>
-      filter(time_id >= index_onset) |>
+      filter(time_id >= index_onset, cca_id == cca_id_loop) |>
       collect() |>
       calc_group_pattern(),
-    resources = resources_eeg_full,
+    pattern = map(cca_id_loop),
+    retrieval = "worker",
     memory = "transient",
     garbage_collection = TRUE
   ),
@@ -265,8 +313,8 @@ list(
       add_column(subj_id = subj_id_loop, .before = 1L),
     pattern = map(subj_id_loop)
   ),
-  tar_target(
-    data_igs_whole,
+  tar_partition_target(
+    "data_igs_whole",
     corr_patterns(patterns_indiv_whole, patterns_group_whole_loo, name = "igs")
   ),
   tar_target(stats_igs_whole, calc_stats_t(data_igs_whole, igs, .by = cca_id)),
@@ -300,8 +348,7 @@ list(
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
-    ),
-    data_resources = resources_eeg_full
+    )
   ),
   tar_target(igs_comparison, compare_corr_patterns(data_igs_whole)),
 
@@ -344,8 +391,8 @@ list(
   ),
 
   # GSS: group averaged patterns and semantic pattern ----
-  tar_target(
-    data_gss_whole,
+  tar_partition_target(
+    "data_gss_whole",
     calc_mantel(patterns_group_whole, pattern_semantics)
   ),
   tar_target(stats_gss_whole, extract_stats_mantel(data_gss_whole)),
@@ -364,8 +411,8 @@ list(
   tarchetypes::tar_map(
     word_shape_methods,
     names = c(model, layer),
-    tar_target(
-      data_gws_whole,
+    tar_partition_target(
+      "data_gws_whole",
       calc_mantel(patterns_group_whole, name_pattern)
     ),
     tar_target(stats_gws_whole, extract_stats_mantel(data_gws_whole)),
@@ -402,11 +449,10 @@ list(
       !!.y
     ),
     reps = 100,
-    batches = 10,
-    data_resources = resources_eeg_full
+    batches = 10
   ),
-  tar_target(
-    data_iss_whole,
+  tar_partition_target(
+    "data_iss_whole",
     corr_patterns_1(
       patterns_indiv_whole,
       pattern_semantics,
@@ -508,11 +554,10 @@ list(
         !!.y
       ),
       reps = 100,
-      batches = 10,
-      data_resources = resources_eeg_full
+      batches = 10
     ),
-    tar_target(
-      data_iws_whole,
+    tar_partition_target(
+      "data_iws_whole",
       corr_patterns_1(
         patterns_indiv_whole,
         name_pattern,
@@ -563,24 +608,21 @@ list(
   ),
 
   ## regress semantic from group averaged ----
-  tar_target(
-    data_igs_partial_whole,
+  tar_partition_target(
+    "data_igs_partial_whole",
     corr_patterns(
       regress_patterns_1(patterns_indiv_whole, pattern_semantics),
       regress_patterns_1(patterns_group_whole_loo, pattern_semantics),
       name = "igs"
     )
   ),
-  tar_target(
-    data_igs_partial_dynamic,
+  tar_partition_target(
+    "data_igs_partial_dynamic",
     corr_patterns(
       regress_patterns_1(patterns_indiv_dynamic, pattern_semantics),
       regress_patterns_1(patterns_group_dynamic_loo, pattern_semantics),
       name = "igs"
-    ),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+    )
   ),
   tar_cluster_permutation(
     "igs_partial_mem_dynamic",
@@ -597,24 +639,21 @@ list(
   ),
 
   ## regress group averaged from semantic patterns ----
-  tar_target(
-    data_iss_partial_whole,
+  tar_partition_target(
+    "data_iss_partial_whole",
     corr_patterns(
       regress_patterns(patterns_indiv_whole, patterns_group_whole_loo),
       regress_patterns_1r(pattern_semantics, patterns_group_whole_loo),
       name = "iss"
     )
   ),
-  tar_target(
-    data_iss_partial_dynamic,
+  tar_partition_target(
+    "data_iss_partial_dynamic",
     corr_patterns(
       regress_patterns(patterns_indiv_dynamic, patterns_group_dynamic_loo),
       regress_patterns_1r(pattern_semantics, patterns_group_dynamic_loo),
       name = "iss"
-    ),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+    )
   ),
   tar_cluster_permutation(
     "iss_partial_mem_dynamic",
@@ -638,33 +677,35 @@ list(
   ),
   tar_target(file_eeg_data, "data-raw/EEG/eeg_206.qs2", format = "file"),
   tar_target(
-    patterns_indiv_dynamic_regions,
-    read_eeg_regions(file_eeg_data, channel_regions) |>
-      mutate(data = map(data, calc_indiv_pattern_dynamic_region)) |>
-      unnest(data),
-    resources = resources_eeg_full,
+    partitions_eeg_regions,
+    write_eeg_region_partitions(
+      file_eeg_data,
+      channel_regions,
+      file.path(targets::tar_path_store(), "user", "partitions", "eeg-regions")
+    ),
+    format = "file",
+    resources = resources_prepare,
+    retrieval = "worker",
     memory = "transient",
     garbage_collection = TRUE
   ),
-  tar_target(
-    patterns_indiv_whole_regions,
-    read_eeg_regions(file_eeg_data, channel_regions) |>
-      mutate(data = map(data, calc_indiv_pattern_region)) |>
-      unnest(data),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+  tar_partition_target(
+    "patterns_indiv_dynamic_regions",
+    calc_indiv_pattern_dynamic_region(.inputs$eeg),
+    sources = c(eeg = "partitions_eeg_regions")
+  ),
+  tar_partition_target(
+    "patterns_indiv_whole_regions",
+    calc_indiv_pattern_region(.inputs$eeg),
+    sources = c(eeg = "partitions_eeg_regions")
   ),
   # IGS: individual to leave-one-out group pattern similarity ----
-  tar_target(
-    data_igs_dynamic_regions,
-    corr_patterns_loo(patterns_indiv_dynamic_regions, name = "igs"),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+  tar_partition_target(
+    "data_igs_dynamic_regions",
+    corr_patterns_loo(patterns_indiv_dynamic_regions, name = "igs")
   ),
-  tar_target(
-    data_igs_whole_regions,
+  tar_partition_target(
+    "data_igs_whole_regions",
     corr_patterns_loo(patterns_indiv_whole_regions, name = "igs")
   ),
   tar_target(
@@ -714,11 +755,10 @@ list(
       by = "region_id"
     ),
     reps = 100,
-    batches = 10,
-    data_resources = resources_eeg_full
+    batches = 10
   ),
-  tar_target(
-    data_iss_whole_regions,
+  tar_partition_target(
+    "data_iss_whole_regions",
     corr_patterns_1(
       patterns_indiv_whole_regions,
       pattern_semantics,
@@ -834,11 +874,10 @@ list(
         by = "region_id"
       ),
       reps = 100,
-      batches = 10,
-      data_resources = resources_eeg_full
+      batches = 10
     ),
-    tar_target(
-      data_iws_whole_regions,
+    tar_partition_target(
+      "data_iws_whole_regions",
       corr_patterns_1(
         patterns_indiv_whole_regions,
         name_pattern,
@@ -853,46 +892,36 @@ list(
 
   # ISPS: intersubject pattern similarity ----
   ## ISPS calculation ----
-  tar_target(data_isps_whole, calc_isps(patterns_indiv_whole)),
-  tarchetypes::tar_rep(
-    summary_isps_whole_permuted,
+  tar_partition_target(
+    "data_isps_whole",
+    calc_isps(patterns_indiv_whole)
+  ),
+  tar_partition_replicates(
+    "summary_isps_whole_permuted",
     patterns_indiv_whole |>
       mutate(pattern = map(pattern, permute_dist)) |>
       calc_isps() |>
-      summarise_isps(),
-    reps = 10,
-    batches = 100,
-    retrieval = "worker",
-    memory = "transient"
+      summarise_isps()
   ),
   tar_target(
     stats_isps_whole,
     summarise_isps(data_isps_whole, se = TRUE) |>
       calc_stats_isps(summary_isps_whole_permuted)
   ),
-  tar_target(
-    data_isps_dynamic,
-    calc_isps(patterns_indiv_dynamic),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+  tar_partition_target(
+    "data_isps_dynamic",
+    calc_isps(patterns_indiv_dynamic)
   ),
   tar_target(
     summary_isps_dynamic,
     summarise_isps(data_isps_dynamic, se = TRUE)
   ),
-  tarchetypes::tar_rep(
-    summary_isps_dynamic_permuted,
+  tar_partition_replicates(
+    "summary_isps_dynamic_permuted",
     patterns_indiv_dynamic |>
       mutate(pattern = map(pattern, permute_dist)) |>
       calc_isps() |>
-      summarise_isps(),
-    reps = 10,
-    batches = 100,
-    retrieval = "worker",
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+      summarise_isps()
   ),
   tar_target(
     stats_isps_dynamic,
@@ -918,7 +947,10 @@ list(
   ),
 
   ## ISPS and shared memory content (SMC) ----
-  tar_target(data_isps_smc_whole, calc_mantel(data_isps_whole, smc)),
+  tar_partition_target(
+    "data_isps_smc_whole",
+    calc_mantel(data_isps_whole, smc)
+  ),
   tar_target(stats_isps_smc_whole, extract_stats_mantel(data_isps_smc_whole)),
   tar_cluster_permutation(
     "isps_smc_dynamic",
@@ -936,18 +968,15 @@ list(
     simil_mem
   ),
   # control for group-averaged representation
-  tar_target(
-    data_isps_partial_group_whole,
+  tar_partition_target(
+    "data_isps_partial_group_whole",
     regress_patterns(patterns_indiv_whole, patterns_group_whole) |>
       calc_isps()
   ),
-  tar_target(
-    data_isps_partial_group_dynamic,
+  tar_partition_target(
+    "data_isps_partial_group_dynamic",
     regress_patterns(patterns_indiv_dynamic, patterns_group_dynamic) |>
-      calc_isps(),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+      calc_isps()
   ),
   tar_mantel(
     "isps_smc_partial_group",
@@ -963,18 +992,15 @@ list(
     simil_mem
   ),
   # control for semantic representation
-  tar_target(
-    data_isps_partial_semantic_whole,
+  tar_partition_target(
+    "data_isps_partial_semantic_whole",
     regress_patterns_1(patterns_indiv_whole, pattern_semantics) |>
       calc_isps()
   ),
-  tar_target(
-    data_isps_partial_semantic_dynamic,
+  tar_partition_target(
+    "data_isps_partial_semantic_dynamic",
     regress_patterns_1(patterns_indiv_dynamic, pattern_semantics) |>
-      calc_isps(),
-    resources = resources_eeg_full,
-    memory = "transient",
-    garbage_collection = TRUE
+      calc_isps()
   ),
   tar_mantel(
     "isps_smc_partial_semantic",
@@ -1004,29 +1030,48 @@ list(
   ),
   tar_target(
     cca_y_rt_locked,
-    arrow::read_parquet(file_cca_y) |>
-      shift_time_id_rt_locked(medrts_encoding, common_time_id_rt_locked)
+    arrow::open_dataset(file_cca_y) |>
+      filter(cca_id == cca_id_loop) |>
+      collect() |>
+      shift_time_id_rt_locked(medrts_encoding, common_time_id_rt_locked),
+    pattern = map(cca_id_loop),
+    retrieval = "worker",
+    memory = "transient",
+    garbage_collection = TRUE
   ),
 
   ## re-calculate patterns ----
   tar_target(
     patterns_indiv_dynamic_rt_locked,
     calc_indiv_pattern_dynamic(cca_y_rt_locked),
-    resources = resources_eeg_full,
+    pattern = map(cca_y_rt_locked),
+    retrieval = "worker",
     memory = "transient",
     garbage_collection = TRUE
   ),
   tar_target(
     patterns_indiv_whole_rt_locked,
-    calc_indiv_pattern(cca_y_rt_locked)
+    calc_indiv_pattern(cca_y_rt_locked),
+    pattern = map(cca_y_rt_locked),
+    retrieval = "worker",
+    memory = "transient",
+    garbage_collection = TRUE
   ),
   tar_target(
     patterns_group_dynamic_rt_locked,
-    calc_group_pattern_dynamic(cca_y_rt_locked)
+    calc_group_pattern_dynamic(cca_y_rt_locked),
+    pattern = map(cca_y_rt_locked),
+    retrieval = "worker",
+    memory = "transient",
+    garbage_collection = TRUE
   ),
   tar_target(
     patterns_group_whole_rt_locked,
-    calc_group_pattern(cca_y_rt_locked)
+    calc_group_pattern(cca_y_rt_locked),
+    pattern = map(cca_y_rt_locked),
+    retrieval = "worker",
+    memory = "transient",
+    garbage_collection = TRUE
   ),
 
   ## re-calculate IGS ----
@@ -1036,10 +1081,13 @@ list(
       filter(subj_id != subj_id_loop) |>
       calc_group_pattern() |>
       add_column(subj_id = subj_id_loop, .before = 1L),
-    pattern = map(subj_id_loop)
+    pattern = cross(subj_id_loop, cca_y_rt_locked),
+    retrieval = "worker",
+    memory = "transient",
+    garbage_collection = TRUE
   ),
-  tar_target(
-    data_igs_whole_rt_locked,
+  tar_partition_target(
+    "data_igs_whole_rt_locked",
     corr_patterns(
       patterns_indiv_whole_rt_locked,
       patterns_group_whole_loo_rt_locked,
@@ -1068,8 +1116,7 @@ list(
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
-    ),
-    data_resources = resources_eeg_full
+    )
   ),
   tar_target(
     igs_comparison_rt_locked,
@@ -1082,28 +1129,16 @@ list(
   ),
   tar_cluster_permutation(
     "igs_mem_dynamic_rt_locked",
+    corr_mem(data_igs_dynamic_rt_locked, mem_perf),
     corr_mem(
-      corr_patterns(
-        patterns_indiv_dynamic_rt_locked,
-        patterns_group_whole_loo_rt_locked,
-        name = "igs"
-      ),
-      mem_perf
-    ),
-    corr_mem(
-      corr_patterns(
-        patterns_indiv_dynamic_rt_locked,
-        patterns_group_whole_loo_rt_locked,
-        name = "igs"
-      ),
+      data_igs_dynamic_rt_locked,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
     ),
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
-    ),
-    stats_resources = resources_eeg_full
+    )
   ),
   tar_target(
     igs_mem_combine_rt_locked,
@@ -1130,11 +1165,10 @@ list(
       !!.y
     ),
     reps = 100,
-    batches = 10,
-    data_resources = resources_eeg_full
+    batches = 10
   ),
-  tar_target(
-    data_iss_whole_rt_locked,
+  tar_partition_target(
+    "data_iss_whole_rt_locked",
     corr_patterns_1(
       patterns_indiv_whole_rt_locked,
       pattern_semantics,
@@ -1156,27 +1190,15 @@ list(
   ),
   tar_cluster_permutation(
     "iss_mem_dynamic_rt_locked",
+    corr_mem(data_iss_dynamic_rt_locked, mem_perf),
     corr_mem(
-      corr_patterns_1(
-        patterns_indiv_dynamic_rt_locked,
-        pattern_semantics,
-        name = "iss"
-      ),
-      mem_perf
-    ),
-    corr_mem(
-      corr_patterns_1(
-        patterns_indiv_dynamic_rt_locked,
-        pattern_semantics,
-        name = "iss"
-      ),
+      data_iss_dynamic_rt_locked,
       mutate(mem_perf, subj_id = sample(subj_id)),
       alternative = "greater"
     ),
     clusters_stats_expr = calc_clusters_stats(
       mutate(!!.x, p.value = convert_p2_p1(p.value, statistic)),
       !!.y
-    ),
-    stats_resources = resources_eeg_full
+    )
   )
 )
