@@ -1,65 +1,10 @@
 library(targets)
+tar_source()
+configure_targets_runtime()
 
-on_sge <- Sys.info()["nodename"] %in% c("shadow", "hippocampus")
-# Local default: i7-12700F (12 cores / 20 threads), 64 GiB RAM.
-# Prefer stability after a full-run worker startup failure at 14 workers.
-# Keep headroom for preparation, scheduling and interactive applications.
-compute_workers <- if (on_sge) {
-  24L
-} else {
-  configured_workers <- Sys.getenv("EEG_WORKERS", "12")
-  workers <- suppressWarnings(as.integer(configured_workers))
-  if (
-    is.na(workers) ||
-      workers < 1L ||
-      as.character(workers) != configured_workers
-  ) {
-    stop("EEG_WORKERS must be a positive integer.")
-  }
-  # Skip slow system-library sandbox setup; retain project renv activation.
-  # Thread limits are inherited before worker libraries initialise their pools.
-  Sys.setenv(
-    RENV_CONFIG_SANDBOX_ENABLED = "FALSE",
-    OMP_NUM_THREADS = "1",
-    OPENBLAS_NUM_THREADS = "1",
-    MKL_NUM_THREADS = "1",
-    RCPP_PARALLEL_NUM_THREADS = "1"
-  )
-  workers
-}
-# File preparation remains serial in its own pool.
-controller_pool <- function(name, workers) {
-  if (on_sge) {
-    crew.cluster::crew_controller_sge(
-      name = name,
-      workers = workers,
-      seconds_idle = 30
-    )
-  } else {
-    crew::crew_controller_local(
-      name = name,
-      workers = workers,
-      seconds_launch = 120,
-      options_local = crew::crew_options_local(
-        log_directory = file.path(getwd(), "logs", "crew", name)
-      )
-    )
-  }
-}
 resources_prepare <- tar_resources(
   crew = tar_resources_crew(controller = "heavy")
 )
-
-tar_option_set(
-  packages = c("tidyverse"),
-  format = "qs",
-  resources = tar_resources(crew = tar_resources_crew(controller = "light")),
-  controller = crew::crew_controller_group(
-    controller_pool("light", compute_workers),
-    controller_pool("heavy", 1)
-  )
-)
-tar_source()
 
 # Reused file bundles; shared by every analysis consuming the same patterns.
 partition_sources <- c(

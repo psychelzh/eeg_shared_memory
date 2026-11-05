@@ -20,6 +20,10 @@ flowchart LR
 
 ## Reusable code
 
+- `R/tar_runtime.R` configures local/SGE workers, environment variables, memory
+  resources and logs. `tar_source()` loads it along with the other R functions;
+  `_targets.R` then calls `configure_targets_runtime()`. Loading the module alone
+  only defines functions and does not configure controllers.
 - `R/partitioning.R` handles file bundles, source alignment, deterministic seed
   plans, row-key seeds, worker reads, time-window streaming and batched execution.
 - `R/tar_partitions.R` builds the corresponding target graphs. Use
@@ -90,7 +94,7 @@ pattern correlations inside every shuffle. Existing paired resampling and
 cross-component prediction/commonality models preserve their joint structure.
 
 Only file preparation runs in the one-worker `heavy` pool. Computations share
-12 local workers (24 on SGE); total budgets are 13/25. Workers read their
+12 local workers (32 on SGE); total budgets are 13/33. Workers read their
 own input files once per batch, use transient memory and collect garbage before
 each job. One time window's permuted patterns are materialised at a time.
 The additional partition files trade disk space and one-time preparation for
@@ -106,15 +110,69 @@ estimate, not an upper bound. Twelve compute workers match the physical-core cou
 while retaining CPU headroom; twenty compute workers would be too aggressive as
 a default given heterogeneous task memory and the history of resource errors.
 
-Before launching local workers, `_targets.R` sets `OMP_NUM_THREADS`,
+Before launching workers, `configure_targets_runtime()` sets `OMP_NUM_THREADS`,
 `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS` and `RCPP_PARALLEL_NUM_THREADS` to one.
 These limit supported library thread pools, including Arrow's CPU pool via
 OpenMP's environment setting; they do not pin CPU cores or cap total process
-threads. SGE settings are unchanged. `EEG_WORKERS` accepts a positive integer
+threads. `EEG_WORKERS` accepts a positive integer
 to override the local compute count. Existing running controllers retain their
 original settings. Twelve is a conservative operating default following the
 full-run startup failure described below. The earlier 11/14/16-worker benchmark
 does not establish long-run reliability or a global throughput optimum.
+
+### SGE scheduling (2026-11-05)
+
+The SGE compute pool now defaults to 32 workers, with one additional worker for
+full-input file preparation. `EEG_SGE_WORKERS` can raise/lower the compute count
+without changing the local `EEG_WORKERS` setting. Hostname detection ignores case
+for `shadow` and `hippocampus`. Each job is serial (one SGE slot), avoiding an
+assumption about the cluster's parallel-environment name. Queue/host eligibility
+and user quotas determine how many jobs can actually run; `qhost` alone cannot
+establish those permissions or allocations.
+
+Compute workers request 6 GB each; the preparation worker requests 24 GB. Before
+creating controllers, `qconf -sc` is inspected for requestable MEMORY
+resources. The default preference is `m_mem_free`, then `mem_free`. An explicit
+`EEG_SGE_MEMORY_RESOURCE` selects a registered custom resource with those same
+properties and `relop <=`. Missing resources cause an error before job submission.
+The request is written
+as `#$ -l RESOURCE=6G` or `24G`; its enforcement depends on the site's SGE complex
+configuration. It is not an independently imposed process memory cap.
+
+The user's actual complex table has `mem_free` with `consumable=NO`, and no
+`m_mem_free`. Thus `mem_free=6G`/`24G` selects hosts by current free-memory load;
+it does not reserve that amount for each job. When the chosen resource is not
+consumable, the default additional requirement is `mem_total=400G`. In the supplied
+qhost snapshot this selects `cogmap` and `schema` (503.4 GB each), rather than
+allowing 32 compute workers to accumulate on smaller, already busy hosts.
+This reduces placement risk but does not exclude competing users or reserve a
+node. If the user's queue cannot reach those hosts, jobs remain pending instead
+of falling back to small hosts. `EEG_SGE_MIN_HOST_GB` overrides the floor; zero
+disables it. A consumable-memory resource defaults to no host-size restriction.
+True memory reservations require an administrator-configured consumable resource.
+
+SGE scripts explicitly export the same thread and renv sandbox settings as local
+workers, because SGE does not forward submission-shell variables by default.
+Scripts and per-job joined stdout/stderr logs use shared project directories
+`logs/crew/sge/{light,heavy}/`, with scripts in the `scripts/` subdirectory.
+Idle workers remain available for up to 300 seconds rather than 30, reducing
+repeated environment startup. The SGE controller's default 24-hour launch grace
+is retained to accommodate queue waiting; the local 120-second allowance does not
+apply to queued jobs. No remote jobs are submitted by the local configuration
+checks. Verify queue access and observed per-worker peaks before increasing to
+48 or 64 compute workers.
+
+Validation used `qconf -sc` fixtures for consumable resources and the user's
+nonconsumable-memory layout, including the 400G host filter and invalid overrides.
+A simulated SGE configuration rendered actual
+crew.cluster 0.4.0 job headers for both pools and verified 32/1 worker limits,
+6G/24G thresholds, the 400G host filter, explicit exports, joined per-job logs, no parallel-environment
+request, a 300-second idle timeout and the default queued-launch grace. This did
+not execute qsub or establish remote queue eligibility. The local graph/report
+check continued to pass with 824 targets and 95 report references.
+
+The memory fields, environment forwarding and logging follow
+[the crew.cluster SGE options](https://wlandau.github.io/crew.cluster/reference/crew_options_sge.html).
 
 ### Full-run startup failure and mitigation (2026-11-05)
 

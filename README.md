@@ -27,8 +27,8 @@ targets::tar_make()
 The pipeline uses shared partition files and a common task-building framework.
 Pattern tables are split once by CCA component or brain region and reused by
 IGS, ISS/IWS, ISPS, GSS/GWS, SMC/partial Mantel, region and RT analyses. A single
-worker prepares full-source files; calculations share 12 local workers (24 on
-SGE). Total worker budgets are 13 locally and 25 on SGE. The local default is
+worker prepares full-source files; calculations share 12 local workers (32 on
+SGE). Total worker budgets are 13 locally and 33 on SGE. The local default is
 tuned for this workstation's i7-12700F (12 cores / 20 threads) and 64 GiB RAM.
 Local workers inherit single-thread limits for OpenMP/Arrow, OpenBLAS, MKL and
 RcppParallel to avoid nested CPU parallelism. Mantel already uses one process.
@@ -41,6 +41,22 @@ the extra system-library sandbox is skipped for new workers. This is not a
 full-pipeline memory or speed guarantee. To change the local compute pool,
 use `Sys.setenv(EEG_WORKERS = "12")`.
 Changing these settings does not resize an already-running controller.
+Runtime setup is kept in `R/tar_runtime.R`; `_targets.R` calls
+`tar_source()` once to load the R functions, then `configure_targets_runtime()`.
+
+SGE uses serial one-slot jobs, with 6 GB requested per compute worker and 24 GB
+for preparation. It reads `qconf -sc` before submission and selects a requestable
+`m_mem_free` or `mem_free` resource. Set `EEG_SGE_MEMORY_RESOURCE` for a custom
+resource. The supplied cluster configuration has nonconsumable `mem_free`, so
+these are free-memory thresholds, not reservations. In that case jobs also
+require `mem_total=400G`, selecting the `cogmap`/`schema` class of hosts from the
+supplied qhost snapshot. Override that floor with `EEG_SGE_MIN_HOST_GB` (0 disables
+it). Missing resources stop configuration before submission. `EEG_SGE_WORKERS`
+overrides the compute count
+(default 32). Job scripts explicitly export the same single-thread and renv
+sandbox settings, with per-job logs under `logs/crew/sge/light/` and
+`logs/crew/sge/heavy/`. Idle workers are retained for up to 300 seconds to reuse
+their loaded environment. Actual concurrency depends on queue access and quotas.
 
 Workers read only their partition, once per batch, and compute complete-subject
 time windows sequentially within that job. Parallelism is across partitions
@@ -76,7 +92,7 @@ requires cached project data and checks actual GWS distances with 9,999 inner
 permutations. The earlier [ISPS pilot](docs/isps-chunk-experiment.md) records the
 initial design and its benchmark limits.
 
-Default callr isolation remains enabled. Worker logs are under
+Default callr isolation remains enabled. Local worker logs are under
 `logs/crew/light/` and `logs/crew/heavy/`. To run one analysis first:
 
 ```r
