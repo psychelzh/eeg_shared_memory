@@ -27,8 +27,20 @@ targets::tar_make()
 The pipeline uses shared partition files and a common task-building framework.
 Pattern tables are split once by CCA component or brain region and reused by
 IGS, ISS/IWS, ISPS, GSS/GWS, SMC/partial Mantel, region and RT analyses. A single
-worker prepares full-source files; calculations share 11 local workers (24 on
-SGE). Total worker budgets remain 12 locally and 25 on SGE.
+worker prepares full-source files; calculations share 12 local workers (24 on
+SGE). Total worker budgets are 13 locally and 25 on SGE. The local default is
+tuned for this workstation's i7-12700F (12 cores / 20 threads) and 64 GiB RAM.
+Local workers inherit single-thread limits for OpenMP/Arrow, OpenBLAS, MKL and
+RcppParallel to avoid nested CPU parallelism. Mantel already uses one process.
+The earlier Mantel benchmark favoured 14, but a subsequent full-run startup
+failure prompted a more conservative default of 12. Local workers have a
+120-second launch allowance and inherit `RENV_CONFIG_SANDBOX_ENABLED=FALSE`:
+one failed run accumulated hundreds of workers while renv sandbox activation
+took about 2,900 seconds. Project renv activation and its library remain in use;
+the extra system-library sandbox is skipped for new workers. This is not a
+full-pipeline memory or speed guarantee. To change the local compute pool,
+use `Sys.setenv(EEG_WORKERS = "12")`.
+Changing these settings does not resize an already-running controller.
 
 Workers read only their partition, once per batch, and compute complete-subject
 time windows sequentially within that job. Parallelism is across partitions

@@ -90,11 +90,90 @@ pattern correlations inside every shuffle. Existing paired resampling and
 cross-component prediction/commonality models preserve their joint structure.
 
 Only file preparation runs in the one-worker `heavy` pool. Computations share
-11 local workers (24 on SGE); total budgets remain 12/25. Workers read their
+12 local workers (24 on SGE); total budgets are 13/25. Workers read their
 own input files once per batch, use transient memory and collect garbage before
 each job. One time window's permuted patterns are materialised at a time.
 The additional partition files trade disk space and one-time preparation for
 smaller worker inputs. This is a concurrency policy, not a hard RAM reservation.
+
+The local setting targets the i7-12700F workstation (12 physical cores, 20
+logical processors, 63.75 GiB usable RAM). On 2026-11-05, eleven active R
+workers used approximately 0.77–0.86 GiB private memory each, with 38.45 GiB
+system memory available. Earlier real-data tests reached 2.62 GiB for one
+paired-input computation; twelve such workers would use about 31.4 GiB,
+before preparation, the scheduler and other applications. This is a planning
+estimate, not an upper bound. Twelve compute workers match the physical-core count
+while retaining CPU headroom; twenty compute workers would be too aggressive as
+a default given heterogeneous task memory and the history of resource errors.
+
+Before launching local workers, `_targets.R` sets `OMP_NUM_THREADS`,
+`OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS` and `RCPP_PARALLEL_NUM_THREADS` to one.
+These limit supported library thread pools, including Arrow's CPU pool via
+OpenMP's environment setting; they do not pin CPU cores or cap total process
+threads. SGE settings are unchanged. `EEG_WORKERS` accepts a positive integer
+to override the local compute count. Existing running controllers retain their
+original settings. Twelve is a conservative operating default following the
+full-run startup failure described below. The earlier 11/14/16-worker benchmark
+does not establish long-run reliability or a global throughput optimum.
+
+### Full-run startup failure and mitigation (2026-11-05)
+
+After a reported failure following 39 completed targets, inspection found 482
+remaining Rscript crew workers, about 48.25 GiB aggregate private memory, all
+from one controller (parent PID 16056, loopback port 62405). Neither the parent
+nor its listening socket still existed. Recent worker logs reported connection
+refusal and a renv sandbox activation warning of approximately 2,900 seconds.
+By the cleanup snapshot, 474 workers remained; those verified orphan processes
+were terminated, leaving none from that controller. Formal cached results were
+not deleted. The main-process exit cause was not recorded and is not established.
+
+Slow worker startup followed by repeated replacement launches is a plausible
+explanation for the accumulation; 14 concurrent calculations alone do not
+explain hundreds of processes. Local controllers now allow 120 seconds for
+startup (previously the default 30). New workers inherit
+`RENV_CONFIG_SANDBOX_ENABLED=FALSE`, skipping renv's additional sandbox for
+system-library packages while retaining project activation and the project
+library. This makes non-base packages in the system library potentially visible
+as a fallback; the verification probe checks project-library resolution for the
+packages it uses. No package installation or lockfile change is involved.
+
+[renv documents disabling the sandbox when its initialization is slow](https://pkgs.rstudio.com/renv/reference/config.html),
+and [crew documents the startup grace period](https://wlandau.github.io/crew/reference/crew_controller_local.html).
+The default compute pool is reduced to 12 as a separate stability precaution.
+An isolated startup probe brought all twelve workers to a synchronised ready
+state in 22.8 seconds, verified package paths against the project library and
+versions against `renv.lock`, and confirmed Arrow's CPU pool remained single
+threaded. All probe workers terminated afterward. The graph/report check still
+passed with 824 targets and 95 report references; the complete pipeline was not
+restarted by the probe.
+
+### Workstation worker benchmark (2026-11-05)
+
+The full pipeline was stopped for this comparison. Each configuration ran the
+same 112 tasks: two ordinary Mantel tests per task, 9,999 inner permutations,
+using cached real GWS distances for one CCA component, one time window and
+150 stimuli, against `pattern_shapes_alexnet_conv2d_4_9`. Per-task seeds were
+fixed across configurations. A file barrier required every worker to finish
+loading vegan and its warmup calculation before timing began. Actual worker
+PIDs were checked against the configured count. Timing includes task submission,
+collection and memory sampling, and excludes process launch and warmup.
+
+| Compute workers | Actual workers | Elapsed seconds | Mantel tests / second | Sampled aggregate worker RSS (GiB) |
+| --- | --- | --- | --- | --- |
+| 11 | 11 | 74.25 | 3.017 | 3.64 |
+| 14 | 14 | 69.16 | 3.239 | 4.38 |
+| 16 | 16 | 70.12 | 3.195 | 4.96 |
+
+All 224 p-values matched exactly across configurations. Fourteen and sixteen
+workers performed similarly in this bounded benchmark; fourteen took 6.8% less
+time than eleven and retained more memory/CPU headroom than sixteen. This supports
+fourteen as a provisional balanced default at that time, not proof of a universal
+optimum; the subsequent failure superseded that recommendation. The RSS figures
+describe this small-distance Mantel benchmark, not the larger IGS inputs or a
+full-pipeline memory bound. Preparation ran neither concurrently nor inside the
+timed interval. Earlier exploratory runs without the all-worker warmup barrier
+were variable; one configured eleven-worker run used only five workers and was
+excluded from the decision.
 
 ## Validation and operation
 
@@ -129,7 +208,7 @@ overhead; that total is not directly comparable to reference compute time.
 A separate single-process IGS check loaded both full-component inputs for all
 206 subjects and 52 windows, then ran two permutations in one batch. It returned
 104 statistic rows in 13.57 seconds, with a 2.62 GiB peak working set. These are
-individual-process measurements, not aggregate RAM bounds for eleven workers.
+individual-process measurements, not aggregate RAM bounds for twelve workers.
 The actual-data GWS smoke test also matched the monolithic calculation at
 three components, one window and the full 9,999 inner permutations.
 
