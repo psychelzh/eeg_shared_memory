@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>partitioned-pipeline – Shared Memory among Individuals (EEG study)</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-b54df9fb5010a34dec8c6a1865e1addd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script async="" src="https://hypothes.is/embed.js"></script>
+<script>
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    document.body.classList.add('hypothesis-enabled');
+  });
+</script>
+
+
+</head>
+
+<body class="nav-fixed fullcontent quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Shared Memory among Individuals (EEG study)</span>
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/psychelzh/eeg_shared_memory"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+            <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content" id="quarto-document-content" tabindex="-1"><header id="title-block-header" class="quarto-title-block"></header>
+
+
+
+
+<section id="partitioned-analysis-pipeline" class="level1">
+<h1>Partitioned analysis pipeline</h1>
+<p><code>_targets.R</code> declares a single <code>partition_sources</code> registry. Each registered table has one reusable bundle of files, split by CCA component or brain region. All analyses consuming that table share the same files. Each bundle includes a manifest and all data files in its tracked outputs: a missing piece invalidates its producer. Files are generated under <code>_targets/user/partitions/</code>.</p>
+<pre class="mermaid"><code>flowchart LR
+  Raw[Parquet / raw EEG] --&gt; Patterns[CCA / subject / region branches]
+  Patterns --&gt; Files[Shared partition files]
+  Files --&gt; Jobs[Partition jobs: keys and paths]
+  Plan[Recorded replicate seeds] --&gt; Compute
+  Jobs --&gt; Compute[Workers: stream full-subject time windows]
+  Compute --&gt; Stats[Observed data / compact permutation statistics]
+  Stats --&gt; Clusters[Combine full time series; cluster inference]
+  Clusters --&gt; Report[Quarto report]</code></pre>
+<section id="reusable-code" class="level2">
+<h2 class="anchored" data-anchor-id="reusable-code">Reusable code</h2>
+<ul>
+<li><code>R/partitioning.R</code> handles file bundles, source alignment, deterministic seed plans, row-key seeds, worker reads, time-window streaming and batched execution.</li>
+<li><code>R/tar_partitions.R</code> builds the corresponding target graphs. Use <code>tar_partition_registry()</code> for shared inputs, <code>tar_partition_target()</code> for observed calculations and <code>tar_partition_replicates()</code> for repeated summaries. <code>tar_cluster_permutation()</code> uses these same primitives for statistics and full-series cluster correction.</li>
+<li><code>R/tar_mantel.R</code> composes whole/dynamic ordinary or partial Mantel analyses from the same builders. There is no separate ISPS scheduling implementation.</li>
+</ul>
+<p>For example, after registering <code>patterns_indiv_dynamic</code>, this uses its shared CCA files, retains every subject in each window and returns only null means:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tar_partition_replicates</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"summary_isps_dynamic_permuted"</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  patterns_indiv_dynamic <span class="sc">|&gt;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">pattern =</span> <span class="fu">map</span>(pattern, permute_dist)) <span class="sc">|&gt;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">calc_isps</span>() <span class="sc">|&gt;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise_isps</span>()</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Sources are found from the registry when the graph is built. Builders replace registered table references with worker-local pieces, and recognise canonical <code>map(pattern, permute_dist)</code> and Mantel calls to apply the randomisation rules below. An explicit named <code>sources</code> argument can override registry lookup. Set <code>stream = FALSE</code> for observed expressions that must operate across time, such as selecting a period before collapsing its time column. Joint models across CCA components remain joint models outside these builders.</p>
+</section>
+<section id="randomisation-and-inference" class="level2">
+<h2 class="anchored" data-anchor-id="randomisation-and-inference">Randomisation and inference</h2>
+<p>Users do not need to call <code>set.seed()</code>. <code>targets</code> already seeds every target and dynamic branch reproducibly. The extra plan serves a different purpose: coordinating the same randomisation across separately scheduled data pieces, and keeping replicate draws unchanged when batch boundaries change. Its root seed comes from <code>targets::tar_seed_get()</code> inside an upstream target. Deterministic observed calculations have no extra seed target or seed reset. Stochastic Mantel observations and outer replicates retain coordinated seeds. The same replicate seed is used in every partition/window, so memory-label shuffles and target-distance shuffles remain shared. Individual pattern shuffles and inner Mantel simulations use seeds derived from stable row keys. An IGS dynamic LOO row therefore varies independently by subject/component/time; an RT whole-period LOO row has no time key and keeps its shuffle across windows.</p>
+<p>Batch size, execution order and worker assignment do not change the draws. RNG kind and sampling kind are explicit. This creates new reproducible draws relative to historical <code>tar_rep</code> caches; Monte Carlo p-values may change. Partition results retain the complete chronological time series, and cluster tests run only after those results have been combined.</p>
+<p>Outer permutation counts remain 1,000. Mantel still performs 9,999 inner permutations, explicitly with one inner process. Its outer batches contain two replicates by default to reduce the work lost if a worker fails. This changes scheduling granularity rather than the statistical method.</p>
+</section>
+<section id="coverage-and-resource-policy" class="level2">
+<h2 class="anchored" data-anchor-id="coverage-and-resource-policy">Coverage and resource policy</h2>
+<p>CCA-level full-data pattern construction and RT signals are branched by CCA. Existing subject-wise branches remain parallel. Raw EEG is read once to prepare region files; whole/dynamic regional patterns are calculated in separate region jobs. IGS, ISS/IWS, ISPS, GSS/GWS, SMC/partial Mantel, regional analyses and RT controls use the common partition builders where they consume pattern tables. Lightweight memory-correlation tables retain whole-table batch parallelism. RT memory permutations reuse cached IGS/ISS numeric tables instead of recomputing pattern correlations inside every shuffle. Existing paired resampling and cross-component prediction/commonality models preserve their joint structure.</p>
+<p>Only file preparation runs in the one-worker <code>heavy</code> pool. Computations share 12 local workers (24 on SGE); total budgets are 13/25. Workers read their own input files once per batch, use transient memory and collect garbage before each job. One time window’s permuted patterns are materialised at a time. The additional partition files trade disk space and one-time preparation for smaller worker inputs. This is a concurrency policy, not a hard RAM reservation.</p>
+<p>The local setting targets the i7-12700F workstation (12 physical cores, 20 logical processors, 63.75 GiB usable RAM). On 2026-11-05, eleven active R workers used approximately 0.77–0.86 GiB private memory each, with 38.45 GiB system memory available. Earlier real-data tests reached 2.62 GiB for one paired-input computation; twelve such workers would use about 31.4 GiB, before preparation, the scheduler and other applications. This is a planning estimate, not an upper bound. Twelve compute workers match the physical-core count while retaining CPU headroom; twenty compute workers would be too aggressive as a default given heterogeneous task memory and the history of resource errors.</p>
+<p>Before launching local workers, <code>_targets.R</code> sets <code>OMP_NUM_THREADS</code>, <code>OPENBLAS_NUM_THREADS</code>, <code>MKL_NUM_THREADS</code> and <code>RCPP_PARALLEL_NUM_THREADS</code> to one. These limit supported library thread pools, including Arrow’s CPU pool via OpenMP’s environment setting; they do not pin CPU cores or cap total process threads. SGE settings are unchanged. <code>EEG_WORKERS</code> accepts a positive integer to override the local compute count. Existing running controllers retain their original settings. Twelve is a conservative operating default following the full-run startup failure described below. The earlier 11/14/16-worker benchmark does not establish long-run reliability or a global throughput optimum.</p>
+<section id="full-run-startup-failure-and-mitigation-2026-11-05" class="level3">
+<h3 class="anchored" data-anchor-id="full-run-startup-failure-and-mitigation-2026-11-05">Full-run startup failure and mitigation (2026-11-05)</h3>
+<p>After a reported failure following 39 completed targets, inspection found 482 remaining Rscript crew workers, about 48.25 GiB aggregate private memory, all from one controller (parent PID 16056, loopback port 62405). Neither the parent nor its listening socket still existed. Recent worker logs reported connection refusal and a renv sandbox activation warning of approximately 2,900 seconds. By the cleanup snapshot, 474 workers remained; those verified orphan processes were terminated, leaving none from that controller. Formal cached results were not deleted. The main-process exit cause was not recorded and is not established.</p>
+<p>Slow worker startup followed by repeated replacement launches is a plausible explanation for the accumulation; 14 concurrent calculations alone do not explain hundreds of processes. Local controllers now allow 120 seconds for startup (previously the default 30). New workers inherit <code>RENV_CONFIG_SANDBOX_ENABLED=FALSE</code>, skipping renv’s additional sandbox for system-library packages while retaining project activation and the project library. This makes non-base packages in the system library potentially visible as a fallback; the verification probe checks project-library resolution for the packages it uses. No package installation or lockfile change is involved.</p>
+<p><a href="https://pkgs.rstudio.com/renv/reference/config.html">renv documents disabling the sandbox when its initialization is slow</a>, and <a href="https://wlandau.github.io/crew/reference/crew_controller_local.html">crew documents the startup grace period</a>. The default compute pool is reduced to 12 as a separate stability precaution. An isolated startup probe brought all twelve workers to a synchronised ready state in 22.8 seconds, verified package paths against the project library and versions against <code>renv.lock</code>, and confirmed Arrow’s CPU pool remained single threaded. All probe workers terminated afterward. The graph/report check still passed with 824 targets and 95 report references; the complete pipeline was not restarted by the probe.</p>
+</section>
+<section id="workstation-worker-benchmark-2026-11-05" class="level3">
+<h3 class="anchored" data-anchor-id="workstation-worker-benchmark-2026-11-05">Workstation worker benchmark (2026-11-05)</h3>
+<p>The full pipeline was stopped for this comparison. Each configuration ran the same 112 tasks: two ordinary Mantel tests per task, 9,999 inner permutations, using cached real GWS distances for one CCA component, one time window and 150 stimuli, against <code>pattern_shapes_alexnet_conv2d_4_9</code>. Per-task seeds were fixed across configurations. A file barrier required every worker to finish loading vegan and its warmup calculation before timing began. Actual worker PIDs were checked against the configured count. Timing includes task submission, collection and memory sampling, and excludes process launch and warmup.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Compute workers</th>
+<th>Actual workers</th>
+<th>Elapsed seconds</th>
+<th>Mantel tests / second</th>
+<th>Sampled aggregate worker RSS (GiB)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>11</td>
+<td>11</td>
+<td>74.25</td>
+<td>3.017</td>
+<td>3.64</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>14</td>
+<td>69.16</td>
+<td>3.239</td>
+<td>4.38</td>
+</tr>
+<tr class="odd">
+<td>16</td>
+<td>16</td>
+<td>70.12</td>
+<td>3.195</td>
+<td>4.96</td>
+</tr>
+</tbody>
+</table>
+<p>All 224 p-values matched exactly across configurations. Fourteen and sixteen workers performed similarly in this bounded benchmark; fourteen took 6.8% less time than eleven and retained more memory/CPU headroom than sixteen. This supports fourteen as a provisional balanced default at that time, not proof of a universal optimum; the subsequent failure superseded that recommendation. The RSS figures describe this small-distance Mantel benchmark, not the larger IGS inputs or a full-pipeline memory bound. Preparation ran neither concurrently nor inside the timed interval. Earlier exploratory runs without the all-worker warmup barrier were variable; one configured eleven-worker run used only five workers and was excluded from the decision.</p>
+</section>
+</section>
+<section id="validation-and-operation" class="level2">
+<h2 class="anchored" data-anchor-id="validation-and-operation">Validation and operation</h2>
+<p><code>Rscript tests/run_checks.R</code> checks the compiled graph/report references and fixed-input equivalence for all calculation families, seed sharing, rebatching, time clusters, CCA pattern construction and raw-region array handling.</p>
+<p><code>Rscript tests/smoke_partitioned_pipeline.R</code> uses generated inputs in a temporary store. It checks actual workers, reusable files, old-cache migration, mapped memory outcomes, the Mantel wrapper and deletion/invalidation of a source piece. <code>Rscript tests/smoke_real_partitions.R</code> additionally requires cached project data and compares three real GWS rows using all 9,999 inner permutations.</p>
+<p>Run <code>targets::tar_make()</code> normally, or select a final analysis target to validate one family first. Existing caches need not be deleted. Changed task expressions and RNG plans invalidate affected results, including some prior permutation batches. Preserved source targets and unrelated results can still be reused. Full-run time and machine-wide peak RAM must be measured on the complete run; more partitions do not reduce the total Mantel permutation count.</p>
+</section>
+<section id="current-framework-real-data-checks-2026-11-03" class="level2">
+<h2 class="anchored" data-anchor-id="current-framework-real-data-checks-2026-11-03">Current-framework real-data checks (2026-11-03)</h2>
+<p>The shared implementation was separately measured on 206 subjects, three CCA components and 12 windows, with one permutation per component. The monolithic reference and partitioned workers used the same keyed random inputs. All 36 ISPS means matched exactly. The reference calculation took 47.75 seconds; three concurrent workers’ calculation interval was 22.03 seconds. Largest individual-process peak working sets were 2.27 GiB and 0.66 GiB respectively. The partitioned pipeline took 45.34 seconds including its startup/loading overhead; that total is not directly comparable to reference compute time.</p>
+<p>A separate single-process IGS check loaded both full-component inputs for all 206 subjects and 52 windows, then ran two permutations in one batch. It returned 104 statistic rows in 13.57 seconds, with a 2.62 GiB peak working set. These are individual-process measurements, not aggregate RAM bounds for twelve workers. The actual-data GWS smoke test also matched the monolithic calculation at three components, one window and the full 9,999 inner permutations.</p>
+<p>These pilots used temporary stores and read existing caches; they did not run the complete analysis or update its computed results.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/psychelzh\.github\.io\/eeg_shared_memory\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
