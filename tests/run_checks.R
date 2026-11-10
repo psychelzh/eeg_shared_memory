@@ -4,4 +4,8 @@ for (check_file in checks) {
   cat("Checking", check_file, "\n")
   sys.source(check_file, envir = new.env(parent = globalenv()))
 }
-cat("All", length(checks), "checks passed. No analysis targets were executed.\n")
+cat(
+  "All",
+  length(checks),
+  "checks passed. No study analysis targets were executed.\n"
+)

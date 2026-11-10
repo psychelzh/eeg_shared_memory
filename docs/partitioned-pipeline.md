@@ -18,6 +18,40 @@ flowchart LR
   Clusters --> Report[Quarto report]
 ```
 
+## Project relocation and cache identity
+
+Generated file-target outputs and job paths are relative to the project root.
+Each manifest records only its sibling piece filenames. Generation directories
+are named using a signature of the partition keys and serialized piece contents,
+so preparing identical inputs preserves paths and bytes, while changed data
+change the job identities and invalidate downstream computations. Staging files
+are temporary; their random names never enter a recorded target value.
+
+Move the complete project, including `_targets/meta/`, `_targets/objects/`,
+`_targets/user/` and the source inputs, and run from the new project root. Keep
+the relative store layout and compatible R/package versions. This supports root
+relocation; it does not promise cache compatibility across arbitrary dependency
+or serialization changes or a store kept outside the project.
+
+Readers also support legacy manifests with absolute piece paths, resolving the
+pieces next to their manifest. Legacy jobs with an absolute path into the
+default `_targets/` store can read its local counterpart after copying. This is
+read compatibility, not a rewrite of old file-target metadata or cached job
+hashes. The completed study cache is not automatically migrated. The changed
+function dependencies and new output representation can invalidate old targets
+on the first upgrade; inspect and plan that upgrade before a full `tar_make()`.
+
+`tests/check_partition_portability.R` runs a small pipeline in one temporary
+project and copies its completed store to another root. It checks zero outdated
+targets and zero computation after relocation, unchanged branch identities,
+stable repeated preparation, missing-piece repair, legacy Windows/Linux path
+reads, and recomputation when the input values genuinely change. It never
+executes the study pipeline.
+
+Regenerate any cache-cleanup inventory after changing this code or migrating a
+cache. The audited cleanup script intentionally rejects an inventory whose
+source or metadata fingerprints no longer match.
+
 ## Reusable code
 
 - `R/tar_runtime.R` configures local/SGE workers, environment variables, memory

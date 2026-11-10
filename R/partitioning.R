@@ -1,22 +1,103 @@
 # A bundle tracks its manifest and every data file as one generated file target.
 # Individual jobs carry only keys and file paths; workers load their own pieces.
+partition_relative_path <- function(path) {
+  root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+  absolute <- normalizePath(path, winslash = "/", mustWork = TRUE)
+  vapply(
+    absolute,
+    function(file) {
+      prefix <- paste0(root, "/")
+      inside <- if (.Platform$OS.type == "windows") {
+        startsWith(tolower(file), tolower(prefix))
+      } else {
+        startsWith(file, prefix)
+      }
+      # External stores remain absolute. In particular, a C: temporary store
+      # cannot be represented as a relative path from a D: project on Windows.
+      if (inside) as.character(fs::path_rel(file, start = root)) else file
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+# Older bundles and jobs recorded a machine's absolute project root. Prefer the
+# corresponding local store when reading such a copied cache. New outputs below
+# never record that root. Paths outside the default store are left unchanged.
+partition_file_path <- function(path) {
+  path <- gsub("\\\\", "/", path)
+  vapply(
+    path,
+    function(file) {
+      absolute <- grepl("^([A-Za-z]:/|/)", file)
+      marker <- regexpr("/_targets/", file, fixed = TRUE)[1L]
+      if (absolute && marker > 0L) {
+        local <- substring(file, marker + 1L)
+        if (file.exists(local)) return(local)
+      }
+      file
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
 write_partition_bundle <- function(keys, get_piece, directory) {
   stopifnot(nrow(keys) > 0L, !anyNA(keys), !anyDuplicated(keys))
   dir.create(directory, recursive = TRUE, showWarnings = FALSE)
-  generation <- tempfile("generation-", tmpdir = directory)
-  dir.create(generation)
+  directory <- normalizePath(directory, winslash = "/", mustWork = TRUE)
+  staging <- tempfile("staging-", tmpdir = directory)
+  dir.create(staging)
+  # Cleanup is restricted to this function's newly created staging directory.
+  on.exit(
+    {
+      stopifnot(identical(
+        dirname(normalizePath(staging, winslash = "/", mustWork = TRUE)),
+        directory
+      ))
+      unlink(staging, recursive = TRUE)
+    },
+    add = TRUE
+  )
   files <- vapply(
     seq_len(nrow(keys)),
     function(i) {
-      file <- file.path(generation, paste0("part-", i, ".qs2"))
+      file <- file.path(staging, paste0("part-", i, ".qs2"))
       qs2::qs_save(get_piece(i), file, nthreads = 1L)
-      normalizePath(file, winslash = "/", mustWork = TRUE)
+      file
     },
     character(1)
   )
-  manifest <- file.path(generation, "manifest.rds")
-  saveRDS(dplyr::mutate(keys, .file = files), manifest)
-  c(normalizePath(manifest, winslash = "/", mustWork = TRUE), files)
+  hashes <- vapply(
+    files,
+    digest::digest,
+    character(1),
+    file = TRUE,
+    algo = "xxhash64"
+  )
+  signature <- digest::digest(
+    list(version = 1L, keys = keys, hashes = unname(hashes)),
+    algo = "xxhash64",
+    serializeVersion = 2L
+  )
+  generation <- file.path(directory, paste0("generation-", signature))
+  dir.create(generation, showWarnings = FALSE)
+  manifest <- file.path(staging, "manifest.rds")
+  # Manifest contents are independent of the project root and generation path.
+  saveRDS(dplyr::mutate(keys, .file = basename(files)), manifest, version = 2L)
+  staged <- c(manifest, files)
+  outputs <- file.path(generation, basename(staged))
+  for (i in seq_along(staged)) {
+    unchanged <- file.exists(outputs[i]) &&
+      identical(
+        digest::digest(file = outputs[i], algo = "xxhash64"),
+        digest::digest(file = staged[i], algo = "xxhash64")
+      )
+    if (!unchanged && !file.copy(staged[i], outputs[i], overwrite = TRUE)) {
+      stop("Could not write partition file: ", outputs[i])
+    }
+  }
+  partition_relative_path(outputs)
 }
 
 write_table_partitions <- function(data, by, directory) {
@@ -51,7 +132,15 @@ make_partition_jobs <- function(bundles) {
       .files = list(character())
     ))
   }
-  manifests <- lapply(bundles, function(paths) readRDS(paths[1L]))
+  manifests <- lapply(bundles, function(paths) {
+    manifest <- partition_file_path(paths[1L])
+    part <- readRDS(manifest)
+    # Both legacy absolute entries and new filename-only entries refer to pieces
+    # beside this manifest, not to the root of the machine that produced it.
+    files <- basename(gsub("\\\\", "/", part$.file))
+    part$.file <- partition_relative_path(file.path(dirname(manifest), files))
+    part
+  })
   by <- setdiff(names(manifests[[1L]]), ".file")
   stopifnot(all(vapply(
     manifests,
@@ -138,7 +227,9 @@ permute_pattern_rows <- function(pattern, data, seed) {
 
 read_partition_inputs <- function(job) {
   stopifnot(nrow(job) == 1L)
-  lapply(job$.files[[1L]], qs2::qs_read, nthreads = 1L)
+  lapply(job$.files[[1L]], function(file) {
+    qs2::qs_read(partition_file_path(file), nthreads = 1L)
+  })
 }
 
 run_partition_job <- function(job, fun, seed, stream = TRUE, inputs = NULL) {

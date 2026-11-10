@@ -11,3 +11,4 @@ _site
 /_*.local
 
 **/*.quarto_ipynb
+.posit/assistant

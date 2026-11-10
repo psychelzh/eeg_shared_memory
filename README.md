@@ -15,8 +15,8 @@ Rscript tests/run_checks.R
 ```
 
 This checks scoring, outcome selection, cluster permutation bookkeeping, and
-the report's target references. It does not execute analysis targets or render
-the report.
+the report's target references. A tiny temporary pipeline checks cache relocation;
+the checks do not execute the study analysis or render the report.
 
 After a completed analysis, refresh the report and manuscript statistics without
 rebuilding the targets pipeline:
@@ -90,6 +90,11 @@ Read the [architecture and reuse guide](docs/partitioned-pipeline.md) for the
 registry, builders, randomisation rules and resource policy. Only preparation
 uses the single-worker pool; this is not a machine-wide RAM reservation.
 Partition files require additional disk space and initial preparation.
+New partition bundles use project-relative paths, filename-only manifests and
+content-addressed generation names so relocating a complete project preserves
+cache identities. Legacy absolute-path caches have read compatibility, but
+upgrading their metadata and hashes is a separate operation. See the guide's
+project relocation section before running the completed cache with changed code.
 No full-pipeline speed or peak-memory guarantee is implied by the small tests.
 
 The following opt-in checks use isolated temporary stores:
