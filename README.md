@@ -18,6 +18,19 @@ This checks scoring, outcome selection, cluster permutation bookkeeping, and
 the report's target references. It does not execute analysis targets or render
 the report.
 
+After a completed analysis, refresh the report and manuscript statistics without
+rebuilding the targets pipeline:
+
+```sh
+quarto render index.qmd --to html --execute
+Rscript scripts/summarize_completed_results.R
+```
+
+The report refreshes `figures/`, `_freeze/index/` and `_site/index.html`.
+The summary script writes inspectable numeric tables to
+`docs/analysis-update-2026-11-10/`; the accompanying `draft-update-guide.md`
+maps the completed results to the current manuscript's paragraphs and figures.
+
 Run the analysis in R:
 
 ```r

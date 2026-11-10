@@ -148,7 +148,7 @@ if (!interactive()) {
 
 # Representation Stability
 
-Here we investigate the stability of group-level representations across participants. We compute the stability of group-level representations by randomly sampling a subset of participants and computing the correlation between the group-level representation computed from this subset and the full group-level representation.
+Here we investigate the stability of group-level representations across participants. Within each resample, we compare group-averaged representations from two disjoint groups of 20–100 participants each. The dashed fitted curves are shown only over this observed range. The lower panels separately show semantic alignment for group averages based on 20–200 participants.
 
 See [this quarto document](./_topoplot.qmd) for the topography of CCA components (first 3 only).
 
@@ -158,7 +158,7 @@ See [this quarto document](./_topoplot.qmd) for the topography of CCA components
 #| fig-height: 4
 
 targets::tar_load(patterns_group_stability)
-size_subjs <- seq(20, 200, by = 20)
+size_subjs <- sort(unique(patterns_group_stability$size))
 predictions <- patterns_group_stability |>
   reframe(
     fit_curve(size, r) |>
@@ -173,7 +173,7 @@ p_stability <- patterns_group_stability |>
   geom_point(aes(size, r), predictions, size = 1) +
   geom_line(aes(size, r), predictions, linetype = "longdash") +
   scale_x_continuous(
-    name = "# Participants",
+    name = "Participants per group",
     breaks = scales::breaks_width(40)
   ) +
   scale_y_continuous(name = "Stability") +
@@ -632,7 +632,7 @@ data_commonality_sum <- data_commonality |>
   mutate(
     term = factor(term, levels = c("ISS unique", "IGS unique", "Shared")),
     label_percent = sprintf("%.1f%%", percent),
-    label_r2 = sprintf("R² = %.3f", estimate)
+    label_r2 = sprintf("R^2 == %.3f", estimate)
   )
 
 total_r2_sum <- data_commonality |>
@@ -716,6 +716,7 @@ p_joint_common <- data_commonality_sum |>
   ) +
   geom_text(
     aes(y = percent / 2, label = label_r2),
+    parse = TRUE,
     size = SIZE_LABEL * 0.78,
     color = "black",
     show.legend = FALSE
@@ -724,7 +725,8 @@ p_joint_common <- data_commonality_sum |>
     "text",
     x = 2,
     y = max_commonality + padding_commonality * 0.9,
-    label = sprintf("Total R² = %.2f", total_r2_sum[[1]]),
+    label = sprintf("'Total'~R^2 == %.2f", total_r2_sum[[1]]),
+    parse = TRUE,
     hjust = 0.5
   ) +
   scale_x_discrete(name = NULL) +
@@ -733,11 +735,13 @@ p_joint_common <- data_commonality_sum |>
     limits = c(0, max_commonality + padding_commonality),
     expand = expansion(mult = c(0, 0))
   ) +
-  scale_fill_manual(values = c(
-    "ISS unique" = "#808080",
-    "IGS unique" = "#BDBDBD",
-    "Shared" = "#D9D9D9"
-  )) +
+  scale_fill_manual(
+    values = c(
+      "ISS unique" = "#808080",
+      "IGS unique" = "#BDBDBD",
+      "Shared" = "#D9D9D9"
+    )
+  ) +
   coord_cartesian(clip = "off") +
   theme(
     panel.grid.major.x = element_blank(),
@@ -793,9 +797,12 @@ totals_commonality <- data_commonality |>
   filter(term == "Total") |>
   transmute(
     method,
-    term = factor("ISS unique", levels = c("ISS unique", "IGS unique", "Shared")),
+    term = factor(
+      "ISS unique",
+      levels = c("ISS unique", "IGS unique", "Shared")
+    ),
     y = max_commonality_robust + padding_commonality_robust * 0.9,
-    label = sprintf("Total R² = %.2f", estimate)
+    label = sprintf("'Total'~R^2 == %.2f", estimate)
   )
 
 robust_commonality |>
@@ -818,6 +825,7 @@ robust_commonality |>
   geom_text(
     data = totals_commonality,
     aes(x = term, y = y, label = label),
+    parse = TRUE,
     hjust = 0,
     vjust = 0,
     inherit.aes = FALSE,

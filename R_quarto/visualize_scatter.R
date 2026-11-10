@@ -32,10 +32,11 @@ visualize_scatter <- function(
       show.legend = show_legend
     ) +
     geom_text(
-      aes(x = min(data_joind[[col_stat]]), y = Inf, label = label),
+      aes(x = -Inf, y = Inf, label = label),
       stats,
-      hjust = 0,
+      hjust = -0.02,
       vjust = 1,
+      size = 3.2,
       parse = TRUE
     ) +
     facet_grid(cols = vars(cca_id), scales = "free") +
