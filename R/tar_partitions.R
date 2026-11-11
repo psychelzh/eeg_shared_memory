@@ -64,36 +64,92 @@ partition_callback <- function(expr, sources) {
 }
 
 partition_jobs_target <- function(name, sources) {
-  bundles <- rlang::call2(
+  catalogs <- rlang::call2(
     "list",
-    !!!setNames(lapply(unname(sources), as.name), names(sources))
+    !!!setNames(
+      lapply(unname(sources), function(source) {
+        as.name(paste0(source, "_keys"))
+      }),
+      names(sources)
+    )
   )
   targets::tar_target_raw(
     name,
-    rlang::call2("make_partition_jobs", bundles),
+    rlang::call2("make_native_partition_jobs", catalogs),
+    iteration = "vector",
     retrieval = "worker",
     memory = "transient"
   )
 }
 
-tar_partition_files <- function(
+partition_inputs_expression <- function(jobs, sources) {
+  rlang::call2(
+    "native_partition_inputs",
+    as.name(jobs),
+    rlang::call2(
+      "list",
+      !!!setNames(lapply(unname(sources), as.name), names(sources))
+    )
+  )
+}
+
+partition_map_pattern <- function(jobs, sources) {
+  rlang::call2("map", !!!lapply(c(jobs, unique(unname(sources))), as.name))
+}
+
+tar_native_partitions <- function(
   name,
   data,
   by = "cca_id",
   resources = targets::tar_option_get("resources")
 ) {
-  targets::tar_target_raw(
-    name,
-    bquote(write_table_partitions(
-      .(substitute(data)),
-      .(by),
-      file.path(targets::tar_path_store(), "user", "partitions", .(name))
-    )),
-    format = "file",
-    resources = resources,
-    retrieval = "worker",
-    memory = "transient",
-    garbage_collection = TRUE
+  keys <- paste0(name, "_keys")
+  list(
+    targets::tar_target_raw(
+      keys,
+      bquote(native_partition_keys(.(substitute(data)), .(by))),
+      iteration = "vector",
+      resources = resources,
+      retrieval = "worker",
+      memory = "transient",
+      garbage_collection = TRUE
+    ),
+    targets::tar_target_raw(
+      name,
+      bquote(native_partition_piece(.(substitute(data)), .(as.name(keys)))),
+      pattern = rlang::call2("map", as.name(keys)),
+      iteration = "list",
+      resources = resources,
+      retrieval = "worker",
+      memory = "transient",
+      garbage_collection = TRUE
+    )
+  )
+}
+
+tar_native_eeg_partitions <- function(name, file, channel_regions, resources) {
+  keys <- paste0(name, "_keys")
+  list(
+    targets::tar_target_raw(
+      keys,
+      quote(tibble::tibble(region_id = seq_len(6L))),
+      iteration = "vector",
+      resources = resources
+    ),
+    targets::tar_target_raw(
+      name,
+      bquote(native_eeg_partition_piece(
+        .(substitute(file)),
+        .(substitute(channel_regions)),
+        .(as.name(keys))
+      )),
+      pattern = rlang::call2("map", as.name(keys)),
+      iteration = "list",
+      resources = resources,
+      retrieval = "worker",
+      memory = "transient",
+      garbage_collection = TRUE
+    )
   )
 }
 
@@ -108,7 +164,7 @@ tar_partition_registry <- function(
     if (is.null(keys)) {
       keys <- default_by
     }
-    eval(bquote(tar_partition_files(
+    eval(bquote(tar_native_partitions(
       .(unname(sources[source])),
       .(as.name(source)),
       by = keys,
@@ -140,9 +196,10 @@ tar_partition_target <- function(name, command, sources = NULL, stream = TRUE) {
         .(as.name(jobs)),
         .(partition_callback(expr, sources)),
         .(seed_expr),
-        stream = .(stream)
+        stream = .(stream),
+        inputs = .(partition_inputs_expression(jobs, sources))
       )),
-      pattern = rlang::call2("map", as.name(jobs)),
+      pattern = partition_map_pattern(jobs, sources),
       memory = "transient",
       retrieval = "worker",
       garbage_collection = TRUE
@@ -174,9 +231,14 @@ partition_batch_targets <- function(name, expr, sources, reps, batch_size) {
         .(as.name(jobs)),
         .(as.name(plan)),
         .(as.name(batches)),
-        .(partition_callback(expr, sources))
+        .(partition_callback(expr, sources)),
+        inputs = .(partition_inputs_expression(jobs, sources))
       )),
-      pattern = rlang::call2("cross", as.name(jobs), as.name(batches)),
+      pattern = rlang::call2(
+        "cross",
+        partition_map_pattern(jobs, sources),
+        as.name(batches)
+      ),
       memory = "transient",
       retrieval = "worker",
       garbage_collection = TRUE
@@ -286,11 +348,15 @@ tar_cluster_permutation <- function(
         bquote(run_partition_job(
           .(as.name(paste0("jobs_", stats_permuted_name))),
           .(partition_callback(data, sources)),
-          .(observed_seed)
+          .(observed_seed),
+          inputs = .(partition_inputs_expression(
+            paste0("jobs_", stats_permuted_name),
+            sources
+          ))
         )),
-        pattern = rlang::call2(
-          "map",
-          as.name(paste0("jobs_", stats_permuted_name))
+        pattern = partition_map_pattern(
+          paste0("jobs_", stats_permuted_name),
+          sources
         ),
         memory = "transient",
         retrieval = "worker",

@@ -6,27 +6,6 @@ resources_prepare <- tar_resources(
   crew = tar_resources_crew(controller = "heavy")
 )
 
-# Reused file bundles; shared by every analysis consuming the same patterns.
-partition_sources <- c(
-  patterns_indiv_dynamic = "partitions_patterns_indiv_dynamic",
-  patterns_group_dynamic_loo = "partitions_patterns_group_dynamic_loo",
-  patterns_indiv_whole = "partitions_patterns_indiv_whole",
-  patterns_group_whole_loo = "partitions_patterns_group_whole_loo",
-  patterns_group_dynamic = "partitions_patterns_group_dynamic",
-  patterns_group_whole = "partitions_patterns_group_whole",
-  patterns_indiv_dynamic_regions = "partitions_patterns_indiv_dynamic_regions",
-  patterns_indiv_whole_regions = "partitions_patterns_indiv_whole_regions",
-  patterns_indiv_dynamic_rt_locked = "partitions_patterns_indiv_dynamic_rt_locked",
-  patterns_indiv_whole_rt_locked = "partitions_patterns_indiv_whole_rt_locked",
-  patterns_group_whole_loo_rt_locked = "partitions_patterns_group_whole_loo_rt_locked",
-  data_isps_dynamic = "partitions_data_isps_dynamic",
-  data_isps_whole = "partitions_data_isps_whole",
-  data_isps_partial_group_dynamic = "partitions_data_isps_partial_group_dynamic",
-  data_isps_partial_group_whole = "partitions_data_isps_partial_group_whole",
-  data_isps_partial_semantic_dynamic = "partitions_data_isps_partial_semantic_dynamic",
-  data_isps_partial_semantic_whole = "partitions_data_isps_partial_semantic_whole"
-)
-
 targets_patterns_group_whole_resampled <- tarchetypes::tar_map(
   config_num_subjs,
   tarchetypes::tar_rep(
@@ -647,18 +626,11 @@ list(
     read = read_csv(!!.x, show_col_types = FALSE)
   ),
   tar_target(file_eeg_data, "data-raw/EEG/eeg_206.qs2", format = "file"),
-  tar_target(
-    partitions_eeg_regions,
-    write_eeg_region_partitions(
-      file_eeg_data,
-      channel_regions,
-      file.path(targets::tar_path_store(), "user", "partitions", "eeg-regions")
-    ),
-    format = "file",
-    resources = resources_prepare,
-    retrieval = "worker",
-    memory = "transient",
-    garbage_collection = TRUE
+  tar_native_eeg_partitions(
+    "partitions_eeg_regions",
+    file_eeg_data,
+    channel_regions,
+    resources = resources_prepare
   ),
   tar_partition_target(
     "patterns_indiv_dynamic_regions",

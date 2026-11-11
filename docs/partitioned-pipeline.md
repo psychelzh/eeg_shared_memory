@@ -1,18 +1,27 @@
 # Partitioned analysis pipeline
 
-`_targets.R` declares a single `partition_sources` registry. Each registered
-table has one reusable bundle of files, split by CCA component or brain region.
-All analyses consuming that table share the same files. Each bundle includes
-a manifest and all data files in its tracked outputs: a missing piece invalidates
-its producer. Files are generated under `_targets/user/partitions/`.
+`R/partition_sources.R` declares a single `partition_sources` registry, loaded by
+`tar_source()`. It lists source names and derives the `partitions_` target names.
+Each registered
+table has a small ordered key catalog and reusable native dynamic branches, split
+by CCA component or brain region. Each branch stores `list(key, data)` through
+`targets` under `_targets/objects/`. All analyses share those persisted pieces.
+No new manifest, custom generated file target or `generation-*` directory is used.
+
+The registry is evaluated while building the graph, not read by runtime target
+commands. Moving it or editing comments does not invalidate targets. Changing a
+source or mapping can change the generated commands/dependencies and invalidate
+affected targets; file placement alone does not prevent that.
 
 ```mermaid
 flowchart LR
   Raw[Parquet / raw EEG] --> Patterns[CCA / subject / region branches]
-  Patterns --> Files[Shared partition files]
-  Files --> Jobs[Partition jobs: keys and paths]
+  Patterns --> Pieces[Persisted native CCA or region branches]
+  Patterns --> Keys[Ordered key catalogs]
+  Keys --> Jobs[Small jobs containing keys only]
   Plan[Recorded replicate seeds] --> Compute
   Jobs --> Compute[Workers: stream full-subject time windows]
+  Pieces --> Compute
   Compute --> Stats[Observed data / compact permutation statistics]
   Stats --> Clusters[Combine full time series; cluster inference]
   Clusters --> Report[Quarto report]
@@ -20,12 +29,12 @@ flowchart LR
 
 ## Project relocation and cache identity
 
-Generated file-target outputs and job paths are relative to the project root.
-Each manifest records only its sibling piece filenames. Generation directories
-are named using a signature of the partition keys and serialized piece contents,
-so preparing identical inputs preserves paths and bytes, while changed data
-change the job identities and invalidate downstream computations. Staging files
-are temporary; their random names never enter a recorded target value.
+Native payloads contain data and keys, not internal file paths. `targets` handles
+branch identities, storage, retrieval and pruning. Computation patterns zip jobs
+with the corresponding source branches, then cross that aligned group with batches.
+Ordered catalogs must be identical across sources; each loaded piece is checked
+against its job key. Misalignment stops execution rather than silently pairing
+the wrong component/region.
 
 Move the complete project, including `_targets/meta/`, `_targets/objects/`,
 `_targets/user/` and the source inputs, and run from the new project root. Keep
@@ -33,20 +42,19 @@ the relative store layout and compatible R/package versions. This supports root
 relocation; it does not promise cache compatibility across arbitrary dependency
 or serialization changes or a store kept outside the project.
 
-Readers also support legacy manifests with absolute piece paths, resolving the
-pieces next to their manifest. Legacy jobs with an absolute path into the
-default `_targets/` store can read its local counterpart after copying. This is
-read compatibility, not a rewrite of old file-target metadata or cached job
-hashes. The completed study cache is not automatically migrated. The changed
-function dependencies and new output representation can invalidate old targets
-on the first upgrade; inspect and plan that upgrade before a full `tar_make()`.
+The completed study cache is not automatically migrated or rewritten by the code
+change. The file-to-native upgrade changes commands, dependencies, iteration
+and job values and can invalidate expensive results. Inspect and plan that upgrade
+before a full `tar_make()`. Existing data and unrelated targets can still be read.
+Legacy file helpers remain solely for compatibility and reference tests, and are
+not called by the production partition factories. Keep old referenced partition
+files until the native upgrade has completed and been verified.
 
-`tests/check_partition_portability.R` runs a small pipeline in one temporary
-project and copies its completed store to another root. It checks zero outdated
-targets and zero computation after relocation, unchanged branch identities,
-stable repeated preparation, missing-piece repair, legacy Windows/Linux path
-reads, and recomputation when the input values genuinely change. It never
-executes the study pipeline.
+`tests/check_native_partitions.R` exercises the production factories in two
+temporary project roots. It checks alignment errors, missing-object repair,
+zero outdated targets and zero computation after relocation, and real-change
+invalidation. `tests/check_partition_portability.R` retains reference checks for
+the legacy file format. Neither test executes the study pipeline.
 
 Regenerate any cache-cleanup inventory after changing this code or migrating a
 cache. The audited cleanup script intentionally rejects an inventory whose
@@ -58,8 +66,9 @@ source or metadata fingerprints no longer match.
   resources and logs. `tar_source()` loads it along with the other R functions;
   `_targets.R` then calls `configure_targets_runtime()`. Loading the module alone
   only defines functions and does not configure controllers.
-- `R/partitioning.R` handles file bundles, source alignment, deterministic seed
-  plans, row-key seeds, worker reads, time-window streaming and batched execution.
+- `R/partitioning.R` handles native key catalogs/payloads, alignment, deterministic
+  seed plans, row-key seeds, time-window streaming and batched execution. Its
+  legacy file helpers are not used by the production graph.
 - `R/tar_partitions.R` builds the corresponding target graphs. Use
   `tar_partition_registry()` for shared inputs, `tar_partition_target()` for
   observed calculations and `tar_partition_replicates()` for repeated summaries.
@@ -69,7 +78,7 @@ source or metadata fingerprints no longer match.
   from the same builders. There is no separate ISPS scheduling implementation.
 
 For example, after registering `patterns_indiv_dynamic`, this uses its shared
-CCA files, retains every subject in each window and returns only null means:
+CCA objects, retains every subject in each window and returns only null means:
 
 ```r
 tar_partition_replicates(
@@ -118,8 +127,8 @@ changes scheduling granularity rather than the statistical method.
 ## Coverage and resource policy
 
 CCA-level full-data pattern construction and RT signals are branched by CCA.
-Existing subject-wise branches remain parallel. Raw EEG is read once to prepare
-region files; whole/dynamic regional patterns are calculated in separate region
+Existing subject-wise branches remain parallel. Raw EEG is read in serial heavy
+jobs to prepare native region payloads; whole/dynamic regional patterns use region
 jobs. IGS, ISS/IWS, ISPS, GSS/GWS, SMC/partial Mantel, regional analyses and RT
 controls use the common partition builders where they consume pattern tables.
 Lightweight memory-correlation tables retain whole-table batch parallelism.
@@ -127,12 +136,15 @@ RT memory permutations reuse cached IGS/ISS numeric tables instead of recomputin
 pattern correlations inside every shuffle. Existing paired resampling and
 cross-component prediction/commonality models preserve their joint structure.
 
-Only file preparation runs in the one-worker `heavy` pool. Computations share
-12 local workers (32 on SGE); total budgets are 13/33. Workers read their
-own input files once per batch, use transient memory and collect garbage before
-each job. One time window's permuted patterns are materialised at a time.
-The additional partition files trade disk space and one-time preparation for
-smaller worker inputs. This is a concurrency policy, not a hard RAM reservation.
+Only key/payload preparation runs in the one-worker `heavy` pool. Computations share
+12 local workers (32 on SGE); total budgets are 13/33. Computation workers retrieve
+their native pieces once per batch, use transient memory and collect garbage
+before each job. One time window's permuted patterns are materialised at a time.
+Preparing each key catalog or piece may reread a complete upstream table; raw EEG
+is likewise reread for each region, one preparation worker at a time. This avoids
+loading entire sources in every permutation batch or in the manager, at the cost
+of extra preparation I/O. Full-study peak memory and throughput remain unmeasured
+for this storage transition. This is a concurrency policy, not a RAM reservation.
 
 The local setting targets the i7-12700F workstation (12 physical cores, 20
 logical processors, 63.75 GiB usable RAM). On 2026-11-05, eleven active R
@@ -286,7 +298,7 @@ batches. Preserved source targets and unrelated results can still be reused.
 Full-run time and machine-wide peak RAM must be measured on the complete run;
 more partitions do not reduce the total Mantel permutation count.
 
-## Current-framework real-data checks (2026-11-03)
+## Historical file-backed real-data checks (2026-11-03)
 
 The shared implementation was separately measured on 206 subjects, three CCA
 components and 12 windows, with one permutation per component. The monolithic

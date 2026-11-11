@@ -7,9 +7,8 @@ group <- tar_read_raw("patterns_group_dynamic")
 group <- filter(group, time_id == min(time_id))
 yd <- tar_read_raw("pattern_shapes_alexnet_conv2d_4_9")
 stopifnot(nrow(group) == 3L)
-directory <- tempfile("real-mantel-partitions-")
-bundle <- write_table_partitions(group, "cca_id", directory)
-jobs <- make_partition_jobs(list(group = bundle))
+catalog <- native_partition_keys(group, "cca_id")
+jobs <- make_native_partition_jobs(list(group = catalog))
 sources <- c(group = "unused")
 expr <- quote(extract_stats_mantel(calc_mantel(group, permute_dist(yd))))
 fun <- eval(partition_callback(expr, sources))
@@ -18,7 +17,11 @@ seed <- plan$seed[plan$tar_rep == 1L]
 reference <- with_permutation_seed(seed, fun(list(group = group), seed)) |>
   arrange(cca_id, time_id)
 actual <- map(seq_len(nrow(jobs)), function(i) {
-  run_partition_batch(jobs[i, ], plan, 1L, fun)
+  inputs <- native_partition_inputs(
+    jobs[i, ],
+    list(group = native_partition_piece(group, catalog[i, ]))
+  )
+  run_partition_batch(jobs[i, ], plan, 1L, fun, inputs = inputs)
 }) |>
   list_rbind() |>
   select(all_of(names(reference))) |>

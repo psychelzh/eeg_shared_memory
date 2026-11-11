@@ -37,10 +37,10 @@ Run the analysis in R:
 targets::tar_make()
 ```
 
-The pipeline uses shared partition files and a common task-building framework.
-Pattern tables are split once by CCA component or brain region and reused by
+The pipeline uses shared native partition targets and a common task-building framework.
+Pattern tables are materialized by CCA component or brain region and reused by
 IGS, ISS/IWS, ISPS, GSS/GWS, SMC/partial Mantel, region and RT analyses. A single
-worker prepares full-source files; calculations share 12 local workers (32 on
+worker prepares keys and native pieces; calculations share 12 local workers (32 on
 SGE). Total worker budgets are 13 locally and 33 on SGE. The local default is
 tuned for this workstation's i7-12700F (12 cores / 20 threads) and 64 GiB RAM.
 Local workers inherit single-thread limits for OpenMP/Arrow, OpenBLAS, MKL and
@@ -71,7 +71,8 @@ sandbox settings, with per-job logs under `logs/crew/sge/light/` and
 `logs/crew/sge/heavy/`. Idle workers are retained for up to 300 seconds to reuse
 their loaded environment. Actual concurrency depends on queue access and quotas.
 
-Workers read only their partition, once per batch, and compute complete-subject
+Computation workers retrieve only their persisted native partitions, once per batch,
+and compute complete-subject
 time windows sequentially within that job. Parallelism is across partitions
 and batches. The cache retains permutation statistics or ISPS means. Full time
 series are combined before cluster inference. Raw EEG regions and full CCA
@@ -89,12 +90,14 @@ batches use two outer replicates, reducing the work lost on a worker crash.
 Read the [architecture and reuse guide](docs/partitioned-pipeline.md) for the
 registry, builders, randomisation rules and resource policy. Only preparation
 uses the single-worker pool; this is not a machine-wide RAM reservation.
-Partition files require additional disk space and initial preparation.
-New partition bundles use project-relative paths, filename-only manifests and
-content-addressed generation names so relocating a complete project preserves
-cache identities. Legacy absolute-path caches have read compatibility, but
-upgrading their metadata and hashes is a separate operation. See the guide's
-project relocation section before running the completed cache with changed code.
+Native partition payloads live under `_targets/objects/`, with no manifest,
+generation directory or machine path in jobs. The keys and each piece are prepared
+serially in the heavy pool. Preparing a piece may reread an entire upstream table
+or EEG input; this is bounded preparation work, not repeated per permutation batch.
+Relocating a complete native cache preserves identities with compatible inputs
+and environments. Upgrading the completed file-backed cache changes dependencies
+and can require recomputation; it is not an automatic metadata migration.
+See the guide's project relocation section before running the completed cache.
 No full-pipeline speed or peak-memory guarantee is implied by the small tests.
 
 The following opt-in checks use isolated temporary stores:
@@ -102,13 +105,16 @@ The following opt-in checks use isolated temporary stores:
 ```sh
 Rscript tests/smoke_partitioned_pipeline.R
 Rscript tests/smoke_real_partitions.R
+Rscript tests/smoke_native_partitions.R
 ```
 
-The first uses generated inputs and checks actual workers, old-cache migration,
-reused files, mapped outcomes and all major calculation families. The second
+The first uses generated inputs and checks actual workers, file-to-native upgrade,
+reused native objects, mapped outcomes and all major calculation families. The second
 requires cached project data and checks actual GWS distances with 9,999 inner
 permutations. The earlier [ISPS pilot](docs/isps-chunk-experiment.md) records the
-initial design and its benchmark limits.
+initial design and its benchmark limits. The native-partition prototype checks
+per-CCA object storage, worker execution, numerical equivalence, relocation and
+native pruning; see the [assessment](docs/native-partition-assessment.md).
 
 Default callr isolation remains enabled. Local worker logs are under
 `logs/crew/light/` and `logs/crew/heavy/`. To run one analysis first:

@@ -78,6 +78,18 @@ foreach ($item in $plan) {
     if ($removed % 2000 -eq 0) { Write-Output "Removed $removed / $($plan.Count) verified unused files" }
 }
 
+# Remove only empty generated leaf directories, without recursive deletion.
+Get-ChildItem -LiteralPath $userRoot -Directory -Recurse |
+    Where-Object { $_.Name -match '^(generation|staging)-' } |
+    ForEach-Object {
+        if (-not $_.FullName.StartsWith($userRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Generated directory is outside the audited cache root.'
+        }
+        if (@(Get-ChildItem -LiteralPath $_.FullName -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+    }
+
 Push-Location -LiteralPath $repoPath
 try {
     $env:RENV_CONFIG_SANDBOX_ENABLED = 'FALSE'

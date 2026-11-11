@@ -1,5 +1,61 @@
-# A bundle tracks its manifest and every data file as one generated file target.
-# Individual jobs carry only keys and file paths; workers load their own pieces.
+# Native partitions are persisted as individual targets branches. Catalogs and
+# jobs contain keys only; the branch payload arrives through targets retrieval.
+native_partition_keys <- function(data, by = "cca_id") {
+  stopifnot(is.data.frame(data), length(by) > 0L, all(by %in% names(data)))
+  keys <- data |>
+    dplyr::ungroup() |>
+    tibble::as_tibble() |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(by))) |>
+    dplyr::arrange(dplyr::across(dplyr::everything()))
+  stopifnot(nrow(keys) > 0L, !anyNA(keys), !anyDuplicated(keys))
+  keys
+}
+
+native_partition_piece <- function(data, key) {
+  stopifnot(nrow(key) == 1L, !anyNA(key), all(names(key) %in% names(data)))
+  piece <- dplyr::semi_join(data, key, by = names(key))
+  stopifnot(nrow(piece) > 0L)
+  list(key = key, data = piece)
+}
+
+native_eeg_partition_piece <- function(file, channel_regions, key) {
+  stopifnot(nrow(key) == 1L, key$region_id %in% seq_len(6L))
+  data <- qs2::qs_read(file, nthreads = 1L)
+  channels <- channel_regions[[paste0("region", key$region_id)]] != 0
+  list(key = key, data = data[channels, , , , drop = FALSE])
+}
+
+make_native_partition_jobs <- function(catalogs) {
+  if (!length(catalogs)) {
+    return(tibble::tibble(.key = list(tibble::tibble())))
+  }
+  reference <- catalogs[[1L]]
+  stopifnot(nrow(reference) > 0L, !anyNA(reference), !anyDuplicated(reference))
+  # map() zips branch positions. Reject both missing keys and a changed order.
+  for (catalog in catalogs) {
+    if (!identical(reference, catalog)) {
+      stop("Native partition sources must have identical ordered key catalogs.")
+    }
+  }
+  tibble::tibble(
+    .key = lapply(seq_len(nrow(reference)), function(i) {
+      reference[i, , drop = FALSE]
+    })
+  )
+}
+
+native_partition_inputs <- function(job, pieces) {
+  stopifnot(nrow(job) == 1L)
+  lapply(pieces, function(piece) {
+    if (!identical(job$.key[[1L]], piece$key)) {
+      stop("Native partition key does not match its computation job.")
+    }
+    piece$data
+  })
+}
+
+# Legacy file helpers remain for old-cache reading and reference comparisons.
+# The production target factories below use native objects, never these bundles.
 partition_relative_path <- function(path) {
   root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
   absolute <- normalizePath(path, winslash = "/", mustWork = TRUE)
@@ -276,10 +332,12 @@ run_partition_job <- function(job, fun, seed, stream = TRUE, inputs = NULL) {
     purrr::list_rbind()
 }
 
-run_partition_batch <- function(job, plan, batch, fun) {
+run_partition_batch <- function(job, plan, batch, fun, inputs = NULL) {
   selected <- plan[plan$tar_batch == batch & plan$tar_rep > 0L, ]
   stopifnot(nrow(selected) > 0L)
-  inputs <- read_partition_inputs(job)
+  if (is.null(inputs)) {
+    inputs <- read_partition_inputs(job)
+  }
   purrr::map(seq_len(nrow(selected)), function(i) {
     run_partition_job(job, fun, selected$seed[i], inputs = inputs) |>
       dplyr::mutate(

@@ -155,7 +155,15 @@ stopifnot(
       all.names(parse(text = manifest$pattern[isps_null]))
   ),
   manifest$format[match("partitions_patterns_indiv_dynamic", manifest$name)] ==
-    "file"
+    "qs",
+  all(manifest$format[startsWith(manifest$name, "partitions_")] != "file"),
+  all(
+    c(
+      "partitions_patterns_indiv_dynamic",
+      "jobs_summary_isps_dynamic_permuted"
+    ) %in%
+      all.names(parse(text = manifest$pattern[isps_null]))
+  )
 )
 for (name in c(
   "stats_igs_mem_dynamic_rt_locked",

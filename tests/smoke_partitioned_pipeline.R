@@ -11,13 +11,27 @@ writeLines(
   c(
     lines[seq_len(boundary - 1L)],
     'tar_target(data_iss_dynamic,corr_patterns_1(patterns,yd,name="iss")),',
-    'tarchetypes::tar_rep(stats_iss_dynamic_permuted,',
-    ' calc_stats_t(corr_patterns_1(patterns,permute_dist(yd),name="iss"),iss,alternative="greater"),',
-    ' reps=2L,batches=2L))'
+    'tar_target(partitions_patterns,write_table_partitions(patterns,"cca_id",',
+    ' file.path(targets::tar_path_store(),"user","legacy-patterns")),format="file"),',
+    'tar_target(jobs_stats_iss_dynamic_permuted,',
+    ' make_partition_jobs(list(patterns=partitions_patterns))),',
+    'tar_target(plan_stats_iss_dynamic_permuted,',
+    ' make_permutation_plan(4L,2L,targets::tar_seed_get())),',
+    'tar_target(batches_stats_iss_dynamic_permuted,1:2),',
+    'tar_target(stats_iss_dynamic_permuted,run_partition_batch(',
+    ' jobs_stats_iss_dynamic_permuted,plan_stats_iss_dynamic_permuted,',
+    ' batches_stats_iss_dynamic_permuted,',
+    ' function(.inputs,.replicate_seed) calc_stats_t(',
+    ' corr_patterns_1(.inputs$patterns,permute_dist(yd),name="iss"),',
+    ' iss,alternative="greater")),',
+    ' pattern=cross(jobs_stats_iss_dynamic_permuted,',
+    ' batches_stats_iss_dynamic_permuted)))'
   ),
   legacy
 )
 tar_make(script = legacy, store = store, reporter = "silent")
+legacy_files <- list.files(file.path(store, "user"), recursive = TRUE)
+legacy_null <- tar_read_raw("stats_iss_dynamic_permuted", store = store)
 tar_make(script = script, store = store, reporter = "balanced")
 patterns <- tar_read_raw("patterns", store = store)
 group <- tar_read_raw("group", store = store)
@@ -78,6 +92,11 @@ check_null(
 )
 actual_isps <- tar_read_raw("isps_dynamic", store = store) |> sort_result()
 stopifnot(isTRUE(all.equal(actual_isps, sort_result(calc_isps(patterns)))))
+stopifnot(isTRUE(all.equal(
+  sort_result(legacy_null),
+  sort_result(tar_read_raw("stats_iss_dynamic_permuted", store = store)),
+  tolerance = 1e-12
+)))
 memory_a <- tar_read_raw("stats_memory_dprime", store = store)
 memory_b <- tar_read_raw("stats_memory_dprime_rem", store = store)
 stopifnot(isTRUE(all.equal(memory_a$statistic, -memory_b$statistic)))
@@ -103,14 +122,24 @@ overlap <- outer(probe$start, probe$end, `<`) &
   t(outer(probe$start, probe$end, `<`)) &
   outer(probe$pid, probe$pid, `!=`)
 stopifnot(n_distinct(probe$pid) == 2L, any(overlap))
-bundle <- tar_read_raw("partitions_patterns", store = store)
+piece_names <- tar_meta(
+  names = partitions_patterns,
+  fields = children,
+  store = store
+)$children[[1L]]
+stopifnot(length(piece_names) == 3L)
+piece_path <- file.path(store, "objects", piece_names[1L])
 stopifnot(startsWith(
-  normalizePath(bundle[2], winslash = "/"),
-  normalizePath(store, winslash = "/")
+  normalizePath(piece_path, winslash = "/"),
+  paste0(normalizePath(store, winslash = "/"), "/")
 ))
-stopifnot(file.remove(bundle[2]))
+stopifnot(file.remove(piece_path))
 outdated <- tar_outdated(script = script, store = store, reporter = "silent")
-stopifnot("partitions_patterns" %in% outdated)
+stopifnot(any(startsWith(outdated, "partitions_patterns")))
+stopifnot(identical(
+  list.files(file.path(store, "user"), recursive = TRUE),
+  legacy_files
+))
 cat(
-  "PASS: legacy cache migration, reusable bundles, parallel IGS/ISS/ISPS/Mantel, partial Mantel wrapper, mapped outcomes, raw EEG regions, overlapping workers and file invalidation.\n"
+  "PASS: legacy result upgrade, native partitions, parallel IGS/ISS/ISPS/Mantel, partial Mantel wrapper, mapped outcomes, raw EEG regions, overlapping workers and missing-object invalidation.\n"
 )

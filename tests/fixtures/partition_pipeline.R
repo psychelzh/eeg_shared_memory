@@ -175,14 +175,10 @@ list(
       batches = 2L
     )
   ),
-  tar_target(
-    partitions_eeg,
-    write_eeg_region_partitions(
-      raw_eeg,
-      channel_regions,
-      file.path(targets::tar_path_store(), "user", "eeg-regions")
-    ),
-    format = "file",
+  tar_native_eeg_partitions(
+    "partitions_eeg",
+    raw_eeg,
+    channel_regions,
     resources = heavy
   ),
   tar_partition_target(
