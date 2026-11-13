@@ -27,9 +27,10 @@ Rscript scripts/summarize_completed_results.R
 ```
 
 The report refreshes `figures/`, `_freeze/index/` and `_site/index.html`.
-The summary script writes inspectable numeric tables to
-`docs/analysis-update-2026-11-10/`; the accompanying `draft-update-guide.md`
-maps the completed results to the current manuscript's paragraphs and figures.
+The summary script writes numeric tables to a local, Git-ignored
+`docs/analysis-update-YYYY-MM-DD/` directory. Pass a directory as its first
+argument to choose another output location. Generated exports and personal
+manuscript notes are not part of the repository.
 
 Run the analysis in R:
 
@@ -114,7 +115,8 @@ requires cached project data and checks actual GWS distances with 9,999 inner
 permutations. The earlier [ISPS pilot](docs/isps-chunk-experiment.md) records the
 initial design and its benchmark limits. The native-partition prototype checks
 per-CCA object storage, worker execution, numerical equivalence, relocation and
-native pruning; see the [assessment](docs/native-partition-assessment.md).
+native pruning. The [pipeline guide](docs/partitioned-pipeline.md) describes the
+production mechanism and its validation limits.
 
 Default callr isolation remains enabled. Local worker logs are under
 `logs/crew/light/` and `logs/crew/heavy/`. To run one analysis first:

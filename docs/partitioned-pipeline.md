@@ -60,6 +60,16 @@ Regenerate any cache-cleanup inventory after changing this code or migrating a
 cache. The audited cleanup script intentionally rejects an inventory whose
 source or metadata fingerprints no longer match.
 
+For an audited cleanup, export the current manifest to a CSV under `logs/`, then
+run `python scripts/audit_native_cache.py MANIFEST_CSV logs/CACHE_AUDIT`.
+If current file targets contain absolute paths from another machine, supply
+`--source-root ORIGINAL_PROJECT_ROOT` to map them to this project.
+Run `scripts/clean_native_cache.ps1 -AuditDirectory logs/CACHE_AUDIT` to preview
+the plan; add `-Apply` only after reviewing it. Afterwards, use native
+`targets::tar_prune(cloud = FALSE)` and verify the cache in a fresh R session.
+Inventories, machine-specific validation notes, generated statistical exports
+and manuscript working files stay local and are ignored by Git.
+
 ## Reusable code
 
 - `R/tar_runtime.R` configures local/SGE workers, environment variables, memory

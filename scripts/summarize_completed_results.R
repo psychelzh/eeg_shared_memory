@@ -1,10 +1,15 @@
-# Run after tar_make() to export manuscript-ready values from the completed cache.
+# Run after tar_make() to export statistical summaries from the completed cache.
 # This script reads targets; it does not rebuild or invalidate the pipeline.
 library(tidyverse)
 library(targets)
 source("R_quarto/utils.R")
 
-output <- file.path("docs", "analysis-update-2026-11-10")
+args <- commandArgs(trailingOnly = TRUE)
+output <- if (length(args)) {
+  args[[1L]]
+} else {
+  file.path("docs", paste0("analysis-update-", Sys.Date()))
+}
 dir.create(output, recursive = TRUE, showWarnings = FALSE)
 manifest <- tar_manifest(fields = name, callr_function = NULL)
 

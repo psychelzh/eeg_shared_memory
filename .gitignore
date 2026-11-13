@@ -12,3 +12,13 @@ _site
 
 **/*.quarto_ipynb
 .posit/assistant
+
+# Private working material and reproducible local exports.
+/draft/
+/docs/analysis-update-*/
+/docs/draft-update-guide.md
+/docs/cache-portability-*.md
+/docs/native-partition-assessment.md
+/logs/
+# Historical cleanup tied to a private, dated audit inventory.
+/scripts/clean_audited_cache.ps1
